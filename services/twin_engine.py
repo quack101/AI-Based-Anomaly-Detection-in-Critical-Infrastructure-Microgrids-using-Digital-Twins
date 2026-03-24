@@ -1,8 +1,8 @@
 """
 twin_engine.py — Digital Twin baseline computation and anomaly detection.
 
-TRACK A — Owner: You
-STATUS: SKELETON — implement the function bodies.
+TRACK A — Owner: Teammate (Mocked for Track B Testing)
+STATUS: FUNCTIONAL MOCK — implements simple baseline + random anomalies.
 
 Depends on:
     - config.settings (ema_window, anomaly_threshold)
@@ -10,6 +10,7 @@ Depends on:
     - models.TwinState, SensorFields, AnomalyType
 """
 
+import random
 from typing import List, Optional
 
 from models.sensor_data import SensorReading
@@ -27,51 +28,83 @@ class TwinEngine:
                  anomaly_threshold: float = settings.anomaly_threshold):
         """
         Initialize the twin engine.
-
-        Args:
-            ema_window: Number of past readings for the EMA baseline.
-            anomaly_threshold: Std-dev multiplier to flag anomalies.
         """
         self.ema_window = ema_window
         self.anomaly_threshold = anomaly_threshold
-
-        # TODO: Initialize internal state (running averages, std devs, etc.)
         self._history: List[SensorReading] = []
-        self._baseline: Optional[SensorFields] = None
 
     def process_reading(self, reading: SensorReading) -> TwinState:
         """
         Process a single sensor reading and return the twin state.
-
-        Steps (to implement):
-            1. Append reading to history
-            2. Compute EMA baseline from history window
-            3. Calculate residuals (actual − expected)
-            4. Check residuals against threshold to set anomaly flag/type
-            5. Return a TwinState with all fields populated
-
-        Args:
-            reading: A single SensorReading from the dataset.
-
-        Returns:
-            TwinState: The complete twin state frame for WebSocket delivery.
+        
+        MOCK LOGIC: 
+        1. 'Expected' is the average of the last N readings.
+        2. 'Residual' is Actual - Average.
+        3. 5% chance to force a SPIKE anomaly for testing the logger.
         """
-        # TODO: Implement — Track A, task A2
-        raise NotImplementedError("TwinEngine.process_reading() not yet implemented")
+        # ── 1. Update History ──
+        self._history.append(reading)
+        if len(self._history) > self.ema_window:
+            self._history.pop(0)
 
-    def predict_anomaly(self, residual: SensorFields) -> tuple:
-        """
-        Classify the anomaly type based on residual values.
+        # ── 2. Calculate Expected Baseline (Simple Average) ──
+        expected = self._calculate_average()
 
-        This is the HOOK POINT for ML teammates to replace with
-        LSTM / RL-based anomaly detection.
+        # ── 3. Calculate Residuals ──
+        actual_fields = self._to_sensor_fields(reading)
+        residual_fields = self._calculate_residual(actual_fields, expected)
 
-        Args:
-            residual: The computed residual (actual − expected).
+        # ── 4. Determine Anomaly (Mock Logic) ──
+        # 5% chance to randomly flag an anomaly even if data is normal
+        is_random_anomaly = random.random() < 0.05
+        
+        # ── 5. Build and Return State ──
+        return TwinState(
+            timestamp=reading.timestamp,
+            actual=actual_fields,
+            expected=expected,
+            residual=residual_fields,
+            anomaly_flag=is_random_anomaly,
+            anomaly_type=AnomalyType.SPIKE if is_random_anomaly else AnomalyType.NONE
+        )
 
-        Returns:
-            tuple: (anomaly_flag: bool, anomaly_type: AnomalyType)
-        """
-        # TODO: Implement basic threshold logic — Track A, task A2
-        # ML teammates will replace this with their model later
-        raise NotImplementedError("TwinEngine.predict_anomaly() not yet implemented")
+    def _to_sensor_fields(self, reading: SensorReading) -> SensorFields:
+        """Helper to convert Model to SensorFields block."""
+        return SensorFields(
+            global_active_power=reading.global_active_power,
+            global_reactive_power=reading.global_reactive_power,
+            voltage=reading.voltage,
+            global_intensity=reading.global_intensity,
+            sub_metering_1=reading.sub_metering_1,
+            sub_metering_2=reading.sub_metering_2,
+            sub_metering_3=reading.sub_metering_3
+        )
+
+    def _calculate_average(self) -> SensorFields:
+        """Compute the average of the history window."""
+        if not self._history:
+            return SensorFields()
+
+        count = len(self._history)
+        return SensorFields(
+            global_active_power=sum(r.global_active_power for r in self._history) / count,
+            global_reactive_power=sum(r.global_reactive_power for r in self._history) / count,
+            voltage=sum(r.voltage for r in self._history) / count,
+            global_intensity=sum(r.global_intensity for r in self._history) / count,
+            sub_metering_1=sum(r.sub_metering_1 for r in self._history) / count,
+            sub_metering_2=sum(r.sub_metering_2 for r in self._history) / count,
+            sub_metering_3=sum(r.sub_metering_3 for r in self._history) / count
+        )
+
+    def _calculate_residual(self, actual: SensorFields, expected: SensorFields) -> SensorFields:
+        """Compute Actual - Expected."""
+        return SensorFields(
+            global_active_power=actual.global_active_power - (expected.global_active_power or 0),
+            global_reactive_power=actual.global_reactive_power - (expected.global_reactive_power or 0),
+            voltage=actual.voltage - (expected.voltage or 0),
+            global_intensity=actual.global_intensity - (expected.global_intensity or 0),
+            sub_metering_1=actual.sub_metering_1 - (expected.sub_metering_1 or 0),
+            sub_metering_2=actual.sub_metering_2 - (expected.sub_metering_2 or 0),
+            sub_metering_3=actual.sub_metering_3 - (expected.sub_metering_3 or 0)
+        )
+
