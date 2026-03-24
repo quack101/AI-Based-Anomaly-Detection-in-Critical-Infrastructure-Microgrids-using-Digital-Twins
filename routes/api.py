@@ -1,15 +1,17 @@
 """
 api.py — REST API endpoints.
 
-TRACK B — Owner: Teammate
-STATUS: SKELETON — implement the endpoint bodies.
+TRACK B — Owner: You
+STATUS: IMPLEMENTED
 
 Endpoints:
     GET /health       — Simple health check
     GET /api/history  — Retrieve recent anomaly logs from Supabase
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+
+from services.supabase_client import get_supabase_client
 
 # ── Create a router with the /api prefix for non-WebSocket endpoints ──
 router = APIRouter(tags=["API"])
@@ -23,7 +25,6 @@ async def health_check():
     Returns:
         dict: {"status": "ok"}
     """
-    # Health check always works — no TODO needed
     return {"status": "ok"}
 
 
@@ -32,17 +33,39 @@ async def get_anomaly_history(limit: int = 50):
     """
     Retrieve the most recent anomaly log entries from Supabase.
 
-    Steps (to implement):
-        1. Get the Supabase client
-        2. Query the 'anomaly_logs' table, ordered by timestamp DESC
-        3. Limit results to the 'limit' parameter
-        4. Return the rows as a JSON list
+    Queries the 'anomaly_logs' table, ordered by timestamp DESC.
 
     Args:
         limit: Maximum number of records to return (default 50).
 
     Returns:
-        dict: {"logs": [...], "count": int}
+        dict: {"logs": list, "count": int}
+
+    Raises:
+        HTTPException: if Supabase query fails.
     """
-    # TODO: Implement Supabase query — Track B, task B3
-    return {"logs": [], "count": 0, "message": "Not yet implemented"}
+    try:
+        # ── 1. Get the authenticated Supabase client ──
+        supabase = get_supabase_client()
+
+        # ── 2. Query the 'anomaly_logs' table ──
+        result = (
+            supabase.table("anomaly_logs")
+            .select("*")
+            .order("timestamp", desc=True)
+            .limit(limit)
+            .execute()
+        )
+
+        return {
+            "logs": result.data,
+            "count": len(result.data)
+        }
+
+    except Exception as error:
+        # ── 3. Handle query errors ──
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch anomaly history: {error}"
+        )
+
