@@ -1,0 +1,15 @@
+# ── Digital Twin Backend Dependencies ──
+# Core framework
+fastapi>=0.110
+uvicorn[standard]>=0.29
+
+# Data handling
+pandas>=2.2
+pydantic>=2.6
+pydantic-settings>=2.2
+
+# Supabase client
+supabase>=2.4
+
+# Environment variables
+python-dotenv>=1.0
