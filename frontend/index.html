@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Microgrid Digital Twin</title>
+  <style>
+    :root {
+      --bg: #f4f4f4;
+      --card: #ffffff;
+      --text: #1f2a2a;
+      --muted: #606d6d;
+      --line: #dde3e3;
+      --ok: #198754;
+      --warn: #d98e04;
+      --bad: #c0392b;
+      --accent: #126e82;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      padding: 16px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 14px;
+      min-height: calc(100vh - 32px);
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 10px;
+      padding: 10px;
+      border-bottom: 1px solid var(--line);
+      background: #fafcfc;
+      align-items: center;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--warn);
+    }
+
+    .dot.ok {
+      background: var(--ok);
+    }
+
+    .dot.bad {
+      background: var(--bad);
+    }
+
+    #scene {
+      width: 100%;
+      height: calc(100vh - 120px);
+      min-height: 420px;
+      display: block;
+      background: linear-gradient(180deg, #eef4f6, #f8fbfb);
+    }
+
+    .side {
+      padding: 12px;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 10px;
+    }
+
+    .hero {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      background: #fbfefe;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: 17px;
+    }
+
+    .hero p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px;
+      background: #fff;
+    }
+
+    .label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .metric {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 13px;
+      color: var(--accent);
+    }
+
+    .anomaly {
+      border: 1px dashed #e9b0aa;
+      border-radius: 10px;
+      background: #fff3f2;
+      color: #7e2319;
+      padding: 10px;
+      font-size: 13px;
+      min-height: 44px;
+    }
+
+    .anomaly.inactive {
+      border-color: #b8dfc9;
+      background: #f2fbf6;
+      color: #0f5b36;
+    }
+
+    @media (max-width: 980px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      #scene {
+        height: 48vh;
+        min-height: 280px;
+      }
+
+      .topbar {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="layout">
+    <section class="panel">
+      <div class="topbar">
+        <div class="badge">
+          <span class="dot" id="conn-dot"></span>
+          <span id="conn-state">Connecting...</span>
+        </div>
+        <div class="badge">Speed: <span id="replay-speed">1.0s</span></div>
+        <div class="badge">Frame: <span id="frame-time">-</span></div>
+      </div>
+      <canvas id="scene"></canvas>
+    </section>
+
+    <aside class="panel side">
+      <section class="hero">
+        <h1>Digital Twin Telemetry</h1>
+        <p>Live actual and expected microgrid values from the backend stream.</p>
+      </section>
+
+      <section class="cards">
+        <article class="card">
+          <div class="label">Actual Active Power</div>
+          <div class="metric" id="actual-active">-</div>
+        </article>
+        <article class="card">
+          <div class="label">Expected Active Power</div>
+          <div class="metric" id="expected-active">-</div>
+        </article>
+        <article class="card">
+          <div class="label">Actual Voltage</div>
+          <div class="metric" id="actual-voltage">-</div>
+        </article>
+        <article class="card">
+          <div class="label">Expected Voltage</div>
+          <div class="metric" id="expected-voltage">-</div>
+        </article>
+        <article class="card">
+          <div class="label">Residual Active Power</div>
+          <div class="metric" id="residual-active">-</div>
+        </article>
+        <article class="card">
+          <div class="label">Residual Voltage</div>
+          <div class="metric" id="residual-voltage">-</div>
+        </article>
+      </section>
+
+      <section class="anomaly inactive" id="anomaly-box">No anomaly detected.</section>
+    </aside>
+  </main>
+
+  <script type="module">
+    import * as THREE from "https://unpkg.com/three@0.165.0/build/three.module.js";
+
+    const wsUrl = `${location.protocol === "https:" ? "wss" : "ws"}://${location.hostname || "localhost"}:8000/ws/stream`;
+    const reconnectDelayMs = 2000;
+
+    const connState = document.getElementById("conn-state");
+    const connDot = document.getElementById("conn-dot");
+    const frameTime = document.getElementById("frame-time");
+    const replaySpeed = document.getElementById("replay-speed");
+    const anomalyBox = document.getElementById("anomaly-box");
+
+    const metrics = {
+      actualActive: document.getElementById("actual-active"),
+      expectedActive: document.getElementById("expected-active"),
+      actualVoltage: document.getElementById("actual-voltage"),
+      expectedVoltage: document.getElementById("expected-voltage"),
+      residualActive: document.getElementById("residual-active"),
+      residualVoltage: document.getElementById("residual-voltage")
+    };
+
+    const canvas = document.getElementById("scene");
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(52, 1, 0.1, 100);
+    camera.position.set(0, 4, 9);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+    const keyLight = new THREE.DirectionalLight(0xfff1d6, 1.0);
+    keyLight.position.set(4, 8, 6);
+    scene.add(keyLight);
+
+    const grid = new THREE.GridHelper(18, 18, 0x7b8f96, 0xb8c9cf);
+    grid.position.y = -1;
+    scene.add(grid);
+
+    const baseMat = new THREE.MeshStandardMaterial({ color: 0x447b88, metalness: 0.15, roughness: 0.3 });
+    const expectedMat = new THREE.MeshStandardMaterial({ color: 0xf4a261, metalness: 0.05, roughness: 0.45, transparent: true, opacity: 0.7 });
+
+    const actualLoad = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1, 1.8), baseMat);
+    actualLoad.position.set(-1.6, 0, 0);
+    scene.add(actualLoad);
+
+    const expectedLoad = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1, 1.8), expectedMat);
+    expectedLoad.position.set(1.6, 0, 0);
+    scene.add(expectedLoad);
+
+    const flowGroup = new THREE.Group();
+    const flowMat = new THREE.MeshBasicMaterial({ color: 0x2a9d8f });
+    for (let i = 0; i < 5; i += 1) {
+      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), flowMat);
+      orb.position.set(-2.8 + i * 1.2, -0.45, 0);
+      flowGroup.add(orb);
+    }
+    scene.add(flowGroup);
+
+    let latestFrame = null;
+    let ws = null;
+    let reconnectTimer = null;
+
+    function fmt(value, digits = 3, unit = "") {
+      if (value === null || value === undefined || Number.isNaN(Number(value))) {
+        return "-";
+      }
+      return `${Number(value).toFixed(digits)}${unit}`;
+    }
+
+    function setConnection(label, stateClass) {
+      connState.textContent = label;
+      connDot.className = `dot ${stateClass}`;
+    }
+
+    function applyFrame(frame) {
+      latestFrame = frame;
+      frameTime.textContent = frame.timestamp || "-";
+
+      metrics.actualActive.textContent = fmt(frame.actual?.global_active_power, 3, " kW");
+      metrics.expectedActive.textContent = fmt(frame.expected?.global_active_power, 3, " kW");
+      metrics.actualVoltage.textContent = fmt(frame.actual?.voltage, 2, " V");
+      metrics.expectedVoltage.textContent = fmt(frame.expected?.voltage, 2, " V");
+      metrics.residualActive.textContent = fmt(frame.residual?.global_active_power, 3, " kW");
+      metrics.residualVoltage.textContent = fmt(frame.residual?.voltage, 2, " V");
+
+      if (frame.anomaly_flag) {
+        anomalyBox.classList.remove("inactive");
+        anomalyBox.textContent = `Anomaly flagged: ${frame.anomaly_type || "unknown"}`;
+      } else {
+        anomalyBox.classList.add("inactive");
+        anomalyBox.textContent = "No anomaly detected.";
+      }
+    }
+
+    function connectWebSocket() {
+      setConnection("Connecting...", "");
+
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        setConnection("Live stream connected", "ok");
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload && payload.actual && payload.expected && payload.residual) {
+            applyFrame(payload);
+          }
+        } catch (error) {
+          console.warn("Bad WS payload", error);
+        }
+      };
+
+      ws.onerror = () => {
+        setConnection("Stream error", "bad");
+      };
+
+      ws.onclose = () => {
+        setConnection("Disconnected, retrying...", "bad");
+        clearTimeout(reconnectTimer);
+        reconnectTimer = setTimeout(connectWebSocket, reconnectDelayMs);
+      };
+    }
+
+    function resize() {
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      if (!width || !height) {
+        return;
+      }
+      renderer.setSize(width, height, false);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+    }
+
+    function mapTwinToScene(frame, t) {
+      const actualPower = Number(frame.actual?.global_active_power || 0);
+      const expectedPower = Number(frame.expected?.global_active_power || 0);
+      const actualVolt = Number(frame.actual?.voltage || 0);
+      const expectedVolt = Number(frame.expected?.voltage || 0);
+
+      actualLoad.scale.y = Math.max(0.25, Math.min(3.0, actualPower * 0.9 + 0.2));
+      expectedLoad.scale.y = Math.max(0.25, Math.min(3.0, expectedPower * 0.9 + 0.2));
+
+      const voltDelta = Math.min(1, Math.abs(actualVolt - expectedVolt) / 40);
+      const hue = 0.42 - voltDelta * 0.42;
+      baseMat.color.setHSL(hue, 0.62, 0.43);
+
+      flowGroup.children.forEach((orb, index) => {
+        orb.position.x = -2.8 + ((t * 1.3 + index * 0.25) % 5.6);
+        orb.scale.setScalar(0.75 + Math.min(1.2, actualPower));
+      });
+    }
+
+    function animate(now) {
+      requestAnimationFrame(animate);
+      const t = now * 0.001;
+
+      if (latestFrame) {
+        mapTwinToScene(latestFrame, t);
+      }
+
+      camera.position.x = Math.sin(t * 0.25) * 0.45;
+      camera.lookAt(0, 0, 0);
+      renderer.render(scene, camera);
+    }
+
+    replaySpeed.textContent = "1.0s";
+    window.addEventListener("resize", resize);
+
+    resize();
+    connectWebSocket();
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>

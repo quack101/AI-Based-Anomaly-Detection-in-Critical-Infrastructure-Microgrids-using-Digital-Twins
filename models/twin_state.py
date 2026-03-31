@@ -20,7 +20,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class AnomalyType(str, Enum):
@@ -81,6 +81,7 @@ class TwinState(BaseModel):
         description="Type of anomaly detected"
     )
 
-    class Config:
+    model_config = ConfigDict(
         # Serialize enums as their string values in JSON output
-        use_enum_values = True
+        use_enum_values=True,
+    )

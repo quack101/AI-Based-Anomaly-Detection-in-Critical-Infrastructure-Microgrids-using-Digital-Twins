@@ -1,72 +1,76 @@
 """
-twin_engine.py — Digital Twin baseline computation and anomaly detection.
+twin_engine.py — Digital Twin baseline computation in teammate-ready mode.
 
-TRACK A — Owner: Teammate (Mocked for Track B Testing)
-STATUS: FUNCTIONAL MOCK — implements simple baseline + random anomalies.
+TRACK A — Owner: Teammate (integration-ready)
+STATUS: SIMPLIFIED MODE — expected baseline only, anomaly/residual deferred.
 
 Depends on:
-    - config.settings (ema_window, anomaly_threshold)
+    - config.settings (ema_window)
     - models.SensorReading
     - models.TwinState, SensorFields, AnomalyType
 """
 
-import random
-from typing import List, Optional
+from typing import Optional
 
-from models.sensor_data import SensorReading
-from models.twin_state import TwinState, SensorFields, AnomalyType
 from config import settings
+from models.sensor_data import SensorReading
+from models.twin_state import AnomalyType, SensorFields, TwinState
 
 
 class TwinEngine:
     """
-    Stateful Digital Twin engine that maintains a rolling baseline
-    and computes residuals for each incoming sensor reading.
+    Stateful Digital Twin engine that maintains an EMA expected baseline.
+
+    This simplified mode intentionally defers residual and anomaly logic
+    to teammate-owned modules while preserving the stable WebSocket schema.
     """
 
-    def __init__(self, ema_window: int = settings.ema_window,
-                 anomaly_threshold: float = settings.anomaly_threshold):
-        """
-        Initialize the twin engine.
-        """
+    def __init__(self, ema_window: int = settings.ema_window):
+        """Initialize EMA baseline state for per-field expected values."""
         self.ema_window = ema_window
-        self.anomaly_threshold = anomaly_threshold
-        self._history: List[SensorReading] = []
+        self._ema_alpha = 2 / (max(ema_window, 1) + 1)
+        self._expected_state: Optional[SensorFields] = None
 
     def process_reading(self, reading: SensorReading) -> TwinState:
         """
         Process a single sensor reading and return the twin state.
-        
-        MOCK LOGIC: 
-        1. 'Expected' is the average of the last N readings.
-        2. 'Residual' is Actual - Average.
-        3. 5% chance to force a SPIKE anomaly for testing the logger.
+
+        Simplified mode behavior:
+        1. Compute expected values using EMA.
+        2. Skip residual calculation (placeholder values only).
+        3. Keep anomaly outputs fixed to false/none.
         """
-        # ── 1. Update History ──
-        self._history.append(reading)
-        if len(self._history) > self.ema_window:
-            self._history.pop(0)
-
-        # ── 2. Calculate Expected Baseline (Simple Average) ──
-        expected = self._calculate_average()
-
-        # ── 3. Calculate Residuals ──
+        # Convert incoming model to a consistent numeric block.
         actual_fields = self._to_sensor_fields(reading)
-        residual_fields = self._calculate_residual(actual_fields, expected)
+        # Update EMA baseline state and expose it as the expected block.
+        expected_fields = self._update_expected_state(actual_fields)
+        # Keep residual as a schema placeholder until teammate logic is added.
+        residual_fields = SensorFields()
+        # Keep anomaly outputs deterministic and disabled in this phase.
+        anomaly_flag, anomaly_type = self.predict_anomaly(actual_fields, expected_fields)
 
-        # ── 4. Determine Anomaly (Mock Logic) ──
-        # 5% chance to randomly flag an anomaly even if data is normal
-        is_random_anomaly = random.random() < 0.05
-        
-        # ── 5. Build and Return State ──
         return TwinState(
             timestamp=reading.timestamp,
             actual=actual_fields,
-            expected=expected,
+            expected=expected_fields,
             residual=residual_fields,
-            anomaly_flag=is_random_anomaly,
-            anomaly_type=AnomalyType.SPIKE if is_random_anomaly else AnomalyType.NONE
+            anomaly_flag=anomaly_flag,
+            anomaly_type=anomaly_type,
         )
+
+    def predict_anomaly(
+        self,
+        actual_fields: SensorFields,
+        expected_fields: SensorFields,
+    ) -> tuple[bool, AnomalyType]:
+        """
+        Teammate integration hook for anomaly decision.
+
+        Returns disabled anomaly outputs for now.
+        """
+        _ = actual_fields
+        _ = expected_fields
+        return False, AnomalyType.NONE
 
     def _to_sensor_fields(self, reading: SensorReading) -> SensorFields:
         """Helper to convert Model to SensorFields block."""
@@ -80,31 +84,46 @@ class TwinEngine:
             sub_metering_3=reading.sub_metering_3
         )
 
-    def _calculate_average(self) -> SensorFields:
-        """Compute the average of the history window."""
-        if not self._history:
-            return SensorFields()
+    def _update_expected_state(self, actual_fields: SensorFields) -> SensorFields:
+        """Update and return per-field EMA expected values."""
+        if self._expected_state is None:
+            self._expected_state = actual_fields
+            return self._expected_state
 
-        count = len(self._history)
-        return SensorFields(
-            global_active_power=sum(r.global_active_power for r in self._history) / count,
-            global_reactive_power=sum(r.global_reactive_power for r in self._history) / count,
-            voltage=sum(r.voltage for r in self._history) / count,
-            global_intensity=sum(r.global_intensity for r in self._history) / count,
-            sub_metering_1=sum(r.sub_metering_1 for r in self._history) / count,
-            sub_metering_2=sum(r.sub_metering_2 for r in self._history) / count,
-            sub_metering_3=sum(r.sub_metering_3 for r in self._history) / count
+        self._expected_state = SensorFields(
+            global_active_power=self._ema(
+                actual_fields.global_active_power,
+                self._expected_state.global_active_power,
+            ),
+            global_reactive_power=self._ema(
+                actual_fields.global_reactive_power,
+                self._expected_state.global_reactive_power,
+            ),
+            voltage=self._ema(actual_fields.voltage, self._expected_state.voltage),
+            global_intensity=self._ema(
+                actual_fields.global_intensity,
+                self._expected_state.global_intensity,
+            ),
+            sub_metering_1=self._ema(
+                actual_fields.sub_metering_1,
+                self._expected_state.sub_metering_1,
+            ),
+            sub_metering_2=self._ema(
+                actual_fields.sub_metering_2,
+                self._expected_state.sub_metering_2,
+            ),
+            sub_metering_3=self._ema(
+                actual_fields.sub_metering_3,
+                self._expected_state.sub_metering_3,
+            ),
         )
+        return self._expected_state
 
-    def _calculate_residual(self, actual: SensorFields, expected: SensorFields) -> SensorFields:
-        """Compute Actual - Expected."""
-        return SensorFields(
-            global_active_power=actual.global_active_power - (expected.global_active_power or 0),
-            global_reactive_power=actual.global_reactive_power - (expected.global_reactive_power or 0),
-            voltage=actual.voltage - (expected.voltage or 0),
-            global_intensity=actual.global_intensity - (expected.global_intensity or 0),
-            sub_metering_1=actual.sub_metering_1 - (expected.sub_metering_1 or 0),
-            sub_metering_2=actual.sub_metering_2 - (expected.sub_metering_2 or 0),
-            sub_metering_3=actual.sub_metering_3 - (expected.sub_metering_3 or 0)
-        )
+    def _ema(self, actual_value: Optional[float], previous_expected: Optional[float]) -> Optional[float]:
+        """Compute one EMA step for a single numeric field."""
+        if actual_value is None:
+            return previous_expected
+        if previous_expected is None:
+            return actual_value
+        return (self._ema_alpha * actual_value) + ((1 - self._ema_alpha) * previous_expected)
 

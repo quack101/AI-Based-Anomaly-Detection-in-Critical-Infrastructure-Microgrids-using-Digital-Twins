@@ -9,7 +9,7 @@ CSV columns:
 
 from datetime import datetime as dt
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class SensorReading(BaseModel):
@@ -61,7 +61,8 @@ class SensorReading(BaseModel):
         description="Energy sub-metering No.3 — water heater + AC (watt-hour)"
     )
 
-    class Config:
+    model_config = ConfigDict(
         # Allow using both alias (CSV column name) and field name
-        populate_by_name = True
-        from_attributes = True
+        populate_by_name=True,
+        from_attributes=True,
+    )

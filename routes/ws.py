@@ -7,6 +7,7 @@ STATUS: IMPLEMENTED
 Depends on:
     - services.twin_engine.TwinEngine
     - services.data_ingestion.load_dataset
+    - services.logger.log_frame
     - services.logger.log_anomaly
     - config.settings.ws_frame_delay
 """
@@ -17,8 +18,8 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from config import settings
 from services.data_ingestion import load_dataset
+from services.logger import log_anomaly, log_frame
 from services.twin_engine import TwinEngine
-from services.logger import log_anomaly
 
 # ── Create a router for WebSocket endpoints ──
 router = APIRouter(tags=["WebSocket"])
@@ -54,12 +55,16 @@ async def stream_twin_state(websocket: WebSocket):
             # We use model_dump(mode="json") to ensure datetime/enums are serialized
             await websocket.send_json(twin_state.model_dump(mode="json"))
 
-            # ── c. Log to Supabase if an anomaly is detected ──
+            # ── c. Queue every frame for batched persistence ──
+            # Fire-and-forget to avoid blocking stream throughput
+            asyncio.create_task(log_frame(twin_state))
+
+            # ── d. Log to Supabase if an anomaly is detected ──
             if twin_state.anomaly_flag:
                 # We fire-and-forget the log task so it doesn't block the stream
                 asyncio.create_task(log_anomaly(twin_state))
 
-            # ── d. Wait for the configured replay delay ──
+            # ── e. Wait for the configured replay delay ──
             await asyncio.sleep(settings.ws_frame_delay)
 
     except WebSocketDisconnect:

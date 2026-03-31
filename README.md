@@ -1,70 +1,106 @@
 # Digital Twin — Microgrid Anomaly Detection
 
-AI-Based Anomaly Detection in Critical Infrastructure Microgrids using Digital Twins.
+AI-based anomaly detection workflow for critical infrastructure microgrids using a Digital Twin backend and a Three.js visualization shell.
 
 ## Quick Start
 
 ```bash
 # 1. Clone the repo
 git clone <your-repo-url>
-cd cool
+cd cappy
 
-# 2. Create virtual environment
+# 2. Create and activate a virtual environment
 python -m venv venv
-venv\Scripts\activate        # Windows
-# source venv/bin/activate   # macOS/Linux
+venv\Scripts\activate
 
 # 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. Set up environment variables
+# 4. Create local environment file
 copy .env.example .env
-# Edit .env with your Supabase credentials
 
-# 5. Place the UCI dataset
-# Download from: https://archive.ics.uci.edu/dataset/235
-# Save as: data/household_power_consumption.csv
-
-# 6. Run the server
+# 5. Run API server
 uvicorn main:app --reload --port 8000
+```
+
+## Data File
+
+- The backend reads data from `CSV_PATH` (default: `data/processed_data.csv`).
+- Keep your cleaned dataset in that location or change `CSV_PATH` in `.env`.
+
+## Backend Endpoints
+
+| Method | Path           | Description                                |
+| ------ | -------------- | ------------------------------------------ |
+| GET    | `/health`      | Health check                               |
+| GET    | `/api/history` | Recent anomaly logs with graceful fallback |
+| WS     | `/ws/stream`   | Real-time twin frames                      |
+
+## Observability Behavior
+
+- Every streamed frame can be logged to Supabase table `twin_frames` (configurable).
+- Anomaly events are logged to `anomaly_logs` (configurable).
+- Frame logging uses an in-memory async batch policy:
+  - Batch size: `FRAME_LOG_BATCH_SIZE`
+  - Flush interval: `FRAME_LOG_FLUSH_INTERVAL_SECONDS`
+  - Retry count: `FRAME_LOG_RETRY_COUNT`
+  - Backoff base: `FRAME_LOG_RETRY_BACKOFF_SECONDS`
+- If Supabase write/query fails, stream/API behavior degrades gracefully instead of crashing.
+
+## Frontend Visualization (Step-1 Shell)
+
+- Open `frontend/index.html` using any static server.
+- Example with Python:
+
+```bash
+python -m http.server 5500
+```
+
+- Then open `http://localhost:5500/frontend/index.html`.
+- The page connects to `ws://localhost:8000/ws/stream` by default.
+
+## Environment Variables
+
+```env
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_KEY=your-anon-or-service-role-key
+CSV_PATH=data/processed_data.csv
+
+EMA_WINDOW=30
+ANOMALY_THRESHOLD=3.0
+WS_FRAME_DELAY=1.0
+
+ENABLE_FRAME_LOGGING_TO_SUPABASE=true
+TWIN_FRAMES_TABLE_NAME=twin_frames
+ANOMALY_LOGS_TABLE_NAME=anomaly_logs
+
+FRAME_LOG_BATCH_SIZE=100
+FRAME_LOG_FLUSH_INTERVAL_SECONDS=1.0
+FRAME_LOG_RETRY_COUNT=3
+FRAME_LOG_RETRY_BACKOFF_SECONDS=0.5
+
+HISTORY_DEFAULT_LIMIT=50
+HISTORY_MAX_LIMIT=500
+```
+
+## Tests
+
+```bash
+pytest -q
 ```
 
 ## Project Structure
 
-```
-├── main.py                    # FastAPI app entry point
-├── config.py                  # Environment settings (Pydantic)
-├── requirements.txt
-├── .env.example
-├── models/
-│   ├── sensor_data.py         # SensorReading model (UCI dataset row)
-│   └── twin_state.py          # TwinState model (WebSocket JSON schema)
-├── services/
-│   ├── data_ingestion.py      # CSV loader [Track A]
-│   ├── twin_engine.py         # Digital Twin engine [Track A]
-│   ├── supabase_client.py     # Supabase connection [Track B]
-│   └── logger.py              # Anomaly log writer [Track B]
+```text
+.
+├── main.py
+├── config.py
 ├── routes/
-│   ├── api.py                 # REST endpoints [Track B]
-│   └── ws.py                  # WebSocket endpoint [Track B]
+├── services/
+├── models/
+├── frontend/
+│   ├── index.html
+│   └── manual-checklist.md
 ├── tests/
-└── data/                      # UCI dataset (not tracked by git)
+└── data/
 ```
-
-## API Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | Health check |
-| GET | `/api/history` | Recent anomaly logs |
-| WS | `/ws/stream` | Real-time twin state stream |
-
-## Work Split
-
-- **Track A** (Data + Engine): `data_ingestion.py`, `twin_engine.py`
-- **Track B** (API + Infra): `supabase_client.py`, `logger.py`, `api.py`, `ws.py`
-
-## Team
-
-- Digital Twin Engine + Three.js Visualization: [Your Name]
-- ML Layer (LSTM / RL): [Teammate Names]

@@ -9,8 +9,9 @@ Endpoints:
     GET /api/history  — Retrieve recent anomaly logs from Supabase
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Query
 
+from config import settings
 from services.supabase_client import get_supabase_client
 
 # ── Create a router with the /api prefix for non-WebSocket endpoints ──
@@ -29,7 +30,7 @@ async def health_check():
 
 
 @router.get("/api/history")
-async def get_anomaly_history(limit: int = 50):
+async def get_anomaly_history(limit: int = Query(default=settings.history_default_limit, ge=1)):
     """
     Retrieve the most recent anomaly log entries from Supabase.
 
@@ -41,31 +42,40 @@ async def get_anomaly_history(limit: int = 50):
     Returns:
         dict: {"logs": list, "count": int}
 
-    Raises:
-        HTTPException: if Supabase query fails.
     """
+    requested_limit = limit
+    effective_limit = min(requested_limit, settings.history_max_limit)
+
     try:
         # ── 1. Get the authenticated Supabase client ──
         supabase = get_supabase_client()
 
         # ── 2. Query the 'anomaly_logs' table ──
         result = (
-            supabase.table("anomaly_logs")
+            supabase.table(settings.anomaly_logs_table_name)
             .select("*")
             .order("timestamp", desc=True)
-            .limit(limit)
+            .limit(effective_limit)
             .execute()
         )
 
         return {
             "logs": result.data,
-            "count": len(result.data)
+            "count": len(result.data),
+            "requested_limit": requested_limit,
+            "effective_limit": effective_limit,
+            "fallback": False,
         }
 
     except Exception as error:
-        # ── 3. Handle query errors ──
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to fetch anomaly history: {error}"
-        )
+        # ── 3. Return a stable fallback payload when Supabase is unavailable ──
+        print(f"[api] [WARN] Failed to fetch anomaly history: {error}")
+        return {
+            "logs": [],
+            "count": 0,
+            "requested_limit": requested_limit,
+            "effective_limit": effective_limit,
+            "fallback": True,
+            "message": "History unavailable. Returning empty logs.",
+        }
 
