@@ -31,14 +31,14 @@ class TwinEngine:
         self._ema_alpha = 2 / (max(ema_window, 1) + 1)
         self._expected_state: Optional[SensorFields] = None
 
-    def process_reading(self, reading: SensorReading) -> TwinState:
+    def process_reading(self, reading: SensorReading, node_id: int) -> TwinState:
         """
         Process a single sensor reading and return the twin state.
 
         Simplified mode behavior:
         1. Compute expected values using EMA.
-        2. Skip residual calculation (placeholder values only).
-        3. Keep anomaly outputs fixed to false/none.
+        2. Skip residual calculation
+        3. Keep anomaly outputs fixed to false
         """
         # Convert incoming model to a consistent numeric block.
         actual_fields = self._to_sensor_fields(reading)
@@ -50,6 +50,7 @@ class TwinEngine:
         anomaly_flag, anomaly_type = self.predict_anomaly(actual_fields, expected_fields)
 
         return TwinState(
+            node_id=node_id,
             timestamp=reading.timestamp,
             actual=actual_fields,
             expected=expected_fields,
@@ -120,7 +121,7 @@ class TwinEngine:
         return self._expected_state
 
     def _ema(self, actual_value: Optional[float], previous_expected: Optional[float]) -> Optional[float]:
-        """Compute one EMA step for a single numeric field."""
+        """1 prediction using prev EMA """
         if actual_value is None:
             return previous_expected
         if previous_expected is None:

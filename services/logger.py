@@ -26,6 +26,7 @@ _flush_task: Optional[asyncio.Task] = None
 def _build_frame_row(twin_state: TwinState) -> Dict[str, Any]:
     """Build a database row payload from a TwinState frame."""
     return {
+        "node_id": twin_state.node_id,
         "timestamp": twin_state.timestamp.isoformat(),
         "anomaly_flag": twin_state.anomaly_flag,
         "anomaly_type": twin_state.anomaly_type,

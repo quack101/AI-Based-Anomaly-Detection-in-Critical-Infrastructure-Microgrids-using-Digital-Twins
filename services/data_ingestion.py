@@ -40,9 +40,9 @@ NUMERIC_COLUMNS = [
 ]
 
 
-def _resolve_dataset_path() -> str:
+def _resolve_dataset_path(csv_path: str) -> str:
     """Resolve and validate the configured dataset path."""
-    resolved_csv_path = os.path.abspath(settings.csv_path)
+    resolved_csv_path = os.path.abspath(csv_path)
     if not os.path.isfile(resolved_csv_path):
         raise FileNotFoundError(
             f"Dataset not found at '{resolved_csv_path}'. "
@@ -102,7 +102,7 @@ def _clean_dataset(dataframe: pd.DataFrame) -> pd.DataFrame:
     return cleaned_dataframe
 
 
-def load_dataset() -> List[SensorReading]:
+def load_dataset(csv_path: str = settings.csv_path) -> List[SensorReading]:
     """
     Read the preprocessed CSV and return a chronologically sorted list of SensorReadings.
 
@@ -121,8 +121,8 @@ def load_dataset() -> List[SensorReading]:
         ValueError: If the CSV has unexpected columns or invalid data.
     """
     # Resolve path and load raw CSV rows.
-    csv_path = _resolve_dataset_path()
-    raw_dataframe = pd.read_csv(csv_path)
+    csv_path_resolved = _resolve_dataset_path(csv_path)
+    raw_dataframe = pd.read_csv(csv_path_resolved)
 
     # Validate schema before preprocessing.
     _validate_required_columns(raw_dataframe)
@@ -140,7 +140,7 @@ def load_dataset() -> List[SensorReading]:
     dropped_row_count = len(raw_dataframe) - len(cleaned_dataframe)
     print(
         "[data_ingestion] "
-        f"Loaded {len(readings)} cleaned readings from {csv_path} "
+        f"Loaded {len(readings)} cleaned readings from {csv_path_resolved} "
         f"(dropped {dropped_row_count} invalid rows)"
     )
     return readings

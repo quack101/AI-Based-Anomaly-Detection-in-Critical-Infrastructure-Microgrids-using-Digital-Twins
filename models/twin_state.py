@@ -51,6 +51,12 @@ class TwinState(BaseModel):
     the computed residual, and the anomaly classification.
     """
 
+    # ── Node identifier ──
+    node_id: int = Field(
+        ...,
+        description="Identifier for the node (1-49)"
+    )
+
     # ── Timestamp of this frame ──
     timestamp: datetime = Field(
         ...,
