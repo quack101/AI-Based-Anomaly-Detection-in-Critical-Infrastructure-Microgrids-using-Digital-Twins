@@ -1,0 +1,2425 @@
+{
+    "source": {
+        "name": "ieee123",
+        "base_kv": 4.16,
+        "bus": "150"
+    },
+    "nodes": [
+        {
+            "id": "1",
+            "base_bus": 1,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "2",
+            "base_bus": 2,
+            "kind": "bus",
+            "phases": [
+                "B"
+            ]
+        },
+        {
+            "id": "3",
+            "base_bus": 3,
+            "kind": "bus",
+            "phases": [
+                "C"
+            ]
+        },
+        {
+            "id": "4",
+            "base_bus": 4,
+            "kind": "bus",
+            "phases": [
+                "C"
+            ]
+        },
+        {
+            "id": "5",
+            "base_bus": 5,
+            "kind": "bus",
+            "phases": [
+                "C"
+            ]
+        },
+        {
+            "id": "6",
+            "base_bus": 6,
+            "kind": "bus",
+            "phases": [
+                "C"
+            ]
+        },
+        {
+            "id": "7",
+            "base_bus": 7,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "8",
+            "base_bus": 8,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "9",
+            "base_bus": 9,
+            "kind": "bus",
+            "phases": [
+                "A"
+            ]
+        },
+        {
+            "id": "9r",
+            "base_bus": 9,
+            "kind": "regulator",
+            "phases": [
+                "A"
+            ]
+        },
+        {
+            "id": "10",
+            "base_bus": 10,
+            "kind": "bus",
+            "phases": [
+                "A"
+            ]
+        },
+        {
+            "id": "11",
+            "base_bus": 11,
+            "kind": "bus",
+            "phases": [
+                "A"
+            ]
+        },
+        {
+            "id": "12",
+            "base_bus": 12,
+            "kind": "bus",
+            "phases": [
+                "B"
+            ]
+        },
+        {
+            "id": "13",
+            "base_bus": 13,
+            "kind": "bus",
+            "phases": []
+        },
+        {
+            "id": "14",
+            "base_bus": 14,
+            "kind": "bus",
+            "phases": [
+                "A"
+            ]
+        },
+        {
+            "id": "15",
+            "base_bus": 15,
+            "kind": "bus",
+            "phases": [
+                "C"
+            ]
+        },
+        {
+            "id": "16",
+            "base_bus": 16,
+            "kind": "bus",
+            "phases": [
+                "C"
+            ]
+        },
+        {
+            "id": "17",
+            "base_bus": 17,
+            "kind": "bus",
+            "phases": [
+                "C"
+            ]
+        },
+        {
+            "id": "18",
+            "base_bus": 18,
+            "kind": "bus",
+            "phases": []
+        },
+        {
+            "id": "19",
+            "base_bus": 19,
+            "kind": "bus",
+            "phases": [
+                "A"
+            ]
+        },
+        {
+            "id": "20",
+            "base_bus": 20,
+            "kind": "bus",
+            "phases": [
+                "A"
+            ]
+        },
+        {
+            "id": "21",
+            "base_bus": 21,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "22",
+            "base_bus": 22,
+            "kind": "bus",
+            "phases": [
+                "B"
+            ]
+        },
+        {
+            "id": "23",
+            "base_bus": 23,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "24",
+            "base_bus": 24,
+            "kind": "bus",
+            "phases": [
+                "C"
+            ]
+        },
+        {
+            "id": "25",
+            "base_bus": 25,
+            "kind": "bus",
+            "phases": [
+                "C"
+            ]
+        },
+        {
+            "id": "25r",
+            "base_bus": 25,
+            "kind": "regulator",
+            "phases": [
+                "C"
+            ]
+        },
+        {
+            "id": "26",
+            "base_bus": 26,
+            "kind": "bus",
+            "phases": [
+                "C"
+            ]
+        },
+        {
+            "id": "27",
+            "base_bus": 27,
+            "kind": "bus",
+            "phases": [
+                "A"
+            ]
+        },
+        {
+            "id": "28",
+            "base_bus": 28,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "29",
+            "base_bus": 29,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "30",
+            "base_bus": 30,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "31",
+            "base_bus": 31,
+            "kind": "bus",
+            "phases": [
+                "C"
+            ]
+        },
+        {
+            "id": "32",
+            "base_bus": 32,
+            "kind": "bus",
+            "phases": [
+                "C"
+            ]
+        },
+        {
+            "id": "33",
+            "base_bus": 33,
+            "kind": "bus",
+            "phases": [
+                "A"
+            ]
+        },
+        {
+            "id": "34",
+            "base_bus": 34,
+            "kind": "bus",
+            "phases": [
+                "C"
+            ]
+        },
+        {
+            "id": "35",
+            "base_bus": 35,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "36",
+            "base_bus": 36,
+            "kind": "bus",
+            "phases": [
+                "B"
+            ]
+        },
+        {
+            "id": "37",
+            "base_bus": 37,
+            "kind": "bus",
+            "phases": [
+                "A"
+            ]
+        },
+        {
+            "id": "38",
+            "base_bus": 38,
+            "kind": "bus",
+            "phases": [
+                "B"
+            ]
+        },
+        {
+            "id": "39",
+            "base_bus": 39,
+            "kind": "bus",
+            "phases": [
+                "B"
+            ]
+        },
+        {
+            "id": "40",
+            "base_bus": 40,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "41",
+            "base_bus": 41,
+            "kind": "bus",
+            "phases": [
+                "C"
+            ]
+        },
+        {
+            "id": "42",
+            "base_bus": 42,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "43",
+            "base_bus": 43,
+            "kind": "bus",
+            "phases": [
+                "B"
+            ]
+        },
+        {
+            "id": "44",
+            "base_bus": 44,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "45",
+            "base_bus": 45,
+            "kind": "bus",
+            "phases": [
+                "A"
+            ]
+        },
+        {
+            "id": "46",
+            "base_bus": 46,
+            "kind": "bus",
+            "phases": [
+                "A"
+            ]
+        },
+        {
+            "id": "47",
+            "base_bus": 47,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "48",
+            "base_bus": 48,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "49",
+            "base_bus": 49,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "50",
+            "base_bus": 50,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "51",
+            "base_bus": 51,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "52",
+            "base_bus": 52,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "53",
+            "base_bus": 53,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "54",
+            "base_bus": 54,
+            "kind": "bus",
+            "phases": [
+                "A"
+            ]
+        },
+        {
+            "id": "55",
+            "base_bus": 55,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "56",
+            "base_bus": 56,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "57",
+            "base_bus": 57,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "58",
+            "base_bus": 58,
+            "kind": "bus",
+            "phases": [
+                "B"
+            ]
+        },
+        {
+            "id": "59",
+            "base_bus": 59,
+            "kind": "bus",
+            "phases": [
+                "B"
+            ]
+        },
+        {
+            "id": "60",
+            "base_bus": 60,
+            "kind": "bus",
+            "phases": []
+        },
+        {
+            "id": "61",
+            "base_bus": 61,
+            "kind": "bus",
+            "phases": []
+        },
+        {
+            "id": "61s",
+            "base_bus": 61,
+            "kind": "switch",
+            "phases": []
+        },
+        {
+            "id": "62",
+            "base_bus": 62,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "63",
+            "base_bus": 63,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "64",
+            "base_bus": 64,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "65",
+            "base_bus": 65,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "66",
+            "base_bus": 66,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "67",
+            "base_bus": 67,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "68",
+            "base_bus": 68,
+            "kind": "bus",
+            "phases": [
+                "A"
+            ]
+        },
+        {
+            "id": "69",
+            "base_bus": 69,
+            "kind": "bus",
+            "phases": [
+                "A"
+            ]
+        },
+        {
+            "id": "70",
+            "base_bus": 70,
+            "kind": "bus",
+            "phases": [
+                "A"
+            ]
+        },
+        {
+            "id": "71",
+            "base_bus": 71,
+            "kind": "bus",
+            "phases": [
+                "A"
+            ]
+        },
+        {
+            "id": "72",
+            "base_bus": 72,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "73",
+            "base_bus": 73,
+            "kind": "bus",
+            "phases": [
+                "C"
+            ]
+        },
+        {
+            "id": "74",
+            "base_bus": 74,
+            "kind": "bus",
+            "phases": [
+                "C"
+            ]
+        },
+        {
+            "id": "75",
+            "base_bus": 75,
+            "kind": "bus",
+            "phases": [
+                "C"
+            ]
+        },
+        {
+            "id": "76",
+            "base_bus": 76,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "77",
+            "base_bus": 77,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "78",
+            "base_bus": 78,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "79",
+            "base_bus": 79,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "80",
+            "base_bus": 80,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "81",
+            "base_bus": 81,
+            "kind": "bus",
+            "phases": [
+                "C"
+            ]
+        },
+        {
+            "id": "82",
+            "base_bus": 82,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "83",
+            "base_bus": 83,
+            "kind": "bus",
+            "phases": []
+        },
+        {
+            "id": "84",
+            "base_bus": 84,
+            "kind": "bus",
+            "phases": [
+                "C"
+            ]
+        },
+        {
+            "id": "85",
+            "base_bus": 85,
+            "kind": "bus",
+            "phases": [
+                "C"
+            ]
+        },
+        {
+            "id": "86",
+            "base_bus": 86,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "87",
+            "base_bus": 87,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "88",
+            "base_bus": 88,
+            "kind": "bus",
+            "phases": [
+                "A"
+            ]
+        },
+        {
+            "id": "89",
+            "base_bus": 89,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "90",
+            "base_bus": 90,
+            "kind": "bus",
+            "phases": [
+                "B"
+            ]
+        },
+        {
+            "id": "91",
+            "base_bus": 91,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "92",
+            "base_bus": 92,
+            "kind": "bus",
+            "phases": [
+                "C"
+            ]
+        },
+        {
+            "id": "93",
+            "base_bus": 93,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "94",
+            "base_bus": 94,
+            "kind": "bus",
+            "phases": [
+                "A"
+            ]
+        },
+        {
+            "id": "94_OPEN",
+            "base_bus": 94,
+            "kind": "open_tie",
+            "phases": [
+                "A"
+            ]
+        },
+        {
+            "id": "95",
+            "base_bus": 95,
+            "kind": "bus",
+            "phases": [
+                "B"
+            ]
+        },
+        {
+            "id": "96",
+            "base_bus": 96,
+            "kind": "bus",
+            "phases": [
+                "B"
+            ]
+        },
+        {
+            "id": "97",
+            "base_bus": 97,
+            "kind": "bus",
+            "phases": []
+        },
+        {
+            "id": "98",
+            "base_bus": 98,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "99",
+            "base_bus": 99,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "100",
+            "base_bus": 100,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "101",
+            "base_bus": 101,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "102",
+            "base_bus": 102,
+            "kind": "bus",
+            "phases": [
+                "C"
+            ]
+        },
+        {
+            "id": "103",
+            "base_bus": 103,
+            "kind": "bus",
+            "phases": [
+                "C"
+            ]
+        },
+        {
+            "id": "104",
+            "base_bus": 104,
+            "kind": "bus",
+            "phases": [
+                "C"
+            ]
+        },
+        {
+            "id": "105",
+            "base_bus": 105,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "106",
+            "base_bus": 106,
+            "kind": "bus",
+            "phases": [
+                "B"
+            ]
+        },
+        {
+            "id": "107",
+            "base_bus": 107,
+            "kind": "bus",
+            "phases": [
+                "B"
+            ]
+        },
+        {
+            "id": "108",
+            "base_bus": 108,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "109",
+            "base_bus": 109,
+            "kind": "bus",
+            "phases": [
+                "A"
+            ]
+        },
+        {
+            "id": "110",
+            "base_bus": 110,
+            "kind": "bus",
+            "phases": [
+                "A"
+            ]
+        },
+        {
+            "id": "111",
+            "base_bus": 111,
+            "kind": "bus",
+            "phases": [
+                "A"
+            ]
+        },
+        {
+            "id": "112",
+            "base_bus": 112,
+            "kind": "bus",
+            "phases": [
+                "A"
+            ]
+        },
+        {
+            "id": "113",
+            "base_bus": 113,
+            "kind": "bus",
+            "phases": [
+                "A"
+            ]
+        },
+        {
+            "id": "114",
+            "base_bus": 114,
+            "kind": "bus",
+            "phases": [
+                "A"
+            ]
+        },
+        {
+            "id": "135",
+            "base_bus": 135,
+            "kind": "bus",
+            "phases": []
+        },
+        {
+            "id": "149",
+            "base_bus": 149,
+            "kind": "bus",
+            "phases": []
+        },
+        {
+            "id": "150",
+            "base_bus": 150,
+            "kind": "bus",
+            "phases": []
+        },
+        {
+            "id": "150r",
+            "base_bus": 150,
+            "kind": "regulator",
+            "phases": []
+        },
+        {
+            "id": "151",
+            "base_bus": 151,
+            "kind": "bus",
+            "phases": []
+        },
+        {
+            "id": "152",
+            "base_bus": 152,
+            "kind": "bus",
+            "phases": []
+        },
+        {
+            "id": "160",
+            "base_bus": 160,
+            "kind": "bus",
+            "phases": [
+                "C"
+            ]
+        },
+        {
+            "id": "160r",
+            "base_bus": 160,
+            "kind": "regulator",
+            "phases": [
+                "C"
+            ]
+        },
+        {
+            "id": "197",
+            "base_bus": 197,
+            "kind": "bus",
+            "phases": []
+        },
+        {
+            "id": "250",
+            "base_bus": 250,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "300",
+            "base_bus": 300,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        },
+        {
+            "id": "300_OPEN",
+            "base_bus": 300,
+            "kind": "open_tie",
+            "phases": []
+        },
+        {
+            "id": "450",
+            "base_bus": 450,
+            "kind": "bus",
+            "phases": [
+                "A",
+                "B",
+                "C"
+            ]
+        }
+    ],
+    "edges": [
+        {
+            "id": "reg1a",
+            "from": "150",
+            "to": "150r",
+            "device": "transformer",
+            "phases": 1,
+            "length": 0
+        },
+        {
+            "id": "L115",
+            "from": "149",
+            "to": "1",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.4
+        },
+        {
+            "id": "L1",
+            "from": "1",
+            "to": "2",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.175
+        },
+        {
+            "id": "L2",
+            "from": "1",
+            "to": "3",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.25
+        },
+        {
+            "id": "L3",
+            "from": "1",
+            "to": "7",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.3
+        },
+        {
+            "id": "L4",
+            "from": "3",
+            "to": "4",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.2
+        },
+        {
+            "id": "L5",
+            "from": "3",
+            "to": "5",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.325
+        },
+        {
+            "id": "L6",
+            "from": "5",
+            "to": "6",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.25
+        },
+        {
+            "id": "L7",
+            "from": "7",
+            "to": "8",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.2
+        },
+        {
+            "id": "L8",
+            "from": "8",
+            "to": "12",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.225
+        },
+        {
+            "id": "L9",
+            "from": "8",
+            "to": "9",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.225
+        },
+        {
+            "id": "L10",
+            "from": "8",
+            "to": "13",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.3
+        },
+        {
+            "id": "L11",
+            "from": "9r",
+            "to": "14",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.425
+        },
+        {
+            "id": "L12",
+            "from": "13",
+            "to": "34",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.15
+        },
+        {
+            "id": "L13",
+            "from": "13",
+            "to": "18",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.825
+        },
+        {
+            "id": "L14",
+            "from": "14",
+            "to": "11",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.25
+        },
+        {
+            "id": "L15",
+            "from": "14",
+            "to": "10",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.25
+        },
+        {
+            "id": "L16",
+            "from": "15",
+            "to": "16",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.375
+        },
+        {
+            "id": "L17",
+            "from": "15",
+            "to": "17",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.35
+        },
+        {
+            "id": "L18",
+            "from": "18",
+            "to": "19",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.25
+        },
+        {
+            "id": "L19",
+            "from": "18",
+            "to": "21",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.3
+        },
+        {
+            "id": "L20",
+            "from": "19",
+            "to": "20",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.325
+        },
+        {
+            "id": "L21",
+            "from": "21",
+            "to": "22",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.525
+        },
+        {
+            "id": "L22",
+            "from": "21",
+            "to": "23",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.25
+        },
+        {
+            "id": "L23",
+            "from": "23",
+            "to": "24",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.55
+        },
+        {
+            "id": "L24",
+            "from": "23",
+            "to": "25",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.275
+        },
+        {
+            "id": "L25",
+            "from": "25r",
+            "to": "26",
+            "device": "line",
+            "phases": 2,
+            "linecode": null,
+            "length": 0.35
+        },
+        {
+            "id": "L26",
+            "from": "25",
+            "to": "28",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.2
+        },
+        {
+            "id": "L27",
+            "from": "26",
+            "to": "27",
+            "device": "line",
+            "phases": 2,
+            "linecode": null,
+            "length": 0.275
+        },
+        {
+            "id": "L28",
+            "from": "26",
+            "to": "31",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.225
+        },
+        {
+            "id": "L29",
+            "from": "27",
+            "to": "33",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.5
+        },
+        {
+            "id": "L30",
+            "from": "28",
+            "to": "29",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.3
+        },
+        {
+            "id": "L31",
+            "from": "29",
+            "to": "30",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.35
+        },
+        {
+            "id": "L32",
+            "from": "30",
+            "to": "250",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.2
+        },
+        {
+            "id": "L33",
+            "from": "31",
+            "to": "32",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.3
+        },
+        {
+            "id": "L34",
+            "from": "34",
+            "to": "15",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.1
+        },
+        {
+            "id": "L35",
+            "from": "35",
+            "to": "36",
+            "device": "line",
+            "phases": 2,
+            "linecode": null,
+            "length": 0.65
+        },
+        {
+            "id": "L36",
+            "from": "35",
+            "to": "40",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.25
+        },
+        {
+            "id": "L37",
+            "from": "36",
+            "to": "37",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.3
+        },
+        {
+            "id": "L38",
+            "from": "36",
+            "to": "38",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.25
+        },
+        {
+            "id": "L39",
+            "from": "38",
+            "to": "39",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.325
+        },
+        {
+            "id": "L40",
+            "from": "40",
+            "to": "41",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.325
+        },
+        {
+            "id": "L41",
+            "from": "40",
+            "to": "42",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.25
+        },
+        {
+            "id": "L42",
+            "from": "42",
+            "to": "43",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.5
+        },
+        {
+            "id": "L43",
+            "from": "42",
+            "to": "44",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.2
+        },
+        {
+            "id": "L44",
+            "from": "44",
+            "to": "45",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.2
+        },
+        {
+            "id": "L45",
+            "from": "44",
+            "to": "47",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.25
+        },
+        {
+            "id": "L46",
+            "from": "45",
+            "to": "46",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.3
+        },
+        {
+            "id": "L47",
+            "from": "47",
+            "to": "48",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.15
+        },
+        {
+            "id": "L48",
+            "from": "47",
+            "to": "49",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.25
+        },
+        {
+            "id": "L49",
+            "from": "49",
+            "to": "50",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.25
+        },
+        {
+            "id": "L50",
+            "from": "50",
+            "to": "51",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.25
+        },
+        {
+            "id": "L51",
+            "from": "51",
+            "to": "151",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.5
+        },
+        {
+            "id": "L52",
+            "from": "52",
+            "to": "53",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.2
+        },
+        {
+            "id": "L53",
+            "from": "53",
+            "to": "54",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.125
+        },
+        {
+            "id": "L54",
+            "from": "54",
+            "to": "55",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.275
+        },
+        {
+            "id": "L55",
+            "from": "54",
+            "to": "57",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.35
+        },
+        {
+            "id": "L56",
+            "from": "55",
+            "to": "56",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.275
+        },
+        {
+            "id": "L57",
+            "from": "57",
+            "to": "58",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.25
+        },
+        {
+            "id": "L58",
+            "from": "57",
+            "to": "60",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.75
+        },
+        {
+            "id": "L59",
+            "from": "58",
+            "to": "59",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.25
+        },
+        {
+            "id": "L60",
+            "from": "60",
+            "to": "61",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.55
+        },
+        {
+            "id": "L61",
+            "from": "60",
+            "to": "62",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.25
+        },
+        {
+            "id": "L62",
+            "from": "62",
+            "to": "63",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.175
+        },
+        {
+            "id": "L63",
+            "from": "63",
+            "to": "64",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.35
+        },
+        {
+            "id": "L64",
+            "from": "64",
+            "to": "65",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.425
+        },
+        {
+            "id": "L65",
+            "from": "65",
+            "to": "66",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.325
+        },
+        {
+            "id": "L66",
+            "from": "67",
+            "to": "68",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.2
+        },
+        {
+            "id": "L67",
+            "from": "67",
+            "to": "72",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.275
+        },
+        {
+            "id": "L68",
+            "from": "67",
+            "to": "97",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.25
+        },
+        {
+            "id": "L69",
+            "from": "68",
+            "to": "69",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.275
+        },
+        {
+            "id": "L70",
+            "from": "69",
+            "to": "70",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.325
+        },
+        {
+            "id": "L71",
+            "from": "70",
+            "to": "71",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.275
+        },
+        {
+            "id": "L72",
+            "from": "72",
+            "to": "73",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.275
+        },
+        {
+            "id": "L73",
+            "from": "72",
+            "to": "76",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.2
+        },
+        {
+            "id": "L74",
+            "from": "73",
+            "to": "74",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.35
+        },
+        {
+            "id": "L75",
+            "from": "74",
+            "to": "75",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.4
+        },
+        {
+            "id": "L76",
+            "from": "76",
+            "to": "77",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.4
+        },
+        {
+            "id": "L77",
+            "from": "76",
+            "to": "86",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.7
+        },
+        {
+            "id": "L78",
+            "from": "77",
+            "to": "78",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.1
+        },
+        {
+            "id": "L79",
+            "from": "78",
+            "to": "79",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.225
+        },
+        {
+            "id": "L80",
+            "from": "78",
+            "to": "80",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.475
+        },
+        {
+            "id": "L81",
+            "from": "80",
+            "to": "81",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.175
+        },
+        {
+            "id": "L82",
+            "from": "81",
+            "to": "82",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.25
+        },
+        {
+            "id": "L83",
+            "from": "81",
+            "to": "84",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.675
+        },
+        {
+            "id": "L84",
+            "from": "82",
+            "to": "83",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.25
+        },
+        {
+            "id": "L85",
+            "from": "84",
+            "to": "85",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.475
+        },
+        {
+            "id": "L86",
+            "from": "86",
+            "to": "87",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.45
+        },
+        {
+            "id": "L87",
+            "from": "87",
+            "to": "88",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.175
+        },
+        {
+            "id": "L88",
+            "from": "87",
+            "to": "89",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.275
+        },
+        {
+            "id": "L89",
+            "from": "89",
+            "to": "90",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.25
+        },
+        {
+            "id": "L90",
+            "from": "89",
+            "to": "91",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.225
+        },
+        {
+            "id": "L91",
+            "from": "91",
+            "to": "92",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.3
+        },
+        {
+            "id": "L92",
+            "from": "91",
+            "to": "93",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.225
+        },
+        {
+            "id": "L93",
+            "from": "93",
+            "to": "94",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.275
+        },
+        {
+            "id": "L94",
+            "from": "93",
+            "to": "95",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.3
+        },
+        {
+            "id": "L95",
+            "from": "95",
+            "to": "96",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.2
+        },
+        {
+            "id": "L96",
+            "from": "97",
+            "to": "98",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.275
+        },
+        {
+            "id": "L97",
+            "from": "98",
+            "to": "99",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.55
+        },
+        {
+            "id": "L98",
+            "from": "99",
+            "to": "100",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.3
+        },
+        {
+            "id": "L99",
+            "from": "100",
+            "to": "450",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.8
+        },
+        {
+            "id": "L118",
+            "from": "197",
+            "to": "101",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.25
+        },
+        {
+            "id": "L100",
+            "from": "101",
+            "to": "102",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.225
+        },
+        {
+            "id": "L101",
+            "from": "101",
+            "to": "105",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.275
+        },
+        {
+            "id": "L102",
+            "from": "102",
+            "to": "103",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.325
+        },
+        {
+            "id": "L103",
+            "from": "103",
+            "to": "104",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.7
+        },
+        {
+            "id": "L104",
+            "from": "105",
+            "to": "106",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.225
+        },
+        {
+            "id": "L105",
+            "from": "105",
+            "to": "108",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.325
+        },
+        {
+            "id": "L106",
+            "from": "106",
+            "to": "107",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.575
+        },
+        {
+            "id": "L107",
+            "from": "108",
+            "to": "109",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.45
+        },
+        {
+            "id": "L108",
+            "from": "108",
+            "to": "300",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 1.0
+        },
+        {
+            "id": "L109",
+            "from": "109",
+            "to": "110",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.3
+        },
+        {
+            "id": "L110",
+            "from": "110",
+            "to": "111",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.575
+        },
+        {
+            "id": "L111",
+            "from": "110",
+            "to": "112",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.125
+        },
+        {
+            "id": "L112",
+            "from": "112",
+            "to": "113",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.525
+        },
+        {
+            "id": "L113",
+            "from": "113",
+            "to": "114",
+            "device": "line",
+            "phases": 1,
+            "linecode": null,
+            "length": 0.325
+        },
+        {
+            "id": "L114",
+            "from": "135",
+            "to": "35",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.375
+        },
+        {
+            "id": "L116",
+            "from": "152",
+            "to": "52",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.4
+        },
+        {
+            "id": "L117",
+            "from": "160r",
+            "to": "67",
+            "device": "line",
+            "phases": 3,
+            "linecode": null,
+            "length": 0.35
+        },
+        {
+            "id": "Sw1",
+            "from": "150r",
+            "to": "149",
+            "device": "switch",
+            "phases": 3,
+            "length": 0.001
+        },
+        {
+            "id": "Sw2",
+            "from": "13",
+            "to": "152",
+            "device": "switch",
+            "phases": 3,
+            "length": 0.001
+        },
+        {
+            "id": "Sw3",
+            "from": "18",
+            "to": "135",
+            "device": "switch",
+            "phases": 3,
+            "length": 0.001
+        },
+        {
+            "id": "Sw4",
+            "from": "60",
+            "to": "160",
+            "device": "switch",
+            "phases": 3,
+            "length": 0.001
+        },
+        {
+            "id": "Sw5",
+            "from": "97",
+            "to": "197",
+            "device": "switch",
+            "phases": 3,
+            "length": 0.001
+        },
+        {
+            "id": "Sw6",
+            "from": "61",
+            "to": "61s",
+            "device": "switch",
+            "phases": 3,
+            "length": 0.001
+        },
+        {
+            "id": "Sw7",
+            "from": "151",
+            "to": "300_OPEN",
+            "device": "switch",
+            "phases": 3,
+            "length": 0.001
+        },
+        {
+            "id": "Sw8",
+            "from": "54",
+            "to": "94_OPEN",
+            "device": "switch",
+            "phases": 1,
+            "length": 0.001
+        },
+        {
+            "id": "reg2a",
+            "from": "9",
+            "to": "9r",
+            "device": "transformer",
+            "phases": 1,
+            "length": 0
+        },
+        {
+            "id": "reg3a",
+            "from": "25",
+            "to": "25r",
+            "device": "transformer",
+            "phases": 1,
+            "length": 0
+        },
+        {
+            "id": "reg4a",
+            "from": "160",
+            "to": "160r",
+            "device": "transformer",
+            "phases": 1,
+            "length": 0
+        },
+        {
+            "id": "reg3c",
+            "from": "25",
+            "to": "25r",
+            "device": "transformer",
+            "phases": 1,
+            "length": 0
+        },
+        {
+            "id": "reg4b",
+            "from": "160",
+            "to": "160r",
+            "device": "transformer",
+            "phases": 1,
+            "length": 0
+        },
+        {
+            "id": "reg4c",
+            "from": "160",
+            "to": "160r",
+            "device": "transformer",
+            "phases": 1,
+            "length": 0
+        }
+    ],
+    "assets": {
+        "transformers": [
+            {
+                "name": "reg1a",
+                "buses": [
+                    "150",
+                    "150r"
+                ],
+                "kva": []
+            },
+            {
+                "name": "XFM1",
+                "buses": [],
+                "kva": [
+                    150.0,
+                    150.0
+                ]
+            },
+            {
+                "name": "reg2a",
+                "buses": [
+                    "9",
+                    "9r"
+                ],
+                "kva": []
+            },
+            {
+                "name": "reg3a",
+                "buses": [
+                    "25",
+                    "25r"
+                ],
+                "kva": []
+            },
+            {
+                "name": "reg4a",
+                "buses": [
+                    "160",
+                    "160r"
+                ],
+                "kva": []
+            },
+            {
+                "name": "reg3c",
+                "buses": [
+                    "25",
+                    "25r"
+                ],
+                "kva": []
+            },
+            {
+                "name": "reg4b",
+                "buses": [
+                    "160",
+                    "160r"
+                ],
+                "kva": []
+            },
+            {
+                "name": "reg4c",
+                "buses": [
+                    "160",
+                    "160r"
+                ],
+                "kva": []
+            }
+        ],
+        "capacitors": [
+            {
+                "name": "C83",
+                "bus": "83",
+                "kvar": 600.0,
+                "kv": 4.16
+            },
+            {
+                "name": "C88a",
+                "bus": "88",
+                "kvar": 50.0,
+                "kv": 2.402
+            },
+            {
+                "name": "C90b",
+                "bus": "90",
+                "kvar": 50.0,
+                "kv": 2.402
+            },
+            {
+                "name": "C92c",
+                "bus": "92",
+                "kvar": 50.0,
+                "kv": 2.402
+            }
+        ],
+        "regulators": [
+            {
+                "name": "creg1a",
+                "transformer": "reg1a",
+                "winding": 2
+            },
+            {
+                "name": "creg2a",
+                "transformer": "reg2a",
+                "winding": 2
+            },
+            {
+                "name": "creg3a",
+                "transformer": "reg3a",
+                "winding": 2
+            },
+            {
+                "name": "creg4a",
+                "transformer": "reg4a",
+                "winding": 2
+            }
+        ]
+    }
+}

@@ -1,0 +1,21 @@
+# Python virtual environment
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Environment/secrets
+.env
+
+# Logs
+*.log
+
+# Archives
+*.zip
+
+# Generated outputs
+*.csv
+
+#please upload your synthetic datasets(49)(we shld prolly test it with more datasets asw to chk #if the hybrid replacement policy for meter placement works)
+data/
