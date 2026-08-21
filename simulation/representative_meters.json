@@ -1,8 +1,8 @@
 [
     {
         "meter_id": "M001",
-        "load_name": "S1a",
-        "bus": 1,
+        "load_name": "s1a",
+        "bus": "1",
         "base_kw": 40.0,
         "branch": 0,
         "depth": 2,
@@ -12,8 +12,8 @@
     },
     {
         "meter_id": "M002",
-        "load_name": "S4c",
-        "bus": 4,
+        "load_name": "s4c",
+        "bus": "4",
         "base_kw": 40.0,
         "branch": 4,
         "depth": 4,
@@ -23,8 +23,8 @@
     },
     {
         "meter_id": "M003",
-        "load_name": "S6c",
-        "bus": 6,
+        "load_name": "s6c",
+        "bus": "6",
         "base_kw": 40.0,
         "branch": 5,
         "depth": 5,
@@ -34,8 +34,8 @@
     },
     {
         "meter_id": "M004",
-        "load_name": "S9a",
-        "bus": 9,
+        "load_name": "s9a",
+        "bus": "9",
         "base_kw": 40.0,
         "branch": 8,
         "depth": 5,
@@ -45,8 +45,8 @@
     },
     {
         "meter_id": "M005",
-        "load_name": "S11a",
-        "bus": 11,
+        "load_name": "s11a",
+        "bus": "11",
         "base_kw": 40.0,
         "branch": 16,
         "depth": 7,
@@ -56,8 +56,8 @@
     },
     {
         "meter_id": "M006",
-        "load_name": "S16c",
-        "bus": 16,
+        "load_name": "s16c",
+        "bus": "16",
         "base_kw": 40.0,
         "branch": 19,
         "depth": 8,
@@ -67,8 +67,8 @@
     },
     {
         "meter_id": "M007",
-        "load_name": "S20a",
-        "bus": 20,
+        "load_name": "s20a",
+        "bus": "20",
         "base_kw": 40.0,
         "branch": 13,
         "depth": 8,
@@ -78,8 +78,8 @@
     },
     {
         "meter_id": "M008",
-        "load_name": "S22b",
-        "bus": 22,
+        "load_name": "s22b",
+        "bus": "22",
         "base_kw": 40.0,
         "branch": 17,
         "depth": 8,
@@ -89,8 +89,8 @@
     },
     {
         "meter_id": "M009",
-        "load_name": "S24c",
-        "bus": 24,
+        "load_name": "s24c",
+        "bus": "24",
         "base_kw": 40.0,
         "branch": 23,
         "depth": 9,
@@ -100,8 +100,8 @@
     },
     {
         "meter_id": "M010",
-        "load_name": "S30c",
-        "bus": 30,
+        "load_name": "s30c",
+        "bus": "30",
         "base_kw": 40.0,
         "branch": 32,
         "depth": 12,
@@ -111,8 +111,8 @@
     },
     {
         "meter_id": "M011",
-        "load_name": "S33a",
-        "bus": 33,
+        "load_name": "s33a",
+        "bus": "33",
         "base_kw": 40.0,
         "branch": 37,
         "depth": 12,
@@ -122,8 +122,8 @@
     },
     {
         "meter_id": "M012",
-        "load_name": "S34c",
-        "bus": 34,
+        "load_name": "s34c",
+        "bus": "34",
         "base_kw": 40.0,
         "branch": 11,
         "depth": 6,
@@ -133,8 +133,8 @@
     },
     {
         "meter_id": "M013",
-        "load_name": "S35a",
-        "bus": 35,
+        "load_name": "s35a",
+        "bus": "35",
         "base_kw": 40.0,
         "branch": 12,
         "depth": 8,
@@ -144,8 +144,8 @@
     },
     {
         "meter_id": "M014",
-        "load_name": "S37a",
-        "bus": 37,
+        "load_name": "s37a",
+        "bus": "37",
         "base_kw": 40.0,
         "branch": 27,
         "depth": 10,
@@ -155,8 +155,8 @@
     },
     {
         "meter_id": "M015",
-        "load_name": "S43b",
-        "bus": 43,
+        "load_name": "s43b",
+        "bus": "43",
         "base_kw": 40.0,
         "branch": 35,
         "depth": 11,
@@ -166,8 +166,8 @@
     },
     {
         "meter_id": "M016",
-        "load_name": "S50c",
-        "bus": 50,
+        "load_name": "s50c",
+        "bus": "50",
         "base_kw": 40.0,
         "branch": 45,
         "depth": 14,
@@ -177,8 +177,8 @@
     },
     {
         "meter_id": "M017",
-        "load_name": "S53a",
-        "bus": 53,
+        "load_name": "s53a",
+        "bus": "53",
         "base_kw": 40.0,
         "branch": 9,
         "depth": 8,
@@ -188,8 +188,8 @@
     },
     {
         "meter_id": "M018",
-        "load_name": "S63a",
-        "bus": 63,
+        "load_name": "s63a",
+        "bus": "63",
         "base_kw": 40.0,
         "branch": 41,
         "depth": 13,
@@ -199,8 +199,8 @@
     },
     {
         "meter_id": "M019",
-        "load_name": "S71a",
-        "bus": 71,
+        "load_name": "s71a",
+        "bus": "71",
         "base_kw": 40.0,
         "branch": 46,
         "depth": 17,
@@ -210,8 +210,8 @@
     },
     {
         "meter_id": "M020",
-        "load_name": "S75c",
-        "bus": 75,
+        "load_name": "s75c",
+        "bus": "75",
         "base_kw": 40.0,
         "branch": 49,
         "depth": 17,
@@ -221,8 +221,8 @@
     },
     {
         "meter_id": "M021",
-        "load_name": "S77b",
-        "bus": 77,
+        "load_name": "s77b",
+        "bus": "77",
         "base_kw": 40.0,
         "branch": 53,
         "depth": 16,
@@ -232,8 +232,8 @@
     },
     {
         "meter_id": "M022",
-        "load_name": "S79a",
-        "bus": 79,
+        "load_name": "s79a",
+        "bus": "79",
         "base_kw": 40.0,
         "branch": 57,
         "depth": 18,
@@ -243,8 +243,8 @@
     },
     {
         "meter_id": "M023",
-        "load_name": "S80b",
-        "bus": 80,
+        "load_name": "s80b",
+        "bus": "80",
         "base_kw": 40.0,
         "branch": 58,
         "depth": 18,
@@ -254,8 +254,8 @@
     },
     {
         "meter_id": "M024",
-        "load_name": "S82a",
-        "bus": 82,
+        "load_name": "s82a",
+        "bus": "82",
         "base_kw": 40.0,
         "branch": 67,
         "depth": 20,
@@ -265,8 +265,8 @@
     },
     {
         "meter_id": "M025",
-        "load_name": "S85c",
-        "bus": 85,
+        "load_name": "s85c",
+        "bus": "85",
         "base_kw": 40.0,
         "branch": 68,
         "depth": 21,
@@ -276,8 +276,8 @@
     },
     {
         "meter_id": "M026",
-        "load_name": "S87b",
-        "bus": 87,
+        "load_name": "s87b",
+        "bus": "87",
         "base_kw": 40.0,
         "branch": 54,
         "depth": 17,
@@ -287,8 +287,8 @@
     },
     {
         "meter_id": "M027",
-        "load_name": "S88a",
-        "bus": 88,
+        "load_name": "s88a",
+        "bus": "88",
         "base_kw": 40.0,
         "branch": 59,
         "depth": 18,
@@ -298,19 +298,8 @@
     },
     {
         "meter_id": "M028",
-        "load_name": "S2b",
-        "bus": 2,
-        "base_kw": 20.0,
-        "branch": 1,
-        "depth": 3,
-        "downstream_kw": 20.0,
-        "size_class": "Small",
-        "on_backbone": false
-    },
-    {
-        "meter_id": "M029",
-        "load_name": "S5c",
-        "bus": 5,
+        "load_name": "s5c",
+        "bus": "5",
         "base_kw": 20.0,
         "branch": 5,
         "depth": 4,
@@ -319,9 +308,9 @@
         "on_backbone": false
     },
     {
-        "meter_id": "M030",
-        "load_name": "S7a",
-        "bus": 7,
+        "meter_id": "M029",
+        "load_name": "s7a",
+        "bus": "7",
         "base_kw": 20.0,
         "branch": 3,
         "depth": 3,
@@ -330,9 +319,9 @@
         "on_backbone": true
     },
     {
-        "meter_id": "M031",
-        "load_name": "S10a",
-        "bus": 10,
+        "meter_id": "M030",
+        "load_name": "s10a",
+        "bus": "10",
         "base_kw": 20.0,
         "branch": 15,
         "depth": 7,
@@ -341,20 +330,9 @@
         "on_backbone": false
     },
     {
-        "meter_id": "M032",
-        "load_name": "S12b",
-        "bus": 12,
-        "base_kw": 20.0,
-        "branch": 6,
-        "depth": 5,
-        "downstream_kw": 20.0,
-        "size_class": "Small",
-        "on_backbone": false
-    },
-    {
-        "meter_id": "M033",
-        "load_name": "S17c",
-        "bus": 17,
+        "meter_id": "M031",
+        "load_name": "s17c",
+        "bus": "17",
         "base_kw": 20.0,
         "branch": 20,
         "depth": 8,
@@ -363,9 +341,9 @@
         "on_backbone": false
     },
     {
-        "meter_id": "M034",
-        "load_name": "S32c",
-        "bus": 32,
+        "meter_id": "M032",
+        "load_name": "s32c",
+        "bus": "32",
         "base_kw": 20.0,
         "branch": 38,
         "depth": 12,
@@ -374,9 +352,9 @@
         "on_backbone": false
     },
     {
-        "meter_id": "M035",
-        "load_name": "S39b",
-        "bus": 39,
+        "meter_id": "M033",
+        "load_name": "s39b",
+        "bus": "39",
         "base_kw": 20.0,
         "branch": 28,
         "depth": 11,
@@ -385,9 +363,9 @@
         "on_backbone": false
     },
     {
-        "meter_id": "M036",
-        "load_name": "S41c",
-        "bus": 41,
+        "meter_id": "M034",
+        "load_name": "s41c",
+        "bus": "41",
         "base_kw": 20.0,
         "branch": 29,
         "depth": 10,
@@ -396,9 +374,9 @@
         "on_backbone": false
     },
     {
-        "meter_id": "M037",
-        "load_name": "S42a",
-        "bus": 42,
+        "meter_id": "M035",
+        "load_name": "s42a",
+        "bus": "42",
         "base_kw": 20.0,
         "branch": 30,
         "depth": 10,
@@ -407,9 +385,9 @@
         "on_backbone": false
     },
     {
-        "meter_id": "M038",
-        "load_name": "S46a",
-        "bus": 46,
+        "meter_id": "M036",
+        "load_name": "s46a",
+        "bus": "46",
         "base_kw": 20.0,
         "branch": 42,
         "depth": 13,
@@ -418,9 +396,9 @@
         "on_backbone": false
     },
     {
-        "meter_id": "M039",
-        "load_name": "S51a",
-        "bus": 51,
+        "meter_id": "M037",
+        "load_name": "s51a",
+        "bus": "51",
         "base_kw": 20.0,
         "branch": 45,
         "depth": 15,
@@ -429,9 +407,9 @@
         "on_backbone": false
     },
     {
-        "meter_id": "M040",
-        "load_name": "S56b",
-        "bus": 56,
+        "meter_id": "M038",
+        "load_name": "s56b",
+        "bus": "56",
         "base_kw": 20.0,
         "branch": 25,
         "depth": 11,
@@ -440,9 +418,9 @@
         "on_backbone": false
     },
     {
-        "meter_id": "M041",
-        "load_name": "S59b",
-        "bus": 59,
+        "meter_id": "M039",
+        "load_name": "s59b",
+        "bus": "59",
         "base_kw": 20.0,
         "branch": 33,
         "depth": 12,
@@ -451,9 +429,9 @@
         "on_backbone": false
     },
     {
-        "meter_id": "M042",
-        "load_name": "S60a",
-        "bus": 60,
+        "meter_id": "M040",
+        "load_name": "s60a",
+        "bus": "60",
         "base_kw": 20.0,
         "branch": 34,
         "depth": 11,
@@ -462,9 +440,9 @@
         "on_backbone": true
     },
     {
-        "meter_id": "M043",
-        "load_name": "S70a",
-        "bus": 70,
+        "meter_id": "M041",
+        "load_name": "s70a",
+        "bus": "70",
         "base_kw": 20.0,
         "branch": 46,
         "depth": 16,
@@ -473,9 +451,9 @@
         "on_backbone": false
     },
     {
-        "meter_id": "M044",
-        "load_name": "S83c",
-        "bus": 83,
+        "meter_id": "M042",
+        "load_name": "s83c",
+        "bus": "83",
         "base_kw": 20.0,
         "branch": 67,
         "depth": 21,
@@ -484,9 +462,9 @@
         "on_backbone": false
     },
     {
-        "meter_id": "M045",
-        "load_name": "S47",
-        "bus": 47,
+        "meter_id": "M043",
+        "load_name": "s47",
+        "bus": "47",
         "base_kw": 105.0,
         "branch": 43,
         "depth": 12,
@@ -495,9 +473,9 @@
         "on_backbone": false
     },
     {
-        "meter_id": "M046",
-        "load_name": "S48",
-        "bus": 48,
+        "meter_id": "M044",
+        "load_name": "s48",
+        "bus": "48",
         "base_kw": 210.0,
         "branch": 44,
         "depth": 13,
@@ -506,9 +484,9 @@
         "on_backbone": false
     },
     {
-        "meter_id": "M047",
-        "load_name": "S49b",
-        "bus": 49,
+        "meter_id": "M045",
+        "load_name": "s49b",
+        "bus": "49",
         "base_kw": 70.0,
         "branch": 45,
         "depth": 13,
@@ -517,9 +495,9 @@
         "on_backbone": false
     },
     {
-        "meter_id": "M048",
-        "load_name": "S64b",
-        "bus": 64,
+        "meter_id": "M046",
+        "load_name": "s64b",
+        "bus": "64",
         "base_kw": 75.0,
         "branch": 41,
         "depth": 14,
@@ -528,14 +506,36 @@
         "on_backbone": false
     },
     {
-        "meter_id": "M049",
-        "load_name": "S76a",
-        "bus": 76,
+        "meter_id": "M047",
+        "load_name": "s76a",
+        "bus": "76",
         "base_kw": 105.0,
         "branch": 50,
         "depth": 15,
         "downstream_kw": 745.0,
         "size_class": "Very Large",
         "on_backbone": true
+    },
+    {
+        "meter_id": "M048",
+        "load_name": "s66c",
+        "bus": "66",
+        "base_kw": 75.0,
+        "branch": 41,
+        "depth": 16,
+        "downstream_kw": 75.0,
+        "size_class": "Very Large",
+        "on_backbone": false
+    },
+    {
+        "meter_id": "M049",
+        "load_name": "s65c",
+        "bus": "65",
+        "base_kw": 70.0,
+        "branch": 41,
+        "depth": 15,
+        "downstream_kw": 215.0,
+        "size_class": "Very Large",
+        "on_backbone": false
     }
 ]

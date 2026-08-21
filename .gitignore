@@ -17,5 +17,8 @@ __pycache__/
 # Generated outputs
 *.csv
 
+# All generated run output (validation/verification artifacts) -- reports/ stays tracked
+artifacts/
+
 #please upload your synthetic datasets(49)(we shld prolly test it with more datasets asw to chk #if the hybrid replacement policy for meter placement works)
 data/

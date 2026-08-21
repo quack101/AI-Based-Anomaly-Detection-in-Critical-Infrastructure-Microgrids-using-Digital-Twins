@@ -16,7 +16,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DATASET_DIR = (
     BASE_DIR /
     "data" /
-    "all_synthetic_datasets"
+    "scaled_datasets"
 )
 
 REPRESENTATIVE_METERS = (
@@ -44,26 +44,26 @@ with open(REPRESENTATIVE_METERS, "r") as f:
 print(f"Loaded {len(representative_meters)} representative meters")
 
 # --------------------------------------------------
-# Load datasets
+# Load datasets (RES.md D10 Phase 1: scaled per-load series, keyed by
+# load_name rather than positional glob order -- load_name is the
+# authoritative join key, not file-list position)
 # --------------------------------------------------
 
 datasets = []
 
-csv_files = sorted(DATASET_DIR.glob("synthetic_*.csv"))
+for meter in representative_meters:
 
-if len(csv_files) != len(representative_meters):
-    raise ValueError(
-        f"Found {len(csv_files)} datasets but "
-        f"{len(representative_meters)} representative meters."
-    )
+    csv_path = DATASET_DIR / f"{meter['load_name'].lower()}.csv"
 
-for csv in csv_files:
+    if not csv_path.exists():
+        raise FileNotFoundError(
+            f"No scaled dataset for {meter['load_name']} at {csv_path}. "
+            f"Run simulation/generate_scaled_datasets.py first."
+        )
 
-    df = pd.read_csv(csv)
+    datasets.append(pd.read_csv(csv_path))
 
-    datasets.append(df)
-
-print(f"Loaded {len(datasets)} synthetic datasets")
+print(f"Loaded {len(datasets)} scaled datasets")
 
 # --------------------------------------------------
 # Stream data
@@ -81,6 +81,9 @@ for t in range(num_rows):
 
         row = df.iloc[t]
 
+        # RES.md D10 Phase 1 / CLAUDE.md "Data caution": Voltage and
+        # current at a metered node come only from the OpenDSS solve.
+        # They are never published here -- only the load input (P, Q).
         message = {
 
             "timestamp": t,
@@ -93,13 +96,9 @@ for t in range(num_rows):
 
             "bus": meter["bus"],
 
-            "p_kw": float(row["Global_active_power"]),
+            "p_kw": float(row["p_kw"]),
 
-            "q_kvar": float(row["Global_reactive_power"]),
-
-            "voltage": float(row["Voltage"]),
-
-            "current": float(row["Global_intensity"])
+            "q_kvar": float(row["q_kvar"]),
 
         }
 

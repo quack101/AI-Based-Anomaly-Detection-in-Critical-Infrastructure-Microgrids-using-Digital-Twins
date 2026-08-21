@@ -1,0 +1,202 @@
+{
+  "target_meters": 49,
+  "actual_count": 49,
+  "selected": [
+    {
+      "name": "S10a",
+      "bus": 10
+    },
+    {
+      "name": "S11a",
+      "bus": 11
+    },
+    {
+      "name": "S12b",
+      "bus": 12
+    },
+    {
+      "name": "S16c",
+      "bus": 16
+    },
+    {
+      "name": "S17c",
+      "bus": 17
+    },
+    {
+      "name": "S1a",
+      "bus": 1
+    },
+    {
+      "name": "S20a",
+      "bus": 20
+    },
+    {
+      "name": "S22b",
+      "bus": 22
+    },
+    {
+      "name": "S24c",
+      "bus": 24
+    },
+    {
+      "name": "S2b",
+      "bus": 2
+    },
+    {
+      "name": "S30c",
+      "bus": 30
+    },
+    {
+      "name": "S32c",
+      "bus": 32
+    },
+    {
+      "name": "S33a",
+      "bus": 33
+    },
+    {
+      "name": "S34c",
+      "bus": 34
+    },
+    {
+      "name": "S35a",
+      "bus": 35
+    },
+    {
+      "name": "S37a",
+      "bus": 37
+    },
+    {
+      "name": "S39b",
+      "bus": 39
+    },
+    {
+      "name": "S41c",
+      "bus": 41
+    },
+    {
+      "name": "S42a",
+      "bus": 42
+    },
+    {
+      "name": "S43b",
+      "bus": 43
+    },
+    {
+      "name": "S46a",
+      "bus": 46
+    },
+    {
+      "name": "S47",
+      "bus": 47
+    },
+    {
+      "name": "S48",
+      "bus": 48
+    },
+    {
+      "name": "S49b",
+      "bus": 49
+    },
+    {
+      "name": "S4c",
+      "bus": 4
+    },
+    {
+      "name": "S50c",
+      "bus": 50
+    },
+    {
+      "name": "S51a",
+      "bus": 51
+    },
+    {
+      "name": "S53a",
+      "bus": 53
+    },
+    {
+      "name": "S56b",
+      "bus": 56
+    },
+    {
+      "name": "S59b",
+      "bus": 59
+    },
+    {
+      "name": "S5c",
+      "bus": 5
+    },
+    {
+      "name": "S60a",
+      "bus": 60
+    },
+    {
+      "name": "S63a",
+      "bus": 63
+    },
+    {
+      "name": "S64b",
+      "bus": 64
+    },
+    {
+      "name": "S6c",
+      "bus": 6
+    },
+    {
+      "name": "S70a",
+      "bus": 70
+    },
+    {
+      "name": "S71a",
+      "bus": 71
+    },
+    {
+      "name": "S75c",
+      "bus": 75
+    },
+    {
+      "name": "S76a",
+      "bus": 76
+    },
+    {
+      "name": "S77b",
+      "bus": 77
+    },
+    {
+      "name": "S79a",
+      "bus": 79
+    },
+    {
+      "name": "S7a",
+      "bus": 7
+    },
+    {
+      "name": "S80b",
+      "bus": 80
+    },
+    {
+      "name": "S82a",
+      "bus": 82
+    },
+    {
+      "name": "S83c",
+      "bus": 83
+    },
+    {
+      "name": "S85c",
+      "bus": 85
+    },
+    {
+      "name": "S87b",
+      "bus": 87
+    },
+    {
+      "name": "S88a",
+      "bus": 88
+    },
+    {
+      "name": "S9a",
+      "bus": 9
+    }
+  ]
+}
