@@ -22,3 +22,8 @@ artifacts/
 
 #please upload your synthetic datasets(49)(we shld prolly test it with more datasets asw to chk #if the hybrid replacement policy for meter placement works)
 data/
+dataset/
+
+# RES.md D10 Phase 6 -- generated normal-operation corpus (~529MB,
+# *.npz isn't covered by the *.csv rule above)
+simulation/phase6_corpus/

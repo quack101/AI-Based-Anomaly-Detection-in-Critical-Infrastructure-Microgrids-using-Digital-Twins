@@ -189,3 +189,68 @@ def test_random_placement_honours_count_and_ceiling(context_and_loads):
 
     with pytest.raises(ValueError):
         RandomPlacement(target_meters=86, seed=0)
+
+
+# --------------------------------------------------
+# sweep_4a_tier1 cells.csv -- (strategy, count) is NOT a unique key
+# --------------------------------------------------
+# reports/placement_quality_vs_baselines.txt (first version) computed
+# every table already filtered to construction=='independent' -- that
+# report was not actually blending constructions. But a later review
+# still asked for a regression test guarding against this ever
+# happening BY ACCIDENT in a future ad hoc analysis script, since
+# nothing in the schema itself would stop someone from grouping by
+# (strategy, count) alone and silently averaging two different
+# meter-set construction methods (independent vs nested) together.
+# These two tests encode the schema fact that makes that mistake
+# possible, so a future script that skips 'construction' fails loudly
+# (or a schema change that removes the ambiguity is caught here too).
+
+SWEEP_4A_TIER1_CSV = Path(__file__).resolve().parent.parent / "artifacts" / "20260822T092205Z" / "sweep_4a_tier1" / "cells.csv"
+
+
+@pytest.fixture(scope="module")
+def sweep_4a_tier1_cells():
+    import pandas as pd
+    return pd.read_csv(SWEEP_4A_TIER1_CSV)
+
+
+def test_construction_column_present_with_expected_values(sweep_4a_tier1_cells):
+    assert "construction" in sweep_4a_tier1_cells.columns
+    assert set(sweep_4a_tier1_cells["construction"].unique()) == {"independent", "nested"}
+
+
+def test_strategy_and_count_alone_is_not_a_unique_key(sweep_4a_tier1_cells):
+    """Every deterministic strategy has exactly TWO rows per count in
+    this file -- one independent, one nested -- so grouping by
+    (strategy, count) alone (omitting 'construction') silently averages
+    two different meter-set construction methods together, which is
+    exactly the mistake reports/placement_quality_vs_baselines.txt was
+    checked against. This test documents that the ambiguity is real, not
+    hypothetical: it must currently FAIL to prove the danger exists."""
+
+    df = sweep_4a_tier1_cells
+    deterministic = df[df["strategy"] != "Random"]
+    counts_per_group = deterministic.groupby(["strategy", "count"]).size()
+    assert (counts_per_group == 2).all(), (
+        "expected exactly 2 rows (independent + nested) per (strategy, count) "
+        "for every deterministic strategy -- if this ever becomes 1, "
+        "'construction' may no longer be required to disambiguate, and the "
+        "warning in the test above should be revisited"
+    )
+
+
+def test_strategy_construction_and_count_is_a_unique_key(sweep_4a_tier1_cells):
+    """The moment 'construction' is included, (strategy, count) becomes
+    unique for every deterministic strategy (Random still has 10 rows,
+    one per seed) -- the fix for the ambiguity above is always to group
+    by this triple, never the pair alone."""
+
+    df = sweep_4a_tier1_cells
+    deterministic = df[df["strategy"] != "Random"]
+    counts_per_group = deterministic.groupby(["strategy", "construction", "count"]).size()
+    assert (counts_per_group == 1).all()
+
+    random_rows = df[df["strategy"] == "Random"]
+    random_counts_per_group = random_rows.groupby(["construction", "count"]).size()
+    assert (random_counts_per_group == 10).all()

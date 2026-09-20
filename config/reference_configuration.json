@@ -1,0 +1,6 @@
+{
+  "target_meters": 49,
+  "fraction_of_85": 0.5765,
+  "status": "provisional, retained for continuity with earlier runs, carries no optimality claim",
+  "note": "RES.md D10 Phase 4 sub-study 4A: the ONLY place target_meters=49 may be hardcoded. Every placement-strategy constructor and sweep script reads this value rather than defaulting to 49 directly, so the reference count can be revised in one place. 49 was the pipeline's original meter count, predating any placement-quality or observability analysis -- it is kept as a comparison baseline for continuity with the Phase 0-3 reports, not because 49 is shown to be a good choice."
+}
