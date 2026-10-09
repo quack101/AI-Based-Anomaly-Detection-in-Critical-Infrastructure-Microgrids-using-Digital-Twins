@@ -40,7 +40,40 @@ PHASE6_TRAIN_X_TRUE = BASE_DIR / "simulation" / "phase6_corpus" / "train_x_true.
 # enough to see the regulators cycle through their real tap range without
 # paying to evaluate every timestep for a handful of nodes.
 REG_SIGMA_SAMPLE_STRIDE = 200
-REG_SIGMA_FLOOR = 1e-3  # kW/kvar -- avoid a degenerate sigma=0 if ever 0 samples land nonzero
+# RES.md D10 Phase 7 HIGH-LOAD INVESTIGATION (Block 7.2) ROOT-CAUSE FIX:
+# this floor was 1e-3 (kW/kvar), calibrated for genuine REGULATOR tap-
+# drift entries, where a sample-to-sample std of exactly 0 across the
+# TRAIN split is a rare edge case this floor exists only to guard
+# against (confirmed: real regulator entries estimate sigma in the
+# 75,000-1,700,000 range here, nowhere near this floor). Once switch-
+# bus and capacitor-bus demotion were added (observability/
+# zero_injection.py's _switch_buses/_capacitor_buses), THIS floor
+# became the TYPICAL value, not an edge case, for 84 of those new
+# entries -- confirmed directly: those buses are deterministic
+# network elements (a fixed capacitor rating, a switch's fixed open/
+# closed state across the train split), so their TRUE sample-to-
+# sample std genuinely IS ~0, landing every one of them exactly on
+# this floor. sigma=0.001 gives W=1/sigma^2=1e6 -- an effectively
+# UNBOUNDED weight that reintroduces the EXACT "near-zero-sigma
+# masquerading as a hard constraint" pathology Sha25's Lagrangian
+# design exists to avoid (Part A.2 of reports/
+# phase7_state_estimator_report.txt) -- confirmed empirically: at one
+# ordinary test timestamp, REGZI_83_A_Q and REGZI_83_B_Q ALONE (both
+# at this floor) contributed 2x4.0e10 to J, against a total J of
+# ~8.0e10 -- i.e. two rows, out of ~308 weighted measurements,
+# accounted for the ENTIRE objective, while z_value (~0, correctly
+# matching h_zi(x_true)=0 exactly) and h(x) (~200 kvar at a non-true
+# iterate, a physically sane nonlinear-iteration value, NOT a units or
+# sign bug -- the Y-row/power-flow formula was checked directly and
+# found standard and symmetric between P and Q) were both already
+# correct; only the WEIGHT was wrong. Raised to 1.0 (kW/kvar) --
+# matching this project's own established "fairly confident real
+# sensor" scale (sensors/registry's own AMI sigmas range 0.02-14.6
+# kW/kvar) rather than a near-hard-constraint epsilon -- so these rows
+# contribute real but bounded information (e.g. W=1.0, contrib=1*
+# 200^2=40,000 for the bus-83 case above, in line with other real
+# measurement rows' contributions, not 8 orders of magnitude larger).
+REG_SIGMA_FLOOR = 1.0  # kW/kvar
 
 
 @dataclass
@@ -140,6 +173,38 @@ def _estimate_regulator_mean_sigma(nodes, Y, node_index, state):
     return stats_by_node
 
 
+AMPLIFIED_SIGMA_REGZI_IDS = ("REGZI_83_A_Q", "REGZI_83_B_Q")
+TYPICAL_V_ERR_FRAC = 0.04  # same formula as the M042_Q registry fix
+
+
+def _amplify_bus83_regzi_sigma(reg_pseudo_entries, Y, node_index, state):
+    """Applies the same dQ/dV amplified-sigma formula used for the
+    registry's M042_Q (bus 83.3) to REGZI_83_A_Q and REGZI_83_B_Q (bus
+    83.1/83.2) -- these are generated here, not in a registry JSON
+    file, so the recalibration has to happen at the source. Evaluated
+    at the flat-start state (the only state available at one-time
+    model-build time, before any per-timestamp estimate() call) --
+    sigma_new = sqrt(sigma_old^2 + (|dQ/dV| * 0.04 * v_base)^2)."""
+
+    at_v = complex_v_from_state(state, state.x0_v, state.x0_delta)
+    for e in reg_pseudo_entries:
+        if e["id"] not in AMPLIFIED_SIGMA_REGZI_IDS:
+            continue
+        node_key = f"{e['node']}.{ {'A': 1, 'B': 2, 'C': 3}[e['phase']] }"
+        v_idx = state.v_index[node_key]
+        v_base = state.v_base[node_key]
+        H, _ = J.build_jacobian([e], Y, node_index, state, at_v=at_v)
+        dQdV = H[0, v_idx]
+        sigma_old = e["sigma"]
+        amplified = abs(dQdV) * TYPICAL_V_ERR_FRAC * v_base
+        sigma_new = float(np.hypot(sigma_old, amplified))
+        e["sigma"] = sigma_new
+        e["note"] = (e["note"] + f" -- sigma recalibrated: old={sigma_old:.6f}, "
+                     f"new={sigma_new:.4f} (dQ/dV={dQdV:.4f} kvar/V, amplified_term="
+                     f"{amplified:.4f}, combined in quadrature with old sigma; same "
+                     f"formula as the registry's M042_Q fix).")
+
+
 def build_estimator_model(registry_variant="multiphase"):
     """Compiles the feeder ONCE and builds everything a StateEstimator
     needs -- none of which depends on the timestamp being estimated."""
@@ -156,6 +221,7 @@ def build_estimator_model(registry_variant="multiphase"):
     reg_nodes = enumerate_regulator_adjacent_nodes(state.all_node_names)
     reg_stats_by_node = _estimate_regulator_mean_sigma(reg_nodes, Y, node_index, state)
     reg_pseudo_entries = build_regulator_pseudo_entries(state.all_node_names, reg_stats_by_node)
+    _amplify_bus83_regzi_sigma(reg_pseudo_entries, Y, node_index, state)
 
     unmetered = _unmetered_load_names(registry)
     bus_phase_by_load = {name: _resolve_bus_and_phase(name) for name in unmetered}
