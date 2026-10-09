@@ -29,8 +29,8 @@
     "load_name": "s1a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M002_P",
@@ -62,8 +62,8 @@
     "load_name": "s4c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M003_P",
@@ -95,8 +95,8 @@
     "load_name": "s6c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M004_P",
@@ -128,8 +128,8 @@
     "load_name": "s9a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M005_P",
@@ -161,8 +161,8 @@
     "load_name": "s11a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M006_P",
@@ -194,8 +194,8 @@
     "load_name": "s16c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M007_P",
@@ -227,8 +227,8 @@
     "load_name": "s20a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M008_P",
@@ -260,8 +260,8 @@
     "load_name": "s22b",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M009_P",
@@ -293,8 +293,8 @@
     "load_name": "s24c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M010_P",
@@ -326,8 +326,8 @@
     "load_name": "s30c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M011_P",
@@ -359,8 +359,8 @@
     "load_name": "s33a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M012_P",
@@ -392,8 +392,8 @@
     "load_name": "s34c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M013_P",
@@ -425,8 +425,8 @@
     "load_name": "s35a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M014_P",
@@ -458,8 +458,8 @@
     "load_name": "s37a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M015_P",
@@ -491,8 +491,8 @@
     "load_name": "s43b",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M016_P",
@@ -524,8 +524,8 @@
     "load_name": "s50c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M017_P",
@@ -557,8 +557,8 @@
     "load_name": "s53a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M018_P",
@@ -590,8 +590,8 @@
     "load_name": "s63a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M019_P",
@@ -623,8 +623,8 @@
     "load_name": "s71a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M020_P",
@@ -656,8 +656,8 @@
     "load_name": "s75c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M021_P",
@@ -689,8 +689,8 @@
     "load_name": "s77b",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M022_P",
@@ -722,8 +722,8 @@
     "load_name": "s79a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M023_P",
@@ -755,8 +755,8 @@
     "load_name": "s80b",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M024_P",
@@ -788,8 +788,8 @@
     "load_name": "s82a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M025_P",
@@ -821,8 +821,8 @@
     "load_name": "s85c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M026_P",
@@ -854,8 +854,8 @@
     "load_name": "s87b",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M027_P",
@@ -887,8 +887,8 @@
     "load_name": "s88a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M028_P",
@@ -920,8 +920,8 @@
     "load_name": "s5c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M029_P",
@@ -953,8 +953,8 @@
     "load_name": "s7a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M030_P",
@@ -986,8 +986,8 @@
     "load_name": "s10a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M031_P",
@@ -1019,8 +1019,8 @@
     "load_name": "s17c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M032_P",
@@ -1052,8 +1052,8 @@
     "load_name": "s32c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M033_P",
@@ -1085,8 +1085,8 @@
     "load_name": "s39b",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M034_P",
@@ -1118,8 +1118,8 @@
     "load_name": "s41c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M035_P",
@@ -1151,8 +1151,8 @@
     "load_name": "s42a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M036_P",
@@ -1184,8 +1184,8 @@
     "load_name": "s46a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M037_P",
@@ -1217,8 +1217,8 @@
     "load_name": "s51a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M038_P",
@@ -1250,8 +1250,8 @@
     "load_name": "s56b",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M039_P",
@@ -1283,8 +1283,8 @@
     "load_name": "s59b",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M040_P",
@@ -1316,8 +1316,8 @@
     "load_name": "s60a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M041_P",
@@ -1349,8 +1349,8 @@
     "load_name": "s70a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M042_P",
@@ -1369,10 +1369,10 @@
     "phase": "C",
     "quantity": "Q_injection",
     "load_name": "s83c",
-    "sigma": 0.0999960592236547,
+    "sigma": 5080.461307,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "TEST ONLY, not yet committed: sigma widened from 0.0999960592236547 kvar to 5080.461307 kvar -- old value treated this like an ordinary AMI meter, but a typical ~4% voltage error at this node (capacitor-adjacent, large dQ/dV=52.88 kvar/V measured at i=46) amplifies into a ~5080 kvar Q swing (0.04*v_base*dQ/dV, combined in quadrature with the old sigma, which is negligible by comparison). Revert to 0.0999960592236547 if the sweep doesn't show improvement."
   },
   {
     "id": "M042_V",
@@ -1382,8 +1382,8 @@
     "load_name": "s83c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M043_P",
@@ -1415,8 +1415,8 @@
     "load_name": "s47",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M043_P_B",
@@ -1448,8 +1448,8 @@
     "load_name": "s47",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- multiphase variant, additional phase, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- multiphase variant, additional phase, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M043_P_C",
@@ -1481,8 +1481,8 @@
     "load_name": "s47",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- multiphase variant, additional phase, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- multiphase variant, additional phase, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M044_P",
@@ -1514,8 +1514,8 @@
     "load_name": "s48",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M044_P_B",
@@ -1547,8 +1547,8 @@
     "load_name": "s48",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- multiphase variant, additional phase, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- multiphase variant, additional phase, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M044_P_C",
@@ -1580,8 +1580,8 @@
     "load_name": "s48",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- multiphase variant, additional phase, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- multiphase variant, additional phase, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M045_P",
@@ -1613,8 +1613,8 @@
     "load_name": "s49b",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M046_P",
@@ -1646,8 +1646,8 @@
     "load_name": "s64b",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M047_P",
@@ -1679,8 +1679,8 @@
     "load_name": "s76a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M048_P",
@@ -1712,8 +1712,8 @@
     "load_name": "s66c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M049_P",
@@ -1745,8 +1745,8 @@
     "load_name": "s65c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "HEAD_P_A",
@@ -1777,8 +1777,8 @@
     "quantity": "V_magnitude",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 2 -- substation head"
+    "enabled": true,
+    "note": "D4 4.3 row 2 -- substation head -- ENABLED (dof fix)"
   },
   {
     "id": "HEAD_I_A",
@@ -1820,8 +1820,8 @@
     "quantity": "V_magnitude",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 2 -- substation head"
+    "enabled": true,
+    "note": "D4 4.3 row 2 -- substation head -- ENABLED (dof fix)"
   },
   {
     "id": "HEAD_I_B",
@@ -1863,8 +1863,8 @@
     "quantity": "V_magnitude",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 2 -- substation head"
+    "enabled": true,
+    "note": "D4 4.3 row 2 -- substation head -- ENABLED (dof fix)"
   },
   {
     "id": "HEAD_I_C",

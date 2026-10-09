@@ -249,7 +249,7 @@ LM_LAMBDA_INIT = 1.0
 LM_LAMBDA_MIN = 1e-6
 LM_LAMBDA_MAX = 1e18
 LM_INCREASE_FACTOR = 10.0
-LM_DECREASE_FACTOR = 3.0
+LM_DECREASE_FACTOR = 10.0
 LM_MAX_TRIES = 15
 
 # Fractional multiplier tried on the FULL step (y_particular + damped
