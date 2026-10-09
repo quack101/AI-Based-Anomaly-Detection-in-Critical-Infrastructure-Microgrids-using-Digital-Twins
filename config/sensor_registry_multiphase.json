@@ -1372,7 +1372,7 @@
     "sigma": 5080.461307,
     "rate": 60,
     "enabled": true,
-    "note": "TEST ONLY, not yet committed: sigma widened from 0.0999960592236547 kvar to 5080.461307 kvar -- old value treated this like an ordinary AMI meter, but a typical ~4% voltage error at this node (capacitor-adjacent, large dQ/dV=52.88 kvar/V measured at i=46) amplifies into a ~5080 kvar Q swing (0.04*v_base*dQ/dV, combined in quadrature with the old sigma, which is negligible by comparison). Revert to 0.0999960592236547 if the sweep doesn't show improvement."
+    "note": "sigma widened from 0.0999960592236547 kvar to 5080.461307 kvar -- old value treated this like an ordinary AMI meter, but this node's large capacitor-driven dQ/dV (52.88 kvar/V, measured at i=46) amplifies a normal ~4% voltage error into a large apparent Q swing (0.04*v_base*dQ/dV, combined in quadrature with the old sigma, negligible by comparison)."
   },
   {
     "id": "M042_V",
