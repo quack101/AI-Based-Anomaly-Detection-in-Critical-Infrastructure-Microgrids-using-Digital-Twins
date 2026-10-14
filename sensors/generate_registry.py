@@ -332,8 +332,9 @@ def fill_sigmas(entries):
     return entries
 
 
-def main(multiphase=False, output_path=None, write=True):
-    with open(REPRESENTATIVE_METERS) as f:
+def main(multiphase=False, output_path=None, write=True, meters_path=None):
+    # meters_path: any representative-meter JSON (default: set A's file).
+    with open(meters_path or REPRESENTATIVE_METERS) as f:
         representative_meters = json.load(f)
 
     extraction = extract_all()  # compiles + solves; leaves circuit active

@@ -31,10 +31,28 @@ REGISTRY_PATHS = {
 REQUIRED_FIELDS = {"id", "node", "phase", "quantity", "sigma", "rate", "enabled"}
 VALID_PHASES = {"A", "B", "C"}
 
+# Meter sets (placement-v2 A-vs-B work). "A" is the frozen set the
+# estimator, corpus and attack work are built on, and maps to the
+# original file names above, unchanged. Any other set name X maps to
+# config/sensor_registry_X.json / config/sensor_registry_multiphase_X.json
+# (e.g. "B" from HybridV2, "Arebuilt" from the scripted pipeline).
+DEFAULT_METER_SET = "A"
 
-def load_registry(path=None, variant="default"):
+
+def registry_path(variant="default", meter_set=DEFAULT_METER_SET):
+    if variant not in REGISTRY_PATHS:
+        raise KeyError(f"unknown registry variant {variant!r}; expected one of {sorted(REGISTRY_PATHS)}")
+    if meter_set == DEFAULT_METER_SET:
+        return REGISTRY_PATHS[variant]
+    if not meter_set or not meter_set.replace("_", "").isalnum():
+        raise ValueError(f"invalid meter set name {meter_set!r}")
+    base = REGISTRY_PATHS[variant]
+    return base.with_name(f"{base.stem}_{meter_set}{base.suffix}")
+
+
+def load_registry(path=None, variant="default", meter_set=DEFAULT_METER_SET):
     if path is None:
-        path = REGISTRY_PATHS[variant]
+        path = registry_path(variant, meter_set)
 
     with open(path, "r") as f:
         registry = json.load(f)

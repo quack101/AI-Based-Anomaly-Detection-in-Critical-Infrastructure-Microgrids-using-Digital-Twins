@@ -69,8 +69,8 @@ GROUND_TRUTH_FIELDS = [
 LABEL_FIELDS = ["timestamp", "real_timestamp", "attacked_meters", "attack_class", "magnitude", "stealth_flag"]
 
 
-def load_inputs():
-    with open(REPRESENTATIVE_METERS) as f:
+def load_inputs(meters_path=None):
+    with open(meters_path or REPRESENTATIVE_METERS) as f:
         representative_meters = json.load(f)
 
     available = {f.stem[len("node_"):].lower(): f for f in DATASET_DIR.glob("node_*.csv")}
@@ -123,10 +123,31 @@ def compute_splits(real_timestamps):
     return split_of_row, boundaries
 
 
-def main(add_noise=True, seed=RNG_SEED):
-    CORPUS_DIR.mkdir(parents=True, exist_ok=True)
+def load_all_loads():
+    """Every Load object's series (91), for drive='all' -- the physics then
+    does not depend on which loads are metered."""
+    files = sorted(DATASET_DIR.glob("node_*.csv"))
+    names = [f.stem[len("node_"):] for f in files]
+    dss_names = {n.lower() for n in dss.Loads.AllNames()}
+    if {n.lower() for n in names} != dss_names:
+        raise ValueError(f"dataset loads {len(names)} do not match DSS loads {len(dss_names)}")
+    return [{"load_name": n} for n in names], [pd.read_csv(f) for f in files]
 
-    representative_meters, datasets = load_inputs()
+
+def main(add_noise=True, seed=RNG_SEED, meters_path=None, registry_path=None, out_dir=None,
+         drive="metered"):
+    """Defaults reproduce the original corpus run exactly. meters_path /
+    registry_path / out_dir select another meter set; drive='all' sets
+    P,Q for all 91 loads from the dataset each step instead of only the
+    metered ones (decision Q2(b): physics independent of the meter set)."""
+    corpus_dir = Path(out_dir) if out_dir is not None else CORPUS_DIR
+    if out_dir is not None and corpus_dir.resolve() == CORPUS_DIR.resolve():
+        raise ValueError("refusing to write set A's corpus folder via out_dir")
+    if drive not in ("metered", "all"):
+        raise ValueError(f"drive must be 'metered' or 'all', not {drive!r}")
+    corpus_dir.mkdir(parents=True, exist_ok=True)
+
+    representative_meters, datasets = load_inputs(meters_path)
     num_rows = min(len(df) for df in datasets)
 
     real_timestamps = datasets[0]["timestamp"].iloc[:num_rows]
@@ -138,8 +159,11 @@ def main(add_noise=True, seed=RNG_SEED):
 
     compile_feeder()
     state = build_state_vector()
+    if drive == "all":
+        representative_meters, datasets = load_all_loads()  # drive list; registry decides what is measured
+        num_rows = min(num_rows, min(len(df) for df in datasets))
 
-    registry = load_registry(variant="multiphase")
+    registry = load_registry(path=registry_path, variant="multiphase")
     entries = enabled_entries(registry)
     print(f"Registry: {len(entries)} enabled entries (multiphase variant, "
           f"Phase 5/6 minimum-set deployment)")
@@ -157,13 +181,13 @@ def main(add_noise=True, seed=RNG_SEED):
     split_cursor = {s: 0 for s in split_names}
 
     telemetry_files = {
-        s: open(CORPUS_DIR / f"{s}_telemetry.csv", "w", newline="") for s in split_names
+        s: open(corpus_dir / f"{s}_telemetry.csv", "w", newline="") for s in split_names
     }
     ground_truth_files = {
-        s: open(CORPUS_DIR / f"{s}_ground_truth.csv", "w", newline="") for s in split_names
+        s: open(corpus_dir / f"{s}_ground_truth.csv", "w", newline="") for s in split_names
     }
     label_files = {
-        s: open(CORPUS_DIR / f"{s}_labels.csv", "w", newline="") for s in split_names
+        s: open(corpus_dir / f"{s}_labels.csv", "w", newline="") for s in split_names
     }
 
     import csv
@@ -242,7 +266,7 @@ def main(add_noise=True, seed=RNG_SEED):
         ground_truth_files[s].close()
         label_files[s].close()
         np.savez_compressed(
-            CORPUS_DIR / f"{s}_x_true.npz",
+            corpus_dir / f"{s}_x_true.npz",
             x_v=x_v_buffers[s], x_delta=x_delta_buffers[s],
             v_index=np.array(list(state.v_index.items()), dtype=object),
             delta_index=np.array(list(state.delta_index.items()), dtype=object),
@@ -259,4 +283,12 @@ def main(add_noise=True, seed=RNG_SEED):
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    p = argparse.ArgumentParser()
+    p.add_argument("--meters", default=None, help="representative-meter JSON (default: set A)")
+    p.add_argument("--registry", default=None, help="registry JSON for noise (default: set A multiphase)")
+    p.add_argument("--out", default=None, help="output folder (default: simulation/phase6_corpus)")
+    p.add_argument("--drive", choices=["metered", "all"], default="metered")
+    a = p.parse_args()
+    res = lambda x: None if x is None else Path(x).resolve()  # compile changes the cwd
+    main(meters_path=res(a.meters), registry_path=res(a.registry), out_dir=res(a.out), drive=a.drive)
