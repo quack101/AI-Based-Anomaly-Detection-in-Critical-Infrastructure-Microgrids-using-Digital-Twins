@@ -392,6 +392,56 @@ def build_branch_or_head_row(entry, state, flat_v, want="P"):
     return row_i, I_mag
 
 
+def build_head_p_row(entry, state, flat_v):
+    """P_head only (RES.md D10 Phase 8 fix; Q_head is untouched -- see
+    below). The OLD formula (build_branch_or_head_row, is_head=True,
+    element Vsource.source) evaluates P as a function of theta = dt -
+    dk between bus 150 and the Vsource's own internal EMF -- but bus
+    150's angle is PINNED at its fixed per-phase reference value
+    (observability/state_vector.py's complex_v_from_state: bus 150 is
+    in state.reference_nodes, so dt is never read from x_delta), and
+    the EMF's angle is ALSO fixed at that same reference (_fixed_
+    source_ev). theta is therefore identically 0 for every state x,
+    and since the Vsource branch is purely reactive (Gk=0 -- confirmed
+    via CktElement.YPrim()), P = Vt*Vk*Bk*sin(0) = 0 for every x.
+    Confirmed empirically: reports/model_consistency_at_truth.md,
+    h_true=0.0 at all 120 checked timesteps against z0 ~930-1400 kW.
+
+    Fix: bus 150 has exactly one non-source neighbour, Transformer.
+    reg1a (150 -> 150r); 150r in turn connects only to reg1a and
+    Line.sw1 (150r -> 149) -- no load, no other branch (confirmed via
+    opendssdirect: dss.Lines/Transformers/Loads.AllNames() filtered to
+    150r). Bus 150r is NOT a hard zero-injection node in this model
+    (it is a REGZI_150r_* regulator-pseudo WEIGHTED measurement,
+    observability/zero_injection.py) but its net injection is small
+    enough that the power flowing from 150r into sw1 tracks the true
+    head power to within ~0.0001 kW at the checked points -- and,
+    critically, 150r AND 149 both have FREE state angles (state.
+    delta_index), so this computation never touches the pinned
+    reference angle at bus 150 at all. Using reg1a (150->150r)
+    directly instead of sw1 was tried and rejected: it still reads
+    bus 150's pinned angle as one of its two terminals, and because
+    reg1a's own branch is also very low-impedance (high G/B), the
+    ~0.001 degree gap between bus 150's TRUE solved angle and its
+    pinned reference value is amplified into a multi-thousand-kW
+    error -- confirmed empirically, not assumed. Routing through
+    sw1 (150r -> 149) avoids bus 150's angle entirely.
+
+    Q_head is UNCHANGED (still build_branch_or_head_row, element
+    Vsource.source): Q flows through a purely reactive branch even at
+    theta=0 (Q = -Vt*Vk*Bk, Bk != 0), so Q_head's old formula was
+    never structurally zero the way P_head's was -- RES.md D10 Phase 8
+    task context confirms HEAD_Q is fine, and this function does not
+    touch it."""
+
+    synthetic = {
+        "id": entry["id"], "quantity": "P_flow",
+        "node": "150r", "phase": entry["phase"],
+        "element_kind": "Line", "element_name": "sw1",
+    }
+    return build_branch_or_head_row(synthetic, state, flat_v, want="P")
+
+
 def build_jacobian(entries, Y, node_index, state, at_v=None):
     """H's row i corresponds to entries[i] -- built in ONE pass, same
     ordering invariant sensors/sensor_layer.py enforces for z. Returns
@@ -425,10 +475,13 @@ def build_jacobian(entries, Y, node_index, state, at_v=None):
             row, val = build_branch_or_head_row(entry, state, flat_v, want=want)
         elif q == "I_magnitude_branch":
             row, val = build_branch_or_head_row(entry, state, flat_v, want="I")
-        elif q in ("P_head", "Q_head"):
-            want = "P" if q == "P_head" else "Q"
-            row, val = build_branch_or_head_row(entry, state, flat_v, want=want)
-            row, val = -row, -val  # measure_head_p/q negate -- match sign convention
+        elif q == "P_head":
+            row, val = build_head_p_row(entry, state, flat_v)
+        elif q == "Q_head":
+            # UNCHANGED path -- Q_head was never structurally zero
+            # (see build_head_p_row's docstring for why only P_head moved)
+            row, val = build_branch_or_head_row(entry, state, flat_v, want="Q")
+            row, val = -row, -val  # measure_head_q negates -- match sign convention
         elif q == "I_magnitude_head":
             row, val = build_branch_or_head_row(entry, state, flat_v, want="I")
         else:

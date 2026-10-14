@@ -273,3 +273,49 @@ def test_voltage_magnitude_jacobian_tracks_current_iterate(state, perturbed_v):
 
     assert h0 == pytest.approx(expected, rel=1e-9)
     assert abs(h0 - frozen_would_be) > 1e-4, "perturbation too small to distinguish from the frozen-x0 bug"
+
+
+def test_head_p_jacobian_matches_finite_difference(state, perturbed_v):
+    """RES.md D10 Phase 8 HEAD_P MEASUREMENT MODEL FIX, regression
+    guard. The old P_head formula (build_branch_or_head_row, element
+    Vsource.source) computed theta = dt - dk between bus 150 (its
+    angle PINNED at the fixed per-phase reference, never read from
+    x_delta -- state.reference_nodes) and the Vsource's internal EMF
+    (ALSO pinned at that same reference angle, _fixed_source_ev) --
+    theta was identically 0 for every state x, and since the Vsource
+    branch is purely reactive (Gk=0), P = Vt*Vk*Bk*sin(0) = 0 always
+    (confirmed empirically: reports/model_consistency_at_truth.md,
+    h_true=0.0 at all 120 checked timesteps against z0 ~930-1400 kW).
+    build_head_p_row instead routes through Line.sw1 (150r -> 149,
+    the only element downstream of bus 150's own regulator transformer
+    with no load/other branch at 150r), whose two terminals BOTH have
+    free state angles -- never touching bus 150's pinned reference at
+    all. This test guards the NEW row's own derivative, finite-
+    differenced against perturbed_v (not flat start -- at flat start
+    every node sits at exactly its per-phase reference angle, so
+    150r/149's angle difference would be 0 and this test would not
+    exercise the angle derivative at all, the same flat-start blind
+    spot the Q-angle/V-magnitude regression tests above exist to
+    avoid)."""
+
+    entry = {"id": "TEST_HEAD_P_B", "node": "150", "phase": "B", "quantity": "P_head"}
+    row, _ = J.build_head_p_row(entry, state, perturbed_v)
+    target = "150r.2"
+
+    eps = 1e-5
+    fv_p = _perturb_d(perturbed_v, target, eps)
+    fv_m = _perturb_d(perturbed_v, target, -eps)
+    _, hp = J.build_head_p_row(entry, state, fv_p)
+    _, hm = J.build_head_p_row(entry, state, fv_m)
+    fd = (hp - hm) / (2 * eps)
+
+    assert row[state.delta_index[target]] == pytest.approx(fd, rel=1e-4)
+
+    eps_v = 1e-3
+    fv_p2 = _perturb_v(perturbed_v, target, eps_v)
+    fv_m2 = _perturb_v(perturbed_v, target, -eps_v)
+    _, hp2 = J.build_head_p_row(entry, state, fv_p2)
+    _, hm2 = J.build_head_p_row(entry, state, fv_m2)
+    fd2 = (hp2 - hm2) / (2 * eps_v)
+
+    assert row[state.v_index[target]] == pytest.approx(fd2, rel=1e-4)

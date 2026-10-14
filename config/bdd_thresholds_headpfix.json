@@ -1,0 +1,7 @@
+{
+  "J99": 10555.78159635193,
+  "LNR99": 28.492442531971925,
+  "n": 90,
+  "source_file": "validation/phase8_bdd_baseline_headpfix_results.csv",
+  "note": "Same protocol as config/bdd_thresholds_frozen.json, re-measured AFTER the HEAD_P measurement-model fix (branch fix-head-p-model). The old frozen JSON is left untouched."
+}
