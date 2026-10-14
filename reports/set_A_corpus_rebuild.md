@@ -73,3 +73,11 @@ other 42 loads stay at their DSS nominal values for the whole 60 days. So the gr
 state differs depending on which loads are metered. Set B generated the same way would be evaluated
 on a different physical feeder from set A, with some of B's meters on loads that never change. A
 placement comparison needs the same physics for both sets. This must be decided before Step 3.
+
+## Notes requested with the Q1–Q3 decisions
+- **`solve_time_s` is a wall-clock timer** (`time.perf_counter()` around `dss.Solution.Solve()`). It changes
+  on every run and machine. It must **not** be used as a model feature, label or detector input.
+- **The frozen set-A corpus was generated with pre-2026-10-10 sigmas, and no committed registry version
+  reproduces it.** It used 168 enabled channels (the flags of `0366af8`) with the sigmas of `ae0fcfb`; every
+  committed multiphase registry (`ae0fcfb`, `0366af8`, `2dd08f7`, `81ff01a`) gives different telemetry.
+  `sensors/build_registry_for_set.py noise` now reproduces that registry from rules.
