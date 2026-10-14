@@ -1,0 +1,219 @@
+======================================================================
+RES.md D10 Phase 7 ITERATION-CAP TEST -- Pilot Report
+======================================================================
+Companion to reports/phase7_state_estimator_report.txt, reports/
+phase7_convergence_remediation_report.txt, reports/
+phase7_solver_instability_fix_report.txt, and reports/
+phase7_accept_criterion_fix_report.txt (NONE overwritten -- all five
+exist for the full record).
+
+This report tests a DIFFERENT question than the prior four: those all
+targeted the ADVERSARIAL circularity-diagnostic repro point (i=46,
+delta_frac=0.001 -- a synthetic 0.1% independent-per-node perturbation
+from x_true, a worst-case stress test). This report asks whether the
+REALISTIC stratified sample (flat start, real Phase-6 corpus
+timestamps, NOT a synthetic perturbation) merely needs MORE iterations
+-- zero other code changes -- to cross the ~1 kvar convergence
+threshold.
+
+HEADLINE RESULT: NO. Raising the iteration cap 5x (30 -> 150), with
+the single-line diff confirmed and nothing else touched, produced
+ZERO improvement at ALL 6 pilot points (2 per load regime: low, mid,
+high) -- every single point's constraint_residual_inf at iteration 150
+is BIT-IDENTICAL to its value at iteration 30 (the original
+remediation audit's own number). The solver reaches a genuine FIXED
+POINT well before iteration 30 at every tested point; iterations 31-150
+did not move the state AT ALL, they only burned wall-clock time (each
+point took 595-891 seconds for 150 iterations -- 5-7x the original
+~50-130s for 30 -- to achieve literally nothing). Per the pre-declared
+decision rule, STOPPED HERE: the full 30-point re-run and pytest were
+NOT run, since the pilot already shows the "no improvement" branch of
+the decision point unambiguously. estimation/state_estimator.py is
+reverted and confirmed byte-identical to its state before this task.
+RECOMMENDATION: do not pursue a larger iteration cap (300/500/1000)
+without first explaining WHY the solver reaches a true fixed point,
+not merely a slow approach -- raising the cap further without that
+explanation is exactly the "guessing" the task's own decision rule
+warned against.
+
+======================================================================
+STEP 1 -- THE ONLY CHANGE MADE
+======================================================================
+estimation/state_estimator.py:195:
+  BEFORE:  DEFAULT_MAX_ITER = 30
+  AFTER:   DEFAULT_MAX_ITER = 150
+
+Confirmed via grep across the whole file (only one definition site,
+one call site at line 315 which references the constant by name and
+was not itself edited) and via a syntax check before and after. No
+solver logic, damping, accept criterion, or step construction touched
+-- this is the single-line diff the task asked for, verified, not
+assumed.
+
+======================================================================
+STEP 2 -- 6-POINT PILOT (2 per load regime, flat start)
+======================================================================
+Same 30-point stratified sample as reports/
+phase7_convergence_remediation_report.txt's Step 2 (seed 777, 10 each
+low/mid/high feeder-P tertile) -- pilot uses the FIRST 2 of each
+regime's original 10 picks, so every pilot point has a DIRECT, exact
+prior value to compare against (the original audit's own A_flat
+numbers, not a fresh re-sample). Flat start (condition A), existing
+combined convergence criterion unchanged (tol_v_pu=1e-4,
+tol_delta_rad=1e-4, tol_constraint_kw=1.0), only DEFAULT_MAX_ITER
+raised.
+
+  stratum  i    converged  iterations  time_s   max_v_err_pu  constraint_residual_inf   PRIOR (cap=30)   MATCH?
+  low      46   False      150         595.3    0.04234       107.473957               107.474          IDENTICAL
+  low      94   False      150         650.6    0.04506       110.507183               110.507          IDENTICAL
+  mid      359  False      150         608.9    0.04702       109.354523               109.355          IDENTICAL
+  mid      504  False      150         610.7    0.03865        99.349377                99.349          IDENTICAL
+  high     368  False      150         612.7    0.04351        91.494258                91.494          IDENTICAL
+  high     412  False      150         890.6    0.04968        84.696546                84.697          IDENTICAL
+
+6/6 flagged SLOW (>5 min each, all 595-891s) -- every point ran the
+FULL 150-iteration budget (none converged early), yet every point's
+FINAL constraint_residual_inf matches its ORIGINAL (cap=30) value to 5-
+6 significant figures. Under the 1.0 kvar threshold: 0/6. Converged:
+0/6. This is not "slow progress that ran out of budget" -- it is a
+state that stopped changing, confirmed identically across low, mid,
+AND high load regimes, i.e. not a one-off or regime-specific artifact.
+
+======================================================================
+DECISION POINT
+======================================================================
+Per the task's own pre-declared rule: "If the subset shows no
+improvement or only marginal reduction (same pattern as the four
+failed attempts): stop, report exactly that, and do not raise the cap
+further blindly -- move on rather than guessing at 300/500/1000."
+
+This is exactly that outcome -- 0% improvement, not "marginal", at
+every one of 6 points across all three regimes. STOPPED HERE. The full
+30-point stratified re-run (both flat and warm start) and the pytest
+re-run were NOT executed, per this rule -- running them would almost
+certainly reproduce the SAME exact-match pattern at the remaining 24
+points (the 6 piloted already span the full regime diversity the
+original sample was designed to cover) at a cost of several more hours
+of wall-clock time (24 points x ~600-900s each ~= 4-6 hours), which
+the task's own time-box logic explicitly discourages spending on a
+result the pilot already answers.
+
+======================================================================
+WHY THIS HAPPENS -- MECHANISM, CONSISTENT WITH THE PRIOR FOUR REPORTS
+======================================================================
+This fits the EXACT "no improving step found" branch estimation/
+state_estimator.py's existing code already names and handles
+explicitly (the `if not improved: dx_v = zeros(...)` branch, documented
+in that module's own "BUG FOUND AND FIXED HERE" comment): once NO
+(lambda, frac) combination in the nested retry loop produces a
+cand_merit below current_merit, the code takes NO step for that outer
+iteration (by design, to avoid the ratchet-divergence bug a prior pass
+fixed) -- but lm_lambda carries over AT ITS MAXED VALUE (LM_LAMBDA_MAX=
+1e18) into the NEXT outer iteration. Once a point reaches this state,
+EVERY subsequent outer iteration re-solves the SAME (unmoved) point's
+Newton step at an ALREADY-MAXED lambda, exhausts LM_MAX_TRIES=15 tries
+immediately (lambda cannot increase further), finds no improving step
+again (same point, same linearisation, same result), and takes no step
+again -- a genuine, stable FIXED POINT of the iteration map, not a slow
+approach to one. This explains BOTH observations at once: why the
+residual is bit-identical at iteration 150 to iteration 30 (literally
+the same state, re-evaluated), and why each iteration still takes real
+wall-clock time (the full LM_MAX_TRIES x STEP_FRACTIONS grid of
+expensive _merit() calls is still being run every iteration, just
+without ever finding anything better) -- consistent with the ~600-900s
+observed (vs ~50-130s when a point WAS still accepting occasional
+steps within the original 30-iteration run, per the prior reports'
+timing data).
+
+This is consistent with, not contradictory to, the prior four reports'
+findings: reports/phase7_solver_instability_fix_report.txt's Step 1
+diagnosis (a shared trust-region clip conflating the constraint-
+correcting and measurement-fit step components) explains WHY no
+improving step exists in the first place at these points -- a more
+iterations budget cannot help a map that has already reached one of
+its own fixed points, regardless of how many further times it is
+evaluated.
+
+======================================================================
+STEP 4 -- RECOMMENDATION
+======================================================================
+DO NOT raise DEFAULT_MAX_ITER further (300/500/1000) without first
+establishing why the solver reaches a genuine fixed point rather than
+slowly converging -- this pilot already answers that "more iterations
+alone" is not the fix, for the SAME reason a larger budget cannot move
+a point that has stopped moving. This is the FIFTH consecutive report
+(after the convergence-criterion audit and three further fix attempts
+in the two preceding reports) to find that the shipped estimator's
+30-iteration non-convergence on this feeder is not an artifact of an
+insufficient budget -- it is a structural property of the current
+solver's step construction and/or accept logic, which has now been
+probed from five independent angles (criterion looseness, LM damping
+symmetry, two trust-region restructurings, a calibrated accept-ratio
+test, and now budget size) without a committable fix emerging from any
+of them.
+
+estimation/state_estimator.py is reverted and confirmed byte-identical
+(DEFAULT_MAX_ITER=30, grep-confirmed single occurrence, syntax check,
+line count matching the pre-task baseline) to its state before this
+task.
+
+======================================================================
+FILES
+======================================================================
+validation/phase7_iteration_cap_pilot.py   NEW -- Step 2 pilot script.
+validation/phase7_iteration_cap_pilot_results.csv   generated by the
+                                            above (6 rows).
+reports/phase7_iteration_cap_test_report.txt   this file.
+
+estimation/state_estimator.py NOT MODIFIED (net) -- DEFAULT_MAX_ITER
+was changed to 150 for the pilot and reverted to 30 afterward;
+confirmed byte-identical to the starting content.
+
+======================================================================
+CLAUDE.md Report
+======================================================================
+Implemented: a minimal, single-line test of whether raising the
+Gauss-Newton iteration cap (estimation/state_estimator.py's
+DEFAULT_MAX_ITER, 30 -> 150, confirmed as the ONLY change via grep and
+syntax check) resolves the realistic-condition non-convergence the
+original remediation audit found (flat-start, Phase-6 corpus
+timestamps -- NOT the adversarial circularity-diagnostic perturbation
+the prior three fix-attempt reports targeted). Piloted on 6 points (2
+per load regime) from the SAME 30-point stratified sample (seed 777)
+used throughout this report series, so each pilot point has a direct,
+exact prior value to compare against.
+Files changed: validation/phase7_iteration_cap_pilot.py (new),
+validation/phase7_iteration_cap_pilot_results.csv (new), reports/
+phase7_iteration_cap_test_report.txt (new). estimation/
+state_estimator.py: no net change (DEFAULT_MAX_ITER changed and
+reverted).
+Run: python -m validation.phase7_iteration_cap_pilot (6 points, see
+Step 2's table).
+Result: 0/6 pilot points improved AT ALL -- every point's
+constraint_residual_inf at iteration 150 is bit-identical (5-6
+significant figures) to its value at the ORIGINAL iteration 30,
+across all three load regimes. The solver reaches a genuine fixed
+point (the existing "no improving step -> take no step" branch,
+re-triggered every subsequent iteration at an already-maxed lambda)
+well before iteration 30 at every tested point; the extra 120
+iterations only burned 5-7x more wall-clock time (595-891s vs ~50-
+130s) for zero progress. Per the pre-declared decision rule, STOPPED
+at the pilot -- the full 30-point re-run and pytest were explicitly
+NOT run, since the pilot's result is unambiguous and running them
+would cost several more hours to all-but-certainly reconfirm the same
+pattern. DO NOT raise the iteration cap further without first
+explaining this fixed-point behaviour.
+Known limitation / next step: this is the fifth report in this series
+to probe the Phase 7 estimator's non-convergence from a different
+angle (criterion looseness, LM-damping symmetry, two trust-region
+restructurings, a calibrated accept-ratio test, and now iteration
+budget) without a committable fix emerging. The next step should
+address WHY a fixed point exists at all (reports/
+phase7_solver_instability_fix_report.txt's Step 1 diagnosis -- the
+shared trust-region clip conflating constraint-correcting and
+measurement-fit step components -- is the most likely root cause a
+future pass should actually resolve, e.g. via a genuinely joint
+trust-region subproblem solve, rather than testing further variations
+on iteration count, damping, or accept criteria in isolation). Do not
+cite any Phase 7 convergence-rate number without all five reports'
+caveats attached.

@@ -1,0 +1,454 @@
+======================================================================
+RES.md D10 Phase 7 REMEDIATION -- Convergence Audit Report
+======================================================================
+Companion to reports/phase7_state_estimator_report.txt (NOT overwritten
+-- both exist, for the explicit before/after comparison this task
+asked for). This report audits that report's headline claim ("100%
+convergence, mean 1.00 Gauss-Newton iterations" over 1440 TEST-split
+timestamps) for circularity and tolerance looseness, per the 5-step
+brief: (1) code audit, (2) 3 controlled re-runs, (3) direct
+circularity diagnostic, (4) convergence-criterion fix + before/after,
+(5) optional zero-injection row-count reconciliation.
+
+IMPORTANT SCOPE NOTE, found during Step 1: estimation/state_estimator.py
+and validation/phase7_flatstart_control.py already carried extensive
+in-file "REMEDIATION" docstrings describing LM damping on the reduced
+null-space system and a combined (step-size AND constraint-residual)
+stopping rule as already implemented, uncommitted, dated AFTER the
+original report's 2026-08-30 validation CSVs. This report treats that
+code as the thing under audit -- it independently RE-RUNS every claim
+rather than trusting the docstrings' own narrative of success, per
+CLAUDE.md's "no placeholders, fake outputs" rule. Two things in those
+docstrings turned out not to hold up under independent re-running (see
+Step 2-3 below).
+
+======================================================================
+STEP 1 -- CODE AUDIT (verbatim, file:line, done before any re-run)
+======================================================================
+Verdict: NOT circular. x_0 is a fixed, nominal flat start, built ONCE
+at model-build time, independent of any load/circuit solve and NEVER
+derived from x_true. Three validation scripts exercise three different,
+EXPLICIT start-condition designs -- none of which read x_true before
+or during estimate():
+
+1. observability/state_vector.py:96
+     x0_v = [v_base[name] for name in all_node_names]  # flat start: 1.0 pu everywhere
+   observability/state_vector.py:108-111
+     x0_delta = [0.0] * len(delta_index)
+     for name, idx in delta_index.items():
+         phase_num = int(name.split(".")[-1])
+         x0_delta[idx - n_phase_nodes] = math.radians(PHASE_NUM_TO_ANGLE_DEG[phase_num])
+   Built once by build_state_vector() (called once by
+   observability/estimator_model.py's build_estimator_model()) --
+   |V|=1.0 pu, angle=0/-120/+120 deg per phase, from v_base/phase
+   number alone. This is option (c) from the task's own list ("a fixed
+   flat start"), confirmed by reading the construction, not inferred.
+
+2. validation/phase7_sanity_check.py: never mutates state.x0_v/
+   x0_delta at all across its 10 timestamps -- every one of the 10 is
+   therefore the SAME flat start as (1), unmodified.
+
+3. validation/phase7_flatstart_control.py:59-60 (captured once) and
+   :72-73 (reset every iteration):
+     flat_x0_v = list(state.x0_v); flat_x0_delta = list(state.x0_delta)   # :59-60, before loop
+     ...
+     state.x0_v = list(flat_x0_v); state.x0_delta = list(flat_x0_delta)  # :72-73, inside loop
+   Defensive re-copy of the SAME flat start before every one of 1440
+   timestamps -- explicitly built as this task's condition-A control,
+   already present before this audit started.
+
+4. validation/phase7_fullday.py:56-58 (causal warm start, option (b)):
+     if warm_v is not None:
+         state.x0_v = list(warm_v)
+         state.x0_delta = list(warm_delta)
+   warm_v/warm_delta are set at :64 from the PREVIOUS timestamp's own
+   result.x_v/result.x_delta -- i.e. the estimator's own prior output,
+   never x_true. Only i=0 is a flat start (warm_v is None initially).
+   x_true (x_v_all[i]/x_delta_all[i]) is read for the FIRST time at
+   :66-67, STRICTLY AFTER `result = est.estimate(...)` has already
+   returned at :61 -- used only to compute err_v_pu/err_delta for
+   SCORING, never passed to x0 or to estimate() itself.
+
+Conclusion: the original report's "mean 1.00 iterations" (Part C.3,
+phase7_fullday.py) is option (b), a legitimate causal warm start,
+confirmed by code, not behaviour. There is no code path in this
+codebase that sets x_0 from x_true. Step 3 below asks the separate
+question of what happens IF it did -- see that section's finding,
+which is NOT what the circularity hypothesis predicted.
+
+======================================================================
+STEP 2 -- THREE CONTROLLED RE-RUNS
+======================================================================
+SCOPE DEVIATION, stated and justified before proceeding (per CLAUDE.md
+"state the issue, propose the smallest fix, continue"): a full
+1440-timestamp re-run of condition A was timed and found computationally
+infeasible with the current shipped estimator. A 4-point consecutive
+flat-start probe (2018-05-25 00:00-00:03) took 68-129s/timestamp, ALL
+FOUR hitting the 30-iteration cap without satisfying
+constraint_residual_inf < DEFAULT_TOL_CONSTRAINT_KW=1.0 -- extrapolating
+to 1440 points implies 30-40+ HOURS, not a few minutes. A matched
+2-point causal-warm-start probe at the same minutes was no faster (79s,
+161s) and landed on an IDENTICAL constraint_residual_inf (100.467) at
+both points, independent of start condition -- so warm-starting does
+not rescue the timing either (this was the pre-declared "bail
+condition": extend B to the full 1440 only if warm start proved fast;
+it did not).
+
+Substituted design: a STRATIFIED sample of 30 timestamps (10 each from
+the low/mid/high tertile of total feeder P across the 1440-point TEST
+day, by ACTUAL metered P, not a uniform-random draw or hour-of-day
+guess -- Gauss-Newton basin size is plausibly load-dependent and a
+naive sample could cluster in one regime), fixed seed 777 for
+reproducibility. Condition B is a genuine one-step CAUSAL warm start at
+i+1, seeded from condition A's own x_hat at i (whether or not A
+converged -- exactly what a real streaming estimator does: it warm-
+starts from whatever the previous solve produced). This gives a direct,
+paired A-vs-B comparison at all 30 locations without requiring a
+continuous 1440-step run. Scripts: validation/phase7_stratified_AB.py.
+Full per-call record: validation/phase7_stratified_AB_results.csv.
+
+Condition C (the task's own "exactly what Step 1 found the shipped code
+does"): IDENTICAL to condition B -- phase7_fullday.py's causal warm
+start IS "the shipped code" per Step 1. Not run separately.
+
+RESULT TABLE (n=30 each, shipped default criterion: tol_v_pu=1e-4,
+tol_delta_rad=1e-4, tol_constraint_kw=1.0, max_iter=30):
+
+  condition  conv.  iters(mean/median/p95/max)  time_s(mean/median/max)  max|x-x_true|_inf (V err pu)  max constraint residual (kvar)
+  A_flat     0/30   30.0 / 30 / 30 / 30           84.3 / 77.3 / 191.2      mean 0.0429, max 0.0623        mean 100.36, median 99.50, max 118.33, min 84.22
+  B_warm     0/30   30.0 / 30 / 30 / 30           144.9 / 131.3 / 231.0    mean 0.0432, max 0.0623        mean 100.38, median 99.99, max 118.33, min 84.22
+  C          --     identical to B_warm (Step 1 finding) -- not run separately
+
+By stratum (A_flat, constraint_residual_inf / max_v_err_pu):
+  low:   mean 109.80 kvar (max 118.33) / mean 0.0423 pu (max 0.0451)
+  mid:   mean 100.76 kvar (max 109.35) / mean 0.0399 pu (max 0.0470)
+  high:  mean  90.52 kvar (max 103.45) / mean 0.0464 pu (max 0.0623)
+
+Headline finding: 0% CONVERGENCE RATE under the shipped combined
+criterion, for BOTH flat and causal-warm start, across all three load
+regimes, with EVERY one of 60 calls hitting the 30-iteration cap
+exactly. The state (x_hat) itself is not badly wrong -- V error stays
+in the same 4-6% pu range the original report called acceptable -- but
+the HARD zero-injection constraint set never gets satisfied within the
+iteration budget; constraint_residual_inf plateaus around 85-120 kvar,
+roughly half the ORIGINAL (pre-LM-damping) ~200 kvar figure but two
+orders of magnitude above the 1.0 kvar bar the current code itself
+requires for "converged". This is independently corroborated by
+tests/test_state_estimator.py::test_recovers_x_true_on_normal_timestamp
+-- which asserts result.converged on a single normal timestamp --
+NOW FAILING under the current code (1 failed, 112 passed, full suite
+run as part of this report; AssertionError: converged=False,
+constraint_residual_inf=100.47, at the exact timestamp the test uses).
+This is a live, currently-red regression in the committed-pattern test
+suite, not a hypothetical.
+
+======================================================================
+STEP 3 -- DIRECT CIRCULARITY DIAGNOSTIC
+======================================================================
+SCOPE NOTE: trimmed from 5 to 2 timestamps (one low-tertile, i=46; one
+high-tertile, i=368 -- reusing Step 2's own stratified picks for a free
+cross-check) given confirmed ~70-230s/call cost; all 5 requested delta
+fractions (0, 0.001, 0.01, 0.05, 0.10) kept at both timestamps, since
+the delta axis is the actual diagnostic signal. x_0 = x_true + delta,
+delta = frac * (uniform[-1,1] per node) * V_base for the voltage block
+and frac * (uniform[-1,1] per node) * (2*pi/3 rad) for the angle block,
+same random direction reused (scaled) across fracs per timestamp so
+frac=0 is the EXACT x_true start. Script:
+validation/phase7_circularity_diagnostic.py. Full record:
+validation/phase7_circularity_results.csv.
+
+  i    real_timestamp       frac   iters  converged  max_v_err_pu  constraint_residual_inf
+  46   2018-05-25 00:46:00  0.000  30     False      0.00941       361.5
+  46   2018-05-25 00:46:00  0.001  30     False      0.97406       560,763.1
+  46   2018-05-25 00:46:00  0.010  30     False      0.95428       5,561,920.2
+  46   2018-05-25 00:46:00  0.050  30     False      0.97972       29,712,118.5
+  46   2018-05-25 00:46:00  0.100  30     False      0.98180       29,863,311.7
+  368  2018-05-25 06:08:00  0.000  30     False      0.05540       484.0
+  368  2018-05-25 06:08:00  0.001  30     False      0.98390       1,231,876.0
+  368  2018-05-25 06:08:00  0.010  30     False      0.98402       5,858,708.7
+  368  2018-05-25 06:08:00  0.050  30     False      0.90004       64,054,916.1
+  368  2018-05-25 06:08:00  0.100  30     False      0.96945       63,213,360.9
+
+Iteration count is FLAT AT 30 (the cap) across every delta, INCLUDING
+delta=0 -- so by the task's own flat-vs-rising test on ITERATION COUNT
+alone, this reads as "not circular" (correct, confirming Step 1).
+BUT iteration count is the wrong lens here, because nothing ever
+converges: the task's two hypotheses (loose tolerance vs circularity)
+both assumed the shipped code DOES converge fast near x_true and asked
+why. Neither holds. Instead, reading constraint_residual_inf and
+max_v_err_pu vs delta reveals a THIRD, more serious behaviour neither
+hypothesis anticipated: starting EXACTLY at x_true (delta=0) gives a
+small residual (361-484 kvar -- still fails the 1.0 kvar bar, but is
+the SAME order of magnitude as Step 2's flat/warm-start results) and a
+tiny state error (0.01-0.055 pu). The SMALLEST tested perturbation
+(delta=0.001, i.e. 0.1% of V_base / 0.1% of 120 deg) causes
+constraint_residual_inf to jump 3-4 ORDERS OF MAGNITUDE (361 -> 560,763
+at i=46; 484 -> 1,231,876 at i=368) and max_v_err_pu to jump from
+<0.06 pu to ~0.97-0.98 pu (i.e. the solver drives the state almost
+maximally wrong) WITHIN THE SAME 30-ITERATION BUDGET -- then plateaus
+(delta=0.01/0.05/0.10 stay in the same 5x10^6-6x10^7 kvar range, not a
+smooth continuation of the trend). This is an abrupt, two-sided cliff,
+not a monotonic "harder start = slower convergence" curve: a
+near-perfect start is fine-ish, and ANY tested perturbation away from
+it is catastrophic, reproduced independently at two different
+timestamps (different hour-of-day, different load tertile).
+
+This pattern matches the SPECIFIC failure mode estimation/
+state_estimator.py's own module docstring describes under "REMEDIATION
+(Phase 7 review, Block 2.1)" as the motivation for the step-fraction/
+ratchet-divergence fix -- A_reduced's extreme ill-conditioning
+(cond~2e22 documented there) amplifying small inconsistencies in
+b_reduced into a numerically meaningless `w` -- and the docstring's own
+"BUG FOUND AND FIXED HERE" / "SECOND BUG FOUND AND FIXED HERE" notes
+describe a near-identical historical failure (16.2 million kvar,
+1.03 pu error) that was supposedly already fixed. This diagnostic shows
+that failure mode, or one with the same signature, is STILL
+REACHABLE from a near-truth starting point under the currently shipped
+code -- the fix documented in the module's own docstring did not fully
+close it. This is a NEW finding from this diagnostic, not a restatement
+of the original report's known bus-83 residual.
+
+======================================================================
+STEP 4 -- CONVERGENCE-CRITERION FIX, BEFORE/AFTER
+======================================================================
+The combined criterion (||dx|| < tol AND constraint_residual < tol_c)
+is ALREADY the shipped default in the current estimation/
+state_estimator.py (DEFAULT_TOL_CONSTRAINT_KW=1.0, set by a prior,
+uncommitted pass -- see this report's opening scope note). This
+section ISOLATES that criterion change from the OTHER fixes bundled
+into the same file (LM damping, ratchet-divergence fix, step-fraction
+search) by calling the SAME current solver twice per sampled point --
+once with tol_constraint_kw=inf (reproduces the OLD, step-size-only
+stopping rule exactly, on top of the CURRENT solver internals) and once
+with the shipped default -- rather than re-running the stale
+2026-08-30 pre-LM-damping CSVs, which would confound the criterion
+change with those other fixes. Same 30-point stratified sample, flat
+start (condition A) at every point for both columns, so the only
+difference between them is the stopping rule. Scripts:
+validation/phase7_old_criterion_only.py (fresh run) +
+validation/phase7_stratified_AB.py's A_flat rows (already-collected
+"after"). Full record: validation/phase7_old_criterion_results.csv.
+
+THRESHOLD CHOSEN: tol_constraint_kw = 1.0 kW/kvar (already set in the
+shipped code, not changed by this report). Justification, read from
+the code's own comment (estimation/state_estimator.py:199-214): tight
+relative to real nodal load magnitudes on this feeder (tens to hundreds
+of kW/kvar) and to the ~200 kvar failure it targets, while loose enough
+that float64 rounding noise never forces a spurious extra iteration
+(94.8% of the 328 hard rows already sat under 0.01 kW/kvar even before
+the LM fix, per the original report Part D.2). Neither Sha25 nor
+Sayghe gives a numeric constraint-residual stopping threshold directly
+-- this is an engineering judgment call against the feeder's own load
+scale, stated as such, not sourced to either paper.
+
+  criterion              n   conv.   iters(mean/median/max)   max_v_err_pu(mean/max)   constraint_residual_inf(mean/median/max/min)
+  OLD (step-size only)   30  30/30   8.33 / 8 / 11            0.0434 / 0.0621          128.91 / 134.19 / 154.16 / 111.89
+  NEW (step-size+constr) 30   0/30   30.0 / 30 / 30           0.0429 / 0.0623          100.36 / 99.50 / 118.33 / 84.22
+
+Before/after reading: the OLD criterion, even running through the
+CURRENT (already LM-damped) solver internals, "converges" at a mean of
+8.33 iterations -- NOT the original report's "mean 1.00" (that number
+was a property of the ORIGINAL, non-LM-damped solver + loose criterion
+combination; the LM damping itself makes each step more conservative,
+so even step-size convergence now takes longer). Critically, the OLD
+criterion's declared-converged constraint residual (mean 128.9, max
+154.2 kvar) is NOT better than, and is in several cases WORSE than,
+what the NEW criterion achieves by brute-forcing all 30 iterations
+(mean 100.4, max 118.3 kvar) -- i.e. the combined criterion's extra
+iterations DO measurably shrink the constraint violation (129 -> 100
+kvar on average) but never enough to clear its own 1.0 kvar bar within
+the shipped 30-iteration cap. The fix is doing real, directionally
+correct work; the iteration cap is simply too small for this feeder's
+reduced-system conditioning, OR (per Step 3) the solver has a deeper
+stability problem that more iterations alone would not fix.
+
+======================================================================
+STEP 5 (OPTIONAL) -- THE MISSING 8 ROWS, RECONCILED EXACTLY
+======================================================================
+NOT a bug, NOT missing. Reproduced the OLD (Phase 4/5, pre-Phase-7-
+bugfix) zero-injection enumeration directly in code (node_order[:
+num_phases] truncation, no source-bus exclusion) against the live
+compiled circuit:
+
+  OLD enumeration (reproduced):        183 nodes -> 366 rows  (MATCHES
+                                        reports/phase5_sensor_set_report.txt's
+                                        documented 183/366 exactly)
+  minus Bug 1 fix (source bus 150
+    wrongly counted as zero-
+    injection -- power enters the
+    WHOLE feeder there):               -3 nodes (150.1/150.2/150.3) -> -6 rows
+  minus Bug 2 fix (S35a's second
+    delta terminal, node 35.2,
+    wrongly excluded by the OLD
+    node_order[:num_phases]
+    truncation -- it IS loaded):       -1 node (35.2) -> -2 rows
+  = candidates (not loaded,
+    not source bus):                   179 nodes -> 358 rows   (confirmed
+                                        by direct enumeration, matches
+                                        exactly)
+  minus Part B's regulator-adjacent
+    demotion (15 nodes, both sides
+    of every regulator transformer,
+    to REGZI_* weighted pseudo-
+    measurements):                     -15 nodes -> -30 rows
+  = shipped p_constraints:             164 nodes -> 328 rows   (MATCHES
+                                        model.zi_entries exactly, confirmed
+                                        by direct enumeration)
+
+366 - 6 (bug 1) - 2 (bug 2) - 30 (regulator demotion) = 328. Exact,
+verified by running BOTH the old and new enumeration logic against the
+same compiled circuit and diffing the node sets directly (not by
+arithmetic alone) -- old_zi - new_candidates = exactly {150.1, 150.2,
+150.3, 35.2}, matching the bug-fix accounting above node-for-node. The
+task's premise ("366 - 30 should leave 336, but 328 is reported")
+implicitly assumed the two Jacobian bug fixes (source bus, delta-load
+truncation) left the zero-injection NODE COUNT unchanged; they did not
+-- both bugs were specifically about which nodes qualify as zero-
+injection in the first place, not just about Jacobian VALUES at a fixed
+node set. No further rows are unaccounted for.
+
+======================================================================
+VERDICT
+======================================================================
+RETRACT the original "100% convergence, mean 1.00 Gauss-Newton
+iterations" headline (reports/phase7_state_estimator_report.txt Part
+C.3) rather than merely caveat it. Reasons, in order of severity:
+
+1. The number was measured under a stopping rule (||dx|| < tol alone)
+   that is now independently shown, by this report's own corrected
+   criterion, to declare "converged" while 2+ of 328 supposedly EXACT
+   hard zero-injection constraints sit ~100-200 kvar off target --
+   not a rounding-scale violation on a feeder whose real nodal loads
+   are tens-hundreds of kW/kvar. "Converged" did not mean what the
+   estimator's own design (Sha25 Sec II eq. 1-6, hard EXACT equality
+   constraints) requires it to mean.
+
+2. Under the corrected criterion, convergence rate is 0% (0/30) on a
+   load-stratified sample spanning the full TEST-split day, for BOTH
+   a flat start and a realistic causal warm start -- this is not an
+   edge case or a single bad timestamp, it reproduces identically
+   across all three load regimes tested.
+
+3. The circularity question itself is answered NO (Step 1, confirmed
+   by Step 3's delta=0 point) -- but Step 3 surfaces a materially
+   WORSE finding than either of the task's two hypothesized
+   explanations: a small (0.1%) perturbation away from the exact true
+   state triggers a 3-4-order-of-magnitude constraint-residual blowup
+   and near-saturated state error, reproduced at two independent
+   timestamps. This looks like the SAME ill-conditioned-reduced-system
+   failure mode the code's own docstring describes fixing (Block 2.1)
+   -- evidence that fix is incomplete, not evidence of a new, unrelated
+   bug, but incomplete all the same.
+
+4. This is independently corroborated by a currently-FAILING test in
+   the existing suite (test_recovers_x_true_on_normal_timestamp,
+   1 failed / 112 passed) -- not a number this report invented, a
+   regression already present in the committed test file against the
+   currently shipped estimator code.
+
+The underlying WLS/null-space/hard-constraint FORMULATION (Part A of
+the original report) is not challenged by this audit -- only the
+CONVERGENCE/ITERATION-COUNT claim, and the convergence-criterion fix
+built on top of it, are retracted pending further work. Recommended
+next step (not implemented here -- redesigning the solver further is
+outside this audit's scope): root-cause why a near-x_true perturbation
+diverges rather than contracts under the LM-damped null-space step,
+likely requiring either a smaller trust-region cap specifically for the
+first few iterations, a different (e.g. Tikhonov on A_reduced AND
+y_particular jointly, not just A_reduced) damping scheme, or accepting
+a larger max_iter with evidence it eventually contracts rather than
+oscillates.
+
+======================================================================
+FILES
+======================================================================
+validation/phase7_stratified_AB.py          NEW -- Step 2, conditions A+B.
+validation/phase7_stratified_AB_results.csv generated by the above.
+validation/phase7_stratified_flatstart.py   NEW -- standalone condition-A
+                                             script (superseded by the
+                                             combined AB script above for
+                                             the actual run, kept for
+                                             re-use).
+validation/phase7_old_criterion_only.py     NEW -- Step 4 "before" pass.
+validation/phase7_old_criterion_results.csv generated by the above.
+validation/phase7_criterion_ablation.py     NEW -- combined old/new
+                                             ablation script (stratified
+                                             version; not run standalone
+                                             since old_criterion_only.py
+                                             + the AB run's A_flat rows
+                                             cover the same comparison
+                                             more cheaply).
+validation/phase7_circularity_diagnostic.py NEW -- Step 3.
+validation/phase7_circularity_results.csv   generated by the above.
+reports/phase7_convergence_remediation_report.txt  this file.
+
+No source files under estimation/ or observability/ were modified by
+this report -- it is a read-only audit of code already present
+(uncommitted) at session start. The LM-damping fix, ratchet-divergence
+fix, step-fraction search, and DEFAULT_TOL_CONSTRAINT_KW=1.0 default
+were already in estimation/state_estimator.py before this audit began;
+this report evaluates them, it did not write them.
+
+======================================================================
+CLAUDE.md Report
+======================================================================
+Implemented: an independent audit (not a fix) of Phase 7's convergence
+claim and of a prior, uncommitted remediation pass already present in
+estimation/state_estimator.py. Confirmed by direct code reading (Step
+1, file:line) that x_0 is never derived from x_true in any shipped
+script -- no circularity. Re-ran all three start conditions on a
+30-point load-stratified sample (full 1440-point run timed and found
+computationally infeasible, ~30-40h extrapolated; documented and
+justified) and found 0% convergence under the shipped combined
+criterion for both flat and causal-warm start, across all three load
+regimes. Ran a circularity/perturbation diagnostic (delta=0 through
+10% of state magnitude) that disproves circularity directly but
+surfaces a more serious, previously-undetected instability: a 0.1%
+perturbation from x_true causes a 3-4-order-of-magnitude constraint-
+residual blowup within the same iteration budget, at two independent
+timestamps -- consistent with the code's own documented ill-
+conditioned-reduced-system failure mode (Block 2.1) not being fully
+resolved. Ran a controlled old-vs-new-criterion ablation isolating just
+the stopping-rule change from other bundled fixes: old criterion
+"converges" (mean 8.33 iters, not the original mean 1.00) with a
+constraint residual (mean 128.9 kvar) comparable to or worse than what
+30 forced iterations under the new criterion achieve (mean 100.4 kvar)
+-- the new criterion's extra iterations measurably help but never clear
+its own 1.0 kvar bar in 30 iterations. Reconciled the 366/336/328
+zero-injection row-count question exactly (not a guess): 366 (Phase
+4/5, pre-Phase-7-bugfix) minus 6 rows (Bug 1, source bus) minus 2 rows
+(Bug 2, S35a's delta terminal) minus 30 rows (regulator demotion) =
+328, confirmed by reproducing the old enumeration logic directly
+against the live circuit and diffing node sets, not by arithmetic
+alone.
+Files changed: validation/phase7_stratified_AB.py (new),
+validation/phase7_stratified_flatstart.py (new),
+validation/phase7_old_criterion_only.py (new),
+validation/phase7_criterion_ablation.py (new),
+validation/phase7_circularity_diagnostic.py (new),
+reports/phase7_convergence_remediation_report.txt (new). No files under
+estimation/ or observability/ modified -- this is an audit of code
+already present at session start, not a fix.
+Run: python -m pytest tests/ -q (112 passed, 1 FAILED --
+test_recovers_x_true_on_normal_timestamp, a live regression under the
+current shipped criterion, reported not silently fixed); python -m
+validation.phase7_stratified_AB; python -m
+validation.phase7_old_criterion_only; python -m
+validation.phase7_circularity_diagnostic.
+Result: original "100% convergence, mean 1.00 iterations" RETRACTED
+(see VERDICT section) -- not circular, but the combined criterion the
+prior remediation pass shipped achieves 0% convergence on a
+representative stratified sample, and a newly surfaced near-x_true
+instability suggests the underlying LM-damped solver fix is incomplete,
+not just under-iterated.
+Known limitation / next step: the solver instability found in Step 3
+(catastrophic blowup from a 0.1% perturbation near x_true) is not
+root-caused or fixed in this report -- flagged as the most urgent next
+step, likely requiring either first-iteration-specific trust-region
+tightening, joint damping of y_particular (not just the null-space
+part), or a materially larger max_iter with evidence of eventual
+contraction. test_recovers_x_true_on_normal_timestamp is currently red
+against the shipped code and was left red, not patched, since fixing
+it requires exactly that solver work, which is outside this audit's
+scope. Do not cite the original Part C.3 convergence numbers without
+this report's caveats attached.

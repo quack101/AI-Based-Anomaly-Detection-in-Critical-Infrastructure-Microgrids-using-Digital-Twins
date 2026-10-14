@@ -1,0 +1,175 @@
+================================================================
+MODEL VERIFICATION — IEEE-123 (OpenDSS distribution)
+Status: PASS WITH FINDINGS
+Date: 2026-08-20    Run: artifacts/20260820T173119Z/model_inventory/
+================================================================
+
+VERDICT
+  The shipped 123Bus/IEEE123Master.dss is radial, 91-load, 4-regulator-bank,
+  as broadly assumed, but its two normally-open switches are modeled via an
+  isolated '_open' stub bus rather than a real openable tie point, and the
+  meter-count ceiling is 85 distinct load buses, not 91 loads -- both change
+  downstream arithmetic (RES.md D10 Phase 4 sub-study 4A, D6 A6's cut argument).
+
+ANSWERS TO BLOCKING QUESTIONS
+  Q1 radial?............... yes — 131 edges vs 132 nodes, 0 cycles, open switches: sw7, sw8
+  Q2 distinct load buses... 85 of 91 loads — meter ceiling is 85, not 91
+  Q3 source angles......... ph1=-0.0015 deg @ 0.999990 pu, ph2=-120.0010 deg @ 0.999994 pu, ph3=119.9988 deg @ 0.999993 pu — balanced (max dev 0.00145 deg); supports fixing all 3 as known references (dim(x) = 2*278-3 = 553)
+  Q4 phase distribution.... A:99 B:84 C:95 nodes / A:1400 B:952 C:1138 kW
+
+KEY NUMBERS
+  N_phase_nodes...... 278   matches Phase 0's independently measured value
+  N_buses............ 132   132 physical + 0 (the 2 '_open' stubs are counted in this)
+  N_loads............ 91    all 91 objects extracted
+  N_lines............ 126   126 Line objects (incl. 8 named as switches)
+  N_linecodes (used). 12    referenced codes; IEEELineCodes.DSS defines 29, most unused here
+  N_transformers..... 8     8 objects = 7 regulator windings (4 banks) + 1 load xfmr (XFM1)
+  N_regcontrols...... 7     grouped into 4 banks: ['reg1', 'reg2', 'reg3', 'reg4']
+  N_capacitors....... 4     all fixed, 0 CapControl objects (uncontrolled)
+  Total conn. kW/kvar 3490 / 1920   aggregate nominal PF = 0.8762
+  Converged / iters.. True / 19
+  Total losses....... 95.98 kW / 192.50 kvar   at as-authored nominal loads (no meter scaling applied)
+
+DEVIATIONS FROM PUBLISHED SPEC
+  comparison not performed — reference data (IEEE PES Test Feeder Working
+  Group's published IEEE-123 specification document) is not available in this
+  environment. Per-item priority order once it is obtained:
+  [UNKNOWN] spot loads — reference data not available
+  [UNKNOWN] line lengths — reference data not available
+  [UNKNOWN] linecodes — reference data not available
+  [UNKNOWN] regulator settings — reference data not available
+  [UNKNOWN] capacitors — reference data not available
+  [UNKNOWN] switch states — reference data not available
+
+FINDINGS
+  1. The two normally-open switches (Sw7: 151-300, Sw8: 54-94) are NOT modeled
+     as real openable tie switches in this Master.dss. They connect to a
+     synthetic dead-end bus ('300_open', '94_open') instead of the real bus
+     (300, 94) the published feeder ties to -- IsSwitch()=False and
+     Enabled=True/IsOpen=False for both in the compiled circuit; openness is
+     encoded purely by bus-naming, not by OpenDSS's switch state machinery.
+     A second, unused file (123Bus/IEEE123Switches.dss, not Redirect-ed by
+     Master.dss) DOES model them correctly: real bus names plus explicit
+     'open Line.Sw7 terminal=2' / 'open Line.Sw8 terminal=2' commands. Net
+     effect on this task: the shipped model is unconditionally radial through
+     these two switches -- closing them via a DSS 'close' command would NOT
+     create a loop, because bus 300/94 and 300_open/94_open are different
+     buses. Any future feeder-reconfiguration work needs Switches.dss's
+     topology, not Master.dss's.
+  2. Two bus-pairs (25-25r via reg3a/reg3c; 160-160r via reg4a/reg4b/reg4c) are
+     connected by MULTIPLE single-phase transformer objects representing one
+     multi-phase regulator bank. A naive per-object bus graph counts these as
+     3 parallel edges (false cycles); the graph builder in core/ieee123_model.py
+     deduplicates by unordered bus-pair before computing cycles for exactly
+     this reason -- worth knowing if anyone else builds a topology graph from
+     this model without collapsing multi-phase objects first.
+  3. 6 of the 91 loads share a bus with 2 others (S49a/b/c on bus 49,
+     S65a/b/c on 65, S76a/b/c on 76 -- three per-phase splits of what is
+     conceptually one 3-phase spot load each). Distinct load buses = 85, so
+     any placement policy enforcing one meter per bus tops out at 85 meters,
+     not 91.
+
+LIMITATIONS
+  - No published-spec cross-check was performed -- every deviation-check
+    item above is unverified against the IEEE PES Test Feeder Working Group's
+    actual document, only against what this repository ships.
+  - Radiality (Q1) is a BUS-level topology result; it says nothing about
+    per-phase (node-level) connectivity, which can differ where a bus has
+    fewer than 3 phases on one side of a branch.
+  - Coordinates are unavailable for the 2 synthetic '_open' stub buses
+    (300_open, 94_open) -- they are not in 123Bus/BusCoords.dat.
+  - This is a snapshot of the base configuration (all normally-closed
+    switches closed, all normally-open switches open, as shipped); no
+    alternate switching states were evaluated.
+
+UNBLOCKS
+  - RES.md D6 A6's 'every branch is a graph cut' argument: confirmed valid
+    -- the base configuration is a tree (0 cycles, 1 component).
+  - RES.md D4 §4.2(a)'s angle-reference decision: source angles are exactly
+    balanced (0/-120/+120 deg to <0.002 deg numerical residual) at both 150
+    and 150r, supporting 'fix all three as known references' (dim(x)=2*278-3=553)
+    over the naive single-pinned-angle configuration RES.md flagged as
+    ill-conditioned (Sha25).
+  - Any future meter-placement-ceiling arithmetic can now use 85, not 91.
+
+BLOCKS
+  - Deviation-check against the published IEEE-123 spec: still needs the
+    actual IEEE PES Test Feeder Working Group document; nothing here
+    substitutes for it.
+  - Phase 1 (data layer) remains blocked on the IDEAL corpus delivery,
+    unrelated to this task.
+
+METHOD
+  core/ieee123_model.py: compile_and_solve() -> extract_all() (compiles
+  123Bus/IEEE123Master.dss, loads 123Bus/BusCoords.dat via a separate
+  Buscoords command, solves once, extracts via opendssdirect only --
+  no .dss text parsing). Run: python -m validation.verify_model
+  Artifacts: artifacts/20260820T173119Z/model_inventory/ (10 JSON files)
+  Re-run any time 123Bus/*.dss changes.
+================================================================
+
+================================================================
+CLAUDE.md Report
+================================================================
+Implemented:
+IEEE-123 model verification and full extraction -- pre-phase groundwork,
+not a numbered RES.md phase (Phase 1 remains blocked on the IDEAL corpus).
+Compiled 123Bus/IEEE123Master.dss and extracted the full circuit inventory
+from the COMPILED circuit via opendssdirect (never by reading .dss text),
+then answered RES.md D4 Sec4.2's and D6 A6's blocking questions: is the
+base configuration radial, how many distinct load buses exist, are the
+source phase angles balanced, and what is the phase distribution.
+Also established the tests/ vs validation/ vs artifacts/<run_id>/ vs
+reports/ layout described in the task and moved
+simulation/validate_phase0.py to validation/ unchanged.
+
+Files changed:
+- core/ieee123_model.py (new) -- reusable extraction module: compiles +
+  solves, extracts buses/nodes, loads, lines, linecodes (referenced only),
+  transformers/regcontrols (grouped into 4 regulator banks), capacitors/
+  capcontrols, switches, Vsource, summary; builds a deduplicated bus-level
+  graph and answers Q1-Q4
+- validation/verify_model.py (new) -- runner: writes
+  artifacts/<run_id>/model_inventory/*.json (10 files) and
+  reports/model_verification_report.txt using the fixed template
+- tests/test_ieee123_model.py (new) -- 11 pytest regression tests,
+  including one that pins the parallel-transformer-edge bug found and
+  fixed during this task (see FINDINGS #2)
+- validation/validate_phase0.py -- moved from simulation/, logic
+  untouched (still broken: reads a dataset directory that was deleted
+  pending the IDEAL corpus; will be repointed then, not now)
+- .gitignore -- added artifacts/
+- pytest installed into .venv (no prior dependency manifest existed to
+  add it to)
+
+Run:
+python -m validation.verify_model
+python -m pytest tests/ -v
+
+Result:
+Status: PASS WITH FINDINGS. Q1 radial=yes (131 edges, 132 nodes, 0
+cycles, 1 component; open switches sw7/sw8). Q2: 85 distinct load buses
+of 91 loads (S49a/b/c, S65a/b/c, S76a/b/c triple up on 3 buses). Q3:
+source angles balanced to <0.002 deg at both 150 and 150r -- supports
+fixing all 3 as known references, dim(x)=2*278-3=553. Q4: A:99 B:84 C:95
+phase-nodes, A:1400 B:952.5 C:1137.5 kW. All 11 tests pass. Deviation
+check against the published IEEE PES spec was NOT performed -- no
+reference document available in this environment; flagged as outstanding
+per the task's explicit no-fabrication instruction, all 6 priority items
+marked [UNKNOWN].
+
+Known limitation / next step:
+Two real findings surfaced during extraction, both now documented in
+FINDINGS and covered by regression tests: (1) the two normally-open
+switches are wired to isolated '_open' stub buses rather than the real
+tie-point buses the published feeder uses -- this Master.dss cannot
+represent a closed-loop reconfiguration through them regardless of
+switch commands; a second, unused file (IEEE123Switches.dss) models
+this correctly and would need to be adopted if reconfiguration studies
+are ever wanted. (2) a naive per-object bus graph produced 3 false
+cycles from regulator banks reg3/reg4's multi single-phase-winding
+objects sharing one bus pair -- fixed by deduplicating parallel edges
+before computing cycles. Next: obtain the actual IEEE PES Test Feeder
+Working Group document to close the deviation-check section; no
+numbered RES.md phase was started.
+================================================================

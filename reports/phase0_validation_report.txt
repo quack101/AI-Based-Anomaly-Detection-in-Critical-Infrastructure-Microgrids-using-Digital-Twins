@@ -1,0 +1,75 @@
+======================================================================
+RES.md D10 Phase 0 -- Twin Validation Report
+======================================================================
+
+Replay length          : 1440 timestamps (target: full day, 1440)
+N_phase_nodes           : 278
+AllNodeNames sample     : ['150.1', '150.2', '150.3', '150r.1', '150r.2'] ... (full list in circuit_topology.json)
+
+----------------------------------------------------------------------
+Acceptance criteria
+----------------------------------------------------------------------
+[PASS] Convergence: 1440/1440 timestamps converged (100.00%), target 100%
+[PASS] Voltage band: V_pu in [0.90, 1.10] violated at 0/1440 timestamps (observed range [0.980101, 1.045615])
+[PASS] Losses: average losses = 1.8920% of feeder-head load, target band 1-5%
+[PASS] Solve time: max 0.0009s, mean 0.0001s, target well under 60s
+[INFO] Feeder-head load vs. nominal: avg feeder-head P = 1671.8 kW vs. as-authored nominal total = 3490.0 kW (47.9% of nominal)
+
+----------------------------------------------------------------------
+Interpretation
+----------------------------------------------------------------------
+Convergence and solve-time criteria pass cleanly -- the solver itself is healthy. The V_pu-band and losses-% acceptance checks as literally specified also pass here, which is worth stating plainly rather than forcing the 'implausibly close to 1.0' outcome RES.md anticipated: only 49 of this feeder's 91 Load objects are driven by the 49-meter synthetic telemetry (1985 kW of the 3490 kW nominal total); the other 42 loads keep their as-authored nominal DSS values throughout the replay. So the known Phase-1 defect does not collapse the whole feeder toward a flat 1.0 p.u. profile -- it is masked, in this particular check, by the ~1505 kW of unmetered load that never changes.
+The defect is nonetheless clearly present and is visible in the feeder-head load line above: average feeder-head P is only 47.9% of the as-authored nominal total. The 49 metered loads are being driven by raw UCI-household-scale kW (order 0.1-5 kW per meter, from the 'Global_active_power' column) substituted directly for IEEE-123 spot loads of order tens of kW -- exactly the dimensional incompatibility RES.md 3.1.1 describes. The result is a feeder that is real-loaded at roughly half its nominal rating rather than an order of magnitude under, because the unmetered majority of the load is unaffected -- a more precise characterization than RES.md's prior estimate, and one that matters: it means the V_pu-band and losses-% acceptance thresholds as stated are not, by themselves, a reliable gate for this defect on this feeder/meter-coverage combination. The feeder-head-vs-nominal check above is the one that actually catches it. Per RES.md Phase 0 scope, the defect is confirmed and reported here, not fixed -- that is Phase 1.
+
+----------------------------------------------------------------------
+Notes on methodology
+----------------------------------------------------------------------
+This report is computed from simulation/phase0_validation_log.csv as written LIVE by streaming/consumer.py while consuming real messages from Kafka topic smartgrid.telemetry, published by streaming/producer.py against a running Docker Kafka broker (streaming/docker-compose.yml). It validates the full live pipeline end-to-end: producer -> Kafka -> consumer buffering -> per-timestamp OpenDSS solve -> instrumentation. producer.py was bounded to NUM_TIMESTAMPS = 1440 (one simulated day at 1 sec = 1 simulated minute) for this run, since the underlying synthetic datasets are far longer than a day. These figures match a direct-OpenDSS-replay cross-check (same driver functions, no broker dependency) that was run earlier during development.
+
+Per-timestamp log: simulation/phase0_validation_log.csv
+Topology snapshot: simulation/circuit_topology.json
+======================================================================
+
+======================================================================
+CLAUDE.md Report
+======================================================================
+Implemented:
+Phase 0 (RES.md D10) -- instrumented the OpenDSS driver and Kafka
+consumer with per-timestamp convergence flag, iteration count, V_pu
+min/max per phase across all energised nodes, total system losses,
+feeder-head P/Q, and solve wall-time. Extracted N_phase_nodes and
+AllNodeNames once at startup. No data scaling or telemetry content
+changed (that is Phase 1 scope). Validated end-to-end through the real
+producer -> Kafka -> consumer pipeline (Docker Kafka broker).
+
+Files changed:
+- simulation/opendss_utils.py -- added get_circuit_topology(),
+  get_solution_metrics()
+- streaming/consumer.py -- calls both per timestamp, logs to
+  simulation/phase0_validation_log.csv, snapshots topology to
+  simulation/circuit_topology.json at startup
+- streaming/producer.py -- bounded to 1440 rows (one simulated day) for
+  this run, since the raw datasets are far longer than a day
+- simulation/validate_phase0.py, simulation/summarize_live_validation.py
+  (new) -- direct-replay and live-log-summary report generators
+
+Run:
+Docker Kafka up -> streaming.consumer (background) ->
+streaming.producer (background, 1440 rows, ~24 min) ->
+simulation/summarize_live_validation.py -> Docker Kafka down
+
+Result:
+1440/1440 timestamps converged (100%). V_pu observed in [0.9801, 1.0456]
+(within [0.90,1.10]). Losses averaged 1.89% of feeder-head load (within
+1-5%). Max solve time 0.0009s. N_phase_nodes = 278. All four literal
+acceptance criteria PASS -- but see 'Interpretation' above: the Phase-1
+defect is confirmed present via the feeder-head-vs-nominal check (47.9%
+of nominal), even though it doesn't trip the V_pu/loss bands as
+literally specified, because 42 of 91 loads are unmetered and stay
+static at nominal.
+
+Known limitation / next step:
+None for Phase 0 itself -- the live-pipeline and direct-replay methods
+agreed on every figure. Next: Phase 1 (fix the data layer) -- see
+reports/phase1_data_layer_report.txt.
+======================================================================

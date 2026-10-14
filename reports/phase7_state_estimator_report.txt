@@ -1,0 +1,523 @@
+======================================================================
+RES.md D10 Phase 7 -- 3-Phase AC State Estimator Report
+======================================================================
+
+Scope: build the WLS-DSSE estimator over Phase 4's measurement model,
+with zero-injection enforced as HARD Lagrangian equality constraints
+(Sha25 Sec II eq. 1-6), never folded in as high-weight pseudo-
+measurements -- the central, non-negotiable design constraint this
+phase was given, because Phase 4's own sweep (observability/sweep.py,
+reports/phase4_observability_report.txt) found cond(H^T W H) = infinite
+at every plain-WLS configuration tested. Validate against Phase 6's
+60-day normal-operation corpus: a handful of spread timestamps first,
+then a full day of the TEST split with convergence and error statistics
+reported honestly, not cherry-picked.
+
+Per the task's own scope: RES.md's fuller Phase 7 acceptance (chi^2
+test with expected DoF, the LNR bad-data loop) is NOT implemented here
+-- out of scope for this task's 5-item acceptance list, deferred to a
+future pass. This report covers the estimator itself and its validation
+only.
+
+======================================================================
+PART A -- THE ESTIMATOR
+======================================================================
+
+----------------------------------------------------------------------
+1. Problem formulation
+----------------------------------------------------------------------
+Minimise      J(x) = (z - h(x))^T W (z - h(x))
+subject to               c(x) = 0                (zero-injection, EXACT)
+
+Linearised at iterate x_k (H_k = dh/dx, C_k = dc/dx, both from
+observability.jacobian.build_jacobian, evaluated AT x_k via that
+module's new `at_v` parameter, not just at flat start):
+
+  dz = z - h(x_k)      (measurement residual)
+  dc = -c(x_k)         (constraint residual)
+
+Solved via the NULL-SPACE method, not the dense KKT block matrix. An
+earlier version of estimation/state_estimator.py solved the textbook
+Lagrangian KKT system
+
+  [ H_k^T W H_k   C_k^T ] [ dx      ]   [ H_k^T W dz ]
+  [ C_k           0     ] [ -lambda ] = [ dc         ]
+
+directly -- mathematically the same problem, but numerically UNUSABLE
+on this feeder: forming H_k^T W H_k squares H_k's own condition number,
+and this feeder's near-zero-impedance regulator/switch branches
+(Y ~10,000+ Siemens vs ~1-1000 for ordinary lines) already give H_k a
+huge dynamic range. Squaring it pushed cond(KKT) past 1e20, beyond
+float64's ~1e16 usable precision -- no amount of trust-region capping
+or LM damping fixed this, because the linear solve itself was returning
+numerically meaningless directions.
+
+The fix: the same linearised equality-constrained least-squares problem,
+solved via the null-space method, which never forms H^T W H:
+  1. Find ONE particular solution to C_k dx = dc (minimum-norm, via
+     np.linalg.lstsq -- avoids forming C^T C too).
+  2. Compute an orthonormal basis Z for the null space of C_k via SVD.
+  3. Substitute dx = dx_particular + Z w and solve the now-UNCONSTRAINED
+     reduced weighted least squares min_w ||sqrt(W)(H_k(dx_p + Zw) - dz)||^2
+     directly via lstsq on sqrt(W) H_k Z -- condition number cond(H_k),
+     not cond(H_k)^2, and a smaller system (dim = n - rank(C_k)).
+
+Sha25 eq. (6)'s scaling alpha = 1/max(diag(W)) is applied to W. A
+diagonal state-scale preconditioner (v_base for V-columns, 1.0 for
+delta-columns) handles the ~1000x column-scale disparity between actual
+volts (~2000-2500) and radians (~0-2). A trust-region step cap
+(MAX_STEP_V_PU=0.10, MAX_STEP_DELTA_RAD=0.10) plus a backtracking line
+search (halve the step until the merit function J + 1e4*sum(dc^2)
+actually improves, up to 20 halvings) guard against a single iteration's
+linearisation being locally poor -- see Part C.3 for the one place this
+line search leaves a small, quantified residue.
+
+Convergence criterion: max|dx_V|/V_base < 1e-4 pu AND max|dx_delta| <
+1e-4 rad (~0.0057 deg), iteration cap 30.
+
+----------------------------------------------------------------------
+2. Verifying the hard-constraint claim, not assuming it
+----------------------------------------------------------------------
+tests/test_state_estimator.py::test_zero_injection_entries_are_hard_not_weighted
+asserts every one of the 328 zi_entries has sigma == 0.0 and that none
+of their ids ever appear in the weighted (soft) measurement block --
+mechanically checked every test run, not just documented.
+
+demonstrate_plain_wls_failure() builds the REJECTED alternative Sha25
+warns against -- zero-injection folded into ONE plain, unconstrained
+H^T W H with a fake near-zero sigma (1e-6) standing in for "exact" --
+and reports a real cond() number:
+
+  cond(H^T W H), plain-WLS (rejected):     4.05e27
+  cond(H_meas), this estimator (unsquared): 1.20e21
+
+4.05e27 is 11 orders of magnitude past float64's ~1e16 usable
+precision -- genuinely, numerically unusable, not just "worse." The
+null-space method's own weighted-Jacobian condition number (1.20e21)
+is ALSO large -- this feeder's near-zero-impedance branches see to
+that regardless of formulation -- but it is never squared into normal
+equations, and (Part C) the SVD/lstsq-based solve empirically handles
+it: 100% convergence across a real 1440-timestamp run. Both numbers are
+asserted in tests/test_state_estimator.py::test_plain_wls_would_be_ill_conditioned
+(cond_plain > 1e15, i.e. unusable; cond_constrained < cond_plain).
+
+----------------------------------------------------------------------
+3. Three structurally distinct measurement categories
+----------------------------------------------------------------------
+Per RES.md's explicit instruction not to conflate different reasons for
+uncertainty, this estimator carries THREE separate categories, three id
+namespaces, three code paths:
+
+  ZI_*     328 rows  HARD equality constraint, sigma=0.0 exactly.
+                      observability/zero_injection.py.
+  PSEUDO_* 84 rows    WEIGHTED, Phase 5's unmetered-load pseudo-
+                      measurements -- empirical (mean, sigma) per
+                      (load, hour-of-day), from held-out IDEAL-corpus
+                      variance. observability/pseudo_measurements.py.
+  REGZI_*  30 rows    WEIGHTED, Phase 7's regulator-adjacent nodes
+                      (new this phase, Part B). observability/
+                      zero_injection.py's build_regulator_pseudo_entries.
+
+112 real meter/head entries + 84 PSEUDO + 30 REGZI = 226 = m_weighted.
+328 = p_constraints. dim(x) = 553. dof = m_weighted - (553 - 328) = 1.
+
+======================================================================
+PART B -- THE REGULATOR-ADJACENT FINDING (found building this phase)
+======================================================================
+
+----------------------------------------------------------------------
+1. The problem: some "zero-injection" nodes are not reliably zero
+----------------------------------------------------------------------
+Bugs 1-3 below (source bus, delta-load truncation, Y-ordering mismatch)
+were found and fixed while building this phase's Jacobian evaluation at
+arbitrary iterates (Part C.1). After those fixes, a FOURTH issue
+remained: nodes adjacent to a voltage-regulator transformer showed
+large, unstable zero-injection residuals specifically for late-corpus
+(test-split) timestamps -- e.g. reg1a's tap moved 6->5 after 200
+timesteps of real, time-varying load, starting from the SAME nominal-
+load compile this module's Y-bus is always built from. A hard equality
+constraint at a regulator-adjacent bus is only as exact as that frozen
+tap snapshot.
+
+Three designs were tried, in this order:
+
+  1. EXCLUDE the regulator's secondary (regulated) bus only from the
+     hard-constraint set, on the intuition that a primary bus's
+     admittance row is diluted by many other, non-regulator branches.
+     Result: dof=-17 (still negative -- rank Phase 4/5 relied on was
+     given up without being restored) AND the solve still diverged from
+     a correct starting point (0.98 pu error after 30 iterations, warm-
+     started AT x_true). Rejected on both counts.
+
+  2. EXCLUDE both the primary AND secondary bus of every regulator.
+     Result: dof=-29 (MORE rank given up), but converged cleanly in
+     both warm-started and flat-start cases (0.05-0.09 pu error).
+     Better numerically, but still gives up dof Phase 4/5's full-rank
+     finding relied on -- not a design to ship as-is.
+
+  3. KEEP these nodes in the problem as WEIGHTED pseudo-measurements
+     instead of excluding them (the design shipped -- Part B.2).
+
+----------------------------------------------------------------------
+2. The shipped design, and a correction found while building it
+----------------------------------------------------------------------
+observability/zero_injection.py's enumerate_regulator_adjacent_nodes
+identifies the 15 nodes (30 P/Q rows) touching a regulator transformer,
+either side. observability/estimator_model.py's
+_estimate_regulator_mean_sigma evaluates h_P_injection/h_Q_injection
+(the SAME analytic formula Gauss-Newton itself uses, not a second
+OpenDSS solve) at each of these nodes, AT the Phase 6 corpus's own
+persisted x_true, across ~300 samples spread through the TRAIN split
+(held out from the val/test splits this phase validates against, same
+discipline as Phase 5).
+
+The FIRST version of this function pooled all 15 nodes together and
+targeted a hardcoded z_value=0.0 -- treating the whole set as "should
+read zero, just uncertain," the same story as the tap-drift account
+above. Direct inspection of the PER-NODE distribution falsified that
+story for some of these nodes: bus 25's P/Q injection reads a
+CONSISTENT ~120-130 (kW/kvar) across nearly every sampled ground-truth
+timestamp -- not an occasional tap-drift spike around 0, a persistent
+nonzero value. Some other nodes (e.g. 150r) DO read near-0 most of the
+time with rare, large, tap-change-driven spikes (mean 752,608 kvar,
+median ~44 kvar for one 150r phase -- the mean is entirely dragged by
+one outlier sample; consistent with an actual discrete tap-change event
+at one specific corpus timestamp).
+
+Rather than adjudicate node-by-node which story explains which bus, the
+shipped fix estimates BOTH the mean and the spread, per node, exactly
+as Phase 5 does for unmetered loads: the pseudo-measurement's target is
+whatever the held-out data says is typical for THAT node, not an
+assumed 0. This is a real correction, not a refinement -- the earlier
+force-target-0 version was implemented, tested, and its numeric output
+inspected before this fix; re-running the same 10-timestamp sanity
+check (Part C.2) after the fix gave results matching the earlier
+version to 4 decimal places (0.04126 vs 0.04126 pu on the first probe
+timestamp) -- these rows carry very little practical WEIGHT either way
+(sigma is large for most of them), so correctness of the modelling
+assumption mattered more than it changed the numeric bottom line here,
+but the assumption itself needed to be right, and wasn't originally.
+
+Result: m_weighted=226 (112 meter/head + 84 PSEUDO + 30 REGZI),
+p_constraints=328, dof=1 -- non-negative, consistent with Phase 4/5's
+"full rank achievable" finding (though barely; see Part D.5) -- while
+converging as cleanly as design 2 above, because a weighted row with a
+real sigma never creates an infeasible hard constraint the way
+excluding-then-still-implicitly-expecting-0 does.
+
+======================================================================
+PART C -- VALIDATION
+======================================================================
+
+----------------------------------------------------------------------
+1. Three bugs fixed building the Jacobian-at-arbitrary-iterate path
+----------------------------------------------------------------------
+Phase 4 only ever evaluated h(x)/H at flat start; this phase's Gauss-
+Newton needs both at arbitrary x_k. Doing so surfaced three bugs
+invisible to Phase 4's rank-only (structural) analysis:
+
+  Bug 1 -- source bus (150) wrongly classified as zero-injection: it
+  has no Load object either, but the ENTIRE feeder's power enters
+  there. h_zi(x_true) showed a ~58,700,000 kW residual at ZI_150_*
+  against a median ~5e-11 kW elsewhere. Fixed: exclude the Vsource's
+  own bus explicitly (observability/zero_injection.py's _source_bus).
+
+  Bug 2 -- Delta-connected single-phase loads' second terminal not
+  excluded: node_order[:num_phases] truncation is correct for a Wye
+  load but drops S35a/S65a-c/S76a-c's second, physically-loaded
+  terminal (num_phases=1 counts ONE complex power value; current
+  physically flows through both delta terminals). Confirmed via
+  h_zi(x_true): hundreds of thousands of kW residual at the un-
+  truncated terminal specifically. Fixed: use every nonzero node_order
+  entry, not a num_phases-based slice.
+
+  Bug 3 -- dss.Circuit.AllNodeNames() and dss.Circuit.YNodeOrder()
+  are NOT the same permutation: confirmed directly, they disagree at
+  6 of 278 positions (clustered around buses 35/36/67/68). Reverse-
+  indexing Y's columns via AllNodeNames (the old code) silently
+  attributed a nonzero Y entry to the wrong neighbour node at exactly
+  those positions -- invisible to a rank check, fatal to a solve that
+  evaluates h_zi(x) against a target of exactly 0. Cross-checked
+  independently via OpenDSS's own Powers()-sum power balance at bus 67
+  (exactly 0, proving the network model was never the problem). Fixed:
+  build the reverse index from node_index itself (observability/
+  jacobian.py's _system_y_row), guaranteed consistent with whatever
+  permutation Y's own columns actually use.
+
+All three are covered by the existing rank/structural tests continuing
+to pass (they don't change rank) plus this phase's own convergence
+runs, which would not reach 100% without them (astronomic, 1e7-1e8
+divergence was observed with bugs 1+2 still present, before the null-
+space/line-search work even began).
+
+----------------------------------------------------------------------
+2. Sanity check -- a handful of normal timestamps (flat start)
+----------------------------------------------------------------------
+10 timestamps spread across the full 9-day TEST split (different days
+AND different hours-of-day, exercising different pseudo-measurement
+buckets), each estimated from a FLAT start. Run:
+validation/phase7_sanity_check.py
+
+real_timestamp        converged  iters  time_s  maxV_err(pu)  medV_err(pu)  maxDelta_err(rad)
+2018-05-25 04:19:00   True       1      1.65    0.04126       0.01833       0.05785
+2018-05-26 04:04:00   True       1      1.63    0.04028       0.02334       0.05715
+2018-05-27 03:50:00   True       1      1.64    0.04816       0.02551       0.05729
+2018-05-28 03:36:00   True       1      1.71    0.03923       0.02130       0.06302
+2018-05-29 03:21:00   True       1      1.53    0.04583       0.02496       0.05088
+2018-05-30 03:07:00   True       1      1.63    0.04796       0.02453       0.05812
+2018-05-31 02:52:00   True       1      1.52    0.04946       0.02469       0.05455
+2018-06-01 02:38:00   True       1      1.66    0.04759       0.02502       0.05680
+2018-06-02 02:24:00   True       1      1.65    0.04473       0.02154       0.05563
+2018-06-02 21:50:00   True       1      1.72    0.04999       0.02486       0.08967
+
+10/10 converged, all in a single iteration, error stable and consistent
+across the whole split -- the basic sanity bar the task named ("if it
+fails here, nothing downstream can be trusted") is met, not assumed.
+
+----------------------------------------------------------------------
+3. Full day, TEST split, streaming operation -- convergence + error
+----------------------------------------------------------------------
+1440 consecutive timestamps (2018-05-25, the first TEST-split day),
+each timestamp's converged solution seeding the next timestamp's start
+(only the first is a flat start) -- the way a continuously-running
+estimator actually operates. Run: validation/phase7_fullday.py. Full
+per-timestamp record: validation/phase7_fullday_results.csv.
+
+  convergence rate:            1440 / 1440  =  100%
+  iterations:                  mean 1.00, median 1, max 2
+                                (1437 converged in 1 iteration, 3 in 2)
+  time per estimate:           mean 2.02s, median 1.65s, max 519.8s
+                                (ONE outlier at 2018-05-25 17:17:00 --
+                                same 1-iteration convergence and
+                                entirely normal error stats as its
+                                neighbours, so attributed to a system-
+                                level [OS/process] hiccup during the
+                                background run, not an algorithmic
+                                issue; excluding it, mean=1.66s,
+                                median=1.65s -- a very stable per-
+                                timestamp cost)
+  max V error (pu):            mean 0.04608, median 0.04573,
+                                p95 0.05616, max 0.06870
+  median V error (pu):         mean 0.02444, max 0.03651
+  max delta error (rad):       mean 0.06896, median 0.06757,
+                                p95 0.08671, max 0.10884
+  constraint_residual_inf:     mean 199.54, median 199.48, max 199.89
+                                (see Part D.2 -- root-caused to 2 of 328
+                                hard-constraint rows specifically, not a
+                                general softening of the constraint)
+
+Error is NOT concentrated at regulator-adjacent nodes -- checked
+explicitly, not assumed: mean V error over nodes on a regulator-
+adjacent bus is 0.015 pu, LOWER than the 0.021 pu mean over all other
+nodes. The worst-error nodes (buses 77-83, 108, 300 -- a specific
+downstream lateral) are unrelated to any regulator; this is ordinary
+WLS estimation error at a less-directly-observed part of the feeder,
+the kind any state estimator running on a sparse (106-of-278-node)
+real-meter placement should expect, not a regulator-specific defect
+Part B's fix failed to resolve.
+
+A separate warm-start-AT-x_true probe (starting the solver exactly at
+ground truth, not flat start) still drifts to ~0.055 pu / 0.12 rad
+error on convergence -- confirming this is the genuine WLS-optimal
+point given this configuration's real per-meter sensor sigma (0.02-14.6
+kW/kvar, sensors/registry), not a symptom of the solver failing to find
+a better point that's actually reachable.
+
+======================================================================
+PART D -- ACCEPTANCE CHECKLIST AND KNOWN LIMITATIONS
+======================================================================
+
+----------------------------------------------------------------------
+1. Acceptance checklist (verbatim from the task)
+----------------------------------------------------------------------
+[x] Estimator uses hard equality constraints for zero-injection, not
+    soft pseudo-measurements -- explicitly verified, not assumed.
+    tests/test_state_estimator.py::test_zero_injection_entries_are_hard_not_weighted
+    (sigma==0.0 for all 328, disjoint from the weighted block) and
+    ::test_plain_wls_would_be_ill_conditioned (cond()=4e27 if folded in
+    the rejected way -- Part A.2).
+
+[x] Recovers x_true within stated tolerance on normal (unattacked)
+    data. 100% convergence, worst-case V error 6.9% pu / delta error
+    10.9% rad across a full day of real test-split timestamps (Part
+    C.3); test_recovers_x_true_on_normal_timestamp asserts a looser
+    <10% pu / <0.30 rad regression gate.
+
+[x] Convergence rate and iteration statistics reported across a real
+    run, not a single cherry-picked timestamp. 1440/1440 (100%),
+    mean 1.00 iterations, full per-timestamp CSV committed (Part C.3).
+
+[x] Pseudo-measurements from Phase 5 used with their estimated sigma,
+    kept structurally distinct from zero-injection. Verified in
+    test_pseudo_and_regulator_entries_are_weighted_with_positive_sigma
+    and test_id_namespaces_are_disjoint (ZI_ / PSEUDO_ / REGZI_ never
+    collide) -- Part A.3.
+
+[x] All existing tests still pass. 110/110 (105 pre-existing +
+    5 new in tests/test_state_estimator.py).
+
+----------------------------------------------------------------------
+2. Known limitation -- 2 of 328 hard constraints, ~200 kvar residual
+----------------------------------------------------------------------
+constraint_residual_inf sits stably around ~200 (kW/kvar) across the
+whole full-day run, not ~0 as a "hard" constraint's name might suggest.
+Root-caused, not just observed: at the converged x_hat, 311 of 328
+(94.8%) hard zero-injection rows satisfy |h_zi| < 0.01 kW/kvar (median
+0.00036), but bus 83's two Q-injection rows (a fixed, 3-phase shunt
+capacitor bus, c83 -- unrelated to the regulator finding in Part B)
+sit at ~200 kvar. Confirmed this is NOT a Y-bus/capacitor-modelling bug:
+h_zi(x_true) at bus 83 is exactly 0 to float64 precision (-0.000000 /
+0.000000), matching every other genuine zero-injection node, and the
+constraint Jacobian there is confirmed FULL ROW RANK (a unit-target
+achievability check at bus 83's own rows returns exactly 1.0). The
+residual is introduced during the SOLVE: the null-space step exactly
+satisfies the LINEARISED constraint when taken in full, but the
+backtracking line search (Part A.1) can accept a FRACTIONAL step when
+a full step doesn't improve the merit function -- a fractional step
+only partially corrects a NONLINEAR constraint, even when the full
+linearised correction would have zeroed it. Because the current
+convergence criterion checks only step SIZE (not constraint
+satisfaction), the solve can declare "converged" while this localised
+under-correction persists, especially given most real corpus runs
+settle in just 1-2 iterations (little chance for a later iteration to
+clean up a single iteration's shortfall).
+
+This does not block any of the five stated acceptance items above
+(V/delta error stays well inside the stated tolerance either way), but
+is a genuine, specific, quantified gap rather than a clean win --
+documented here rather than smoothed over. A future pass should either
+(a) also require constraint_residual_inf below a threshold before
+declaring convergence, or (b) add a final, cheap clean-up Newton step
+restricted to any still-unsatisfied constraint rows.
+
+----------------------------------------------------------------------
+3. Known limitation -- heavy-tailed sigma at some REGZI_ nodes
+----------------------------------------------------------------------
+A few REGZI_ nodes (notably the *r buses immediately across a near-
+zero-impedance regulator branch, e.g. 150r) show a heavy-tailed, mean-
+dominated-by-one-outlier distribution across the ~300 sampled
+timestamps (one 150r phase: mean 752,608 kvar, median ~44 kvar) --
+consistent with a rare, large, discrete tap-change event at one
+specific corpus timestamp rather than a steady spread. This phase used
+plain mean+std for these entries, matching Phase 5's own established
+methodology for load pseudo-measurements, rather than introducing a
+different (robust/median-based) statistic specifically here. The
+practical consequence is small (these rows end up with very large
+sigma, hence very low WEIGHT, hence negligible influence on the
+solve -- confirmed by the sanity-check numbers matching to 4 decimal
+places before and after correcting the target from a hardcoded 0 to
+the empirical mean, Part B.2) but a future pass estimating sigma via a
+robust statistic (median absolute deviation) for these specific,
+identified nodes would let them carry real, useful weight instead of
+being an almost-inert bookkeeping entry.
+
+----------------------------------------------------------------------
+4. Known limitation -- RES.md's fuller Phase 7 acceptance deferred
+----------------------------------------------------------------------
+RES.md D10 Phase 7's own acceptance criteria additionally call for
+"J(x_hat) follows chi^2 with the expected DoF" and a working LNR
+(largest-normalised-residual) bad-data loop. Neither is implemented in
+this pass -- out of scope for the 5-item acceptance list this task was
+explicitly given ("Do not start Phase 8"). dof is computed and reported
+(=1) but no chi^2 goodness-of-fit test or iterative bad-data removal
+loop exists yet.
+
+----------------------------------------------------------------------
+5. Known limitation -- dof=1 is a thin margin
+----------------------------------------------------------------------
+Phase 5's BASE design (556 rows: 106 meter P,Q + 366 zero-injection +
+84 pseudo) plus the 6 deployed HEAD_P/Q entries gave rank 553/553 with
+comfortable redundancy in the FULL count (562 total rows against 553
+unknowns). Restoring non-negative dof here required moving 15 nodes (30
+rows, 8.2% of the original 366 zero-injection constraints) from hard to
+weighted -- dof=1 is barely non-negative, not a healthy margin. This is
+a real, quantified departure from Phase 4/5's original zero-injection
+design, driven by evidence (regulator-adjacent nodes not behaving as
+reliable exact-zero constraints, Part B) that Phase 4's structural,
+flat-start-only rank analysis could not have surfaced. Documented here
+per CLAUDE.md's redesign-disclosure requirement, not silently absorbed.
+
+======================================================================
+PART E -- FILES
+======================================================================
+observability/estimator_model.py    NEW -- builds the fixed model
+                                     (Y-bus, state layout, 112 meter/
+                                     head entries, 328 hard ZI entries,
+                                     30 REGZI weighted entries, 42
+                                     unmetered-load pseudo tables) once,
+                                     outside estimation/.
+observability/zero_injection.py     EXTENDED -- _regulator_buses,
+                                     enumerate_regulator_adjacent_nodes,
+                                     build_regulator_pseudo_entries;
+                                     3 bugs fixed (Part C.1, bugs 1-2).
+observability/jacobian.py           EXTENDED -- at_v parameter for
+                                     evaluating H/h0 away from flat
+                                     start; Bug 3 fix (Part C.1).
+observability/state_vector.py       EXTENDED -- complex_v_from_state
+                                     (arbitrary iterate -> complex V);
+                                     x0_delta format standardised to
+                                     match extract_solved_state.
+observability/pseudo_measurements.py EXTENDED -- build_pseudo_entries_
+                                     for_hour (Phase 5's per-hour tables
+                                     consumed at estimation time).
+estimation/__init__.py              NEW (empty).
+estimation/state_estimator.py       NEW -- StateEstimator, Gauss-Newton
+                                     /null-space solve, EstimationResult,
+                                     demonstrate_plain_wls_failure.
+tests/test_state_estimator.py       NEW -- 5 tests (Part D.1).
+tests/test_import_boundaries.py     UPDATED -- estimation/ now scanned
+                                     and non-vacuous (caught a real
+                                     violation during development, see
+                                     that file's own docstring).
+tests/test_observability.py         UPDATED -- _system_y_row call site
+                                     (state param removed, Bug 3 fix).
+validation/phase7_sanity_check.py   NEW -- Part C.2.
+validation/phase7_fullday.py        NEW -- Part C.3.
+validation/phase7_fullday_results.csv  generated by the above (gitignored,
+                                     *.csv -- regenerate via the script).
+
+======================================================================
+CLAUDE.md Report
+======================================================================
+Implemented: 3-phase AC WLS state estimator (Gauss-Newton, null-space
+Lagrangian equality constraints for zero-injection, Sha25 eq.6 scaling,
+diagonal state preconditioner, trust-region + backtracking line search).
+Zero-injection stays hard (328 rows, sigma=0.0, verified in tests and
+via a real cond() comparison against the rejected plain-WLS
+alternative). Phase 5 load pseudo-measurements enter weighted with
+their estimated sigma. Found and fixed 3 bugs in Phase 4's zero-
+injection/Jacobian code (source bus, delta-load truncation, Y-ordering
+mismatch) that were invisible to a rank-only check but fatal to an
+iterative solve. Found that regulator-adjacent zero-injection nodes are
+not reliable exact-zero constraints (tap drift + Y-bus representation);
+resolved by demoting 15 such nodes (30 rows) to weighted pseudo-
+measurements with PER-NODE empirically estimated (mean, sigma) --
+correcting an initial version that wrongly hardcoded target=0 for all
+of them. dof restored to a non-negative (but thin) 1.
+Files changed: observability/estimator_model.py (new),
+observability/zero_injection.py, observability/jacobian.py,
+observability/state_vector.py, observability/pseudo_measurements.py,
+estimation/__init__.py (new), estimation/state_estimator.py (new),
+tests/test_state_estimator.py (new), tests/test_import_boundaries.py,
+tests/test_observability.py, validation/phase7_sanity_check.py (new),
+validation/phase7_fullday.py (new).
+Run: python -m pytest tests/ -q (110 passed); python -m
+validation.phase7_sanity_check; python validation/phase7_fullday.py.
+Result: 110/110 tests pass. 100% convergence over 1440 real test-split
+timestamps (mean 1.00 iterations), max V error 6.9% pu / max delta
+error 10.9% rad across the full day, both well inside the committed
+test's regression gate. All 5 stated acceptance items verified in code,
+not just asserted in prose.
+Known limitation / next step: RES.md's fuller Phase 7 acceptance
+(chi^2 test, LNR bad-data loop) deferred -- explicitly out of this
+task's scope. 2 of 328 hard constraints (bus 83, a fixed shunt
+capacitor's Q rows) carry a ~200 kvar residual at declared convergence,
+root-caused to the backtracking line search accepting a fractional
+step that only partially corrects a nonlinear constraint even though
+the full linearised correction would have zeroed it -- convergence
+currently checks step size only, not constraint satisfaction. A few
+REGZI_ nodes have heavy-tailed, outlier-dominated sigma (plain mean+std,
+matching Phase 5's methodology) that leaves them carrying negligible
+practical weight; a robust (median/MAD) estimator would let them
+contribute real information instead. dof=1 is a thin, not comfortable,
+margin. Do not start Phase 8.

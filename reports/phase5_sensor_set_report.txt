@@ -1,0 +1,380 @@
+======================================================================
+RES.md D10 Phase 5 -- Minimum Sensor Set + Pseudo-Measurement Report
+======================================================================
+
+Scope: given Phase 4's finding that the MAXIMAL multiphase sensor
+configuration achieves full rank (553/553, zero critical measurements),
+find the MINIMUM configuration that still achieves it, and finalise the
+pseudo-measurement design (sigma estimated from held-out historical
+data, static/offline by design, kept distinct from Phase 4's zero-
+injection constraints).
+
+----------------------------------------------------------------------
+Correction carried in from Phase 4 (found while building this phase)
+----------------------------------------------------------------------
+observability/sweep.py's "meters_v" group filter (`"load_name" in e`)
+silently matched ZERO entries: V_magnitude meter entries never carried
+a "load_name" field (only P_injection/Q_injection did, per
+sensors/generate_registry.py's build_meter_entries). Phase 4's own
+"2_plus_meters_v" cumulative-sweep step was therefore VACUOUS -- it
+never actually added any rows. The conclusion it reported ("|V| at
+meters contributes zero rank improvement") happens to still be TRUE
+(confirmed below, now genuinely tested), but was not actually tested at
+the time. Fixed at the source: sensors/generate_registry.py's v_entry
+and multiphase extra-phase V entries now carry "load_name" like their
+P/Q siblings; both config/sensor_registry.json and
+config/sensor_registry_multiphase.json regenerated (verified via a
+before/after diff: the ONLY change in every entry, across both files,
+is the added "load_name" key -- no id, sigma, or enabled-flag drift).
+Phase 4's FINAL VERDICT (registry-variant decision, full rank achieved
+with multiphase's maximal config) is UNCHANGED by this fix -- only the
+intermediate step-2 row/rank numbers in
+reports/phase4_observability_report.txt were wrong (rank still showed
+correctly as unchanged, since a 0-entry addition trivially can't change
+rank; only "m_total_rows" was misleadingly reported as unchanged rather
+than +49/+53). That file is left as-is (project convention: corrections
+are recorded in the phase that finds them, not by silently rewriting an
+earlier phase's report) -- the corrected numbers are here and in
+artifacts/20260829T165146Z/phase5_sensor_set/
+corrected_cumulative_sweep_multiphase.csv.
+
+======================================================================
+PART A -- MINIMUM SENSOR SET
+======================================================================
+
+----------------------------------------------------------------------
+1. Mandatory base (not searched over)
+----------------------------------------------------------------------
+Three categories are NOT optional "sensors" being traded off against
+each other -- they are structurally necessary by construction, per D2/
+D4's own framing, and are held fixed throughout this search:
+  - 106 meter P,Q entries (multiphase registry variant, Phase 4's
+    already-justified decision -- not re-litigated here)
+  - 366 zero-injection equality constraints (free, exact, Sha25 Sec II)
+  - 84 pseudo-measurements at the 42 unmetered loads (real, unmeasured
+    consumption -- see Part B for the sigma estimate now used here)
+
+  BASE = 556 rows.
+
+----------------------------------------------------------------------
+2. BASE alone already reaches full rank -- but is not yet redundant
+----------------------------------------------------------------------
+  rank(H) = 553 / 553  (BASE ALONE, no head/branch/V at all)
+  n_critical = 5
+
+  Critical measurements at BASE:
+    PSEUDO_s107b_P   PSEUDO_s107b_Q
+    PSEUDO_s113a_Q
+    PSEUDO_s114a_Q
+    PSEUDO_s2b_Q
+
+All five are pseudo-measurements at unmetered loads on buses 2, 107,
+113, 114 -- electrical extremities with no alternate path in BASE alone
+to cross-check their injection. This is the honest, narrower
+observation Phase 4's "search the maximal config" framing did not
+surface: reaching rank=553 and reaching a GENUINELY REDUNDANT (BDD-
+usable) configuration are two different thresholds, and only the
+second is what actually protects these five measurements from an
+undetectable single-point attack.
+
+----------------------------------------------------------------------
+3. The minimum addition that eliminates all criticality
+----------------------------------------------------------------------
+Searched in RES.md D4 Sec 4.3's cumulative priority order (|V| at
+meters -> substation head, sub-searched by quantity type -> branch),
+via observability/minimum_sensor_set.py (a committed, reusable module,
+not a one-off script -- reproduced independently below):
+
+  Candidate                    entries   n_critical after   verdict
+  meters_V (all 53)                53          7            WORSE, redundant
+  head_P_Q only                     6          0            MINIMUM -- stop here
+  head_V only                       3          5            no help, redundant
+  head_I only                       3          5            no help, redundant
+  head_full (P,Q,V,I)              12          0            redundant (head_PQ alone suffices)
+  branch_full (165)               165          0            redundant (alternative, far less efficient)
+
+  MINIMUM SENSOR SET = BASE (556) + HEAD_P_A/B/C, HEAD_Q_A/B/C (6)
+                      = 562 total rows
+                      rank = 553/553, n_critical = 0
+
+Only 6 additional registry entries -- the substation head's P,Q per
+phase -- are strictly required beyond the mandatory base to reach the
+same full-rank, zero-critical result Phase 4's 786-row maximal
+configuration achieved. |V| at meters (53 entries) is not just
+unneeded but COUNTERPRODUCTIVE for this specific goal: adding it to
+BASE alone shifts the critical set to 7 (from 5) -- a real, if minor,
+illustration that adding measurements is not always monotonically
+beneficial to the CURRENT critical-measurement identification once
+near-degenerate structure is present (a mathematical curiosity of which
+specific rows the removal-test flags, not a physical property; total
+observability is never reduced by adding a row). Head's VOLTAGE and
+CURRENT quantities individually do nothing for these 5 -- only the
+POWER-balance constraint at the substation (P_head, Q_head) supplies
+the missing redundant path, via Kirchhoff's current law tying the
+substation's total throughput to the sum of everything downstream,
+including these leaf buses.
+
+----------------------------------------------------------------------
+4. Minimum vs. deployed -- these are different questions, both answered
+----------------------------------------------------------------------
+This report answers "what is the smallest addition that closes the
+rank/criticality gap" precisely: HEAD_P_Q, 6 entries. RES.md's own
+Phase 5 "Out" line ("substation head x3phi, 6-12 branch units, |V| at
+meters") asks for something BROADER, justified by DIFFERENT criteria
+D4 Sec 4.3 states explicitly and this report does not override:
+  - Full head (P,Q,V,I) is "operationally the single highest-value
+    sensor... nearly free to add" -- V and I give real-time cross-check
+    value even though they don't move rank/criticality here.
+  - Branch units give "measurement redundancy... to validate the
+    dataset and identify/eliminate bad data" (Youssef Sec II) -- a bad-
+    data-detection argument, not a rank argument; RES.md's own 6-12-
+    unit range already anticipates most of the 165-row branch group is
+    unnecessary for rank, consistent with what this search independently
+    confirms (0 of 165 rows needed for rank/criticality once head_PQ is
+    present).
+  - |V| at meters is "free in a real AMI... directly constrains the
+    voltage half of the state vector" -- a conditioning/cross-check
+    argument, not a rank one.
+This report does NOT change config/sensor_registry_multiphase.json's
+"enabled" flags -- doing so would change what streaming/producer.py
+actually publishes (Phase 3's live pipeline), which is a deployment
+decision beyond "search for the minimum and report exactly which
+entries are required and which are redundant" as asked. Flagged
+explicitly under Known limitation / next step, not silently skipped.
+
+======================================================================
+PART B -- PSEUDO-MEASUREMENTS AT THE 42 UNMETERED LOADS
+======================================================================
+
+----------------------------------------------------------------------
+1. sigma_pseudo -- estimated, not asserted
+----------------------------------------------------------------------
+Method (observability/pseudo_measurements.py), the "minimum acceptable"
+RES.md names -- empirical per-node, per-time-bucket variance from held-
+out historical data:
+  1. Each unmetered load's dataset/node_loads_91/ series (IDEAL corpus,
+     60 days, 1-min resolution) is split 75/25 into TRAIN (45 days) and
+     HELD-OUT (15 days).
+  2. Bucketed by hour-of-day (24 buckets/node) -- captures the dominant
+     diurnal load shape without a richer model.
+  3. The pseudo-measurement VALUE for a given hour is the TRAIN-bucket
+     mean P,Q -- what a static, offline generator would predict.
+  4. sigma_pseudo for that (node, hour) is the sample std of the HELD-
+     OUT bucket's ACTUAL values around the TRAIN-derived mean -- an
+     honest out-of-sample estimate, not the optimistic in-sample
+     residual a train-only variance would give.
+Reported sigma_pseudo (mean across the 24 hour-buckets) for all 42
+unmetered loads, sorted, ranges 27.7% to 42.1% of that node's own mean
+P (median ~34%) -- genuinely per-node, not a copy-pasted constant (56
+distinct values across 42 x 2 quantities, confirmed by
+tests/test_pseudo_measurements.py). Full 42-node table:
+artifacts/20260829T165146Z/phase5_sensor_set/sigma_pseudo_summary.json;
+per-hour detail (24 buckets x 42 nodes):
+artifacts/20260829T165146Z/phase5_sensor_set/sigma_pseudo_per_hour.json.
+
+Sample (lowest, median, highest sigma-fraction nodes):
+  s102c   mean_p=20.03 kW   sigma_p=5.95 kW   (29.7%)
+  s113a   mean_p=40.85 kW   sigma_p=13.69 kW  (33.5%)
+  s95b    mean_p=20.09 kW   sigma_p=8.46 kW   (42.1%)
+
+This replaces the flat SIGMA_FRAC_PSEUDO=0.10 placeholder Phase 4's own
+observability/sweep.py used (documented there at the time as
+"not asserted as the Phase-5 answer") -- observability/sweep.py's
+build_pseudo_entries() now calls
+observability.pseudo_measurements.build_pseudo_entries_with_estimated_sigma()
+directly; sweep._sigma_for() prefers an entry's own pre-estimated sigma
+when present, falling back to the flat-fraction rule only for meter/head/
+branch entries that were never estimated this way.
+
+----------------------------------------------------------------------
+2. Static, offline-computed -- stated as a deliberate security property
+----------------------------------------------------------------------
+This generator NEVER conditions on live measurements -- it is computed
+once from historical corpus data, before any live telemetry (attacked
+or not) exists, and does not retrain or re-derive its (mean, sigma)
+tables at inference time.
+
+Ald25's own pseudo-measurement generator (WaveNet-LSTM, Monte Carlo
+dropout for its own sigma estimate) consumes LIVE main-branch-flow
+currents as an input feature. If an attacker manipulates those upstream
+measurements, Ald25's generator LAUNDERS attacker-influenced signal
+into what the estimator treats as an INDEPENDENT pseudo-measurement --
+a circularity channel Ald25 never considers (the paper is non-
+adversarial throughout). This design's offline, historical-only pseudo-
+measurements are STRUCTURALLY IMMUNE to that channel: nothing an
+attacker does to Layer-2 telemetry at run time can change what
+observability/pseudo_measurements.py predicts for a given (node, hour),
+because the prediction was fixed at generation time. This is framed
+here as a DELIBERATE SECURITY CHOICE, per RES.md's explicit instruction
+-- not an accuracy shortfall relative to Ald25's materially lower MAE
+(0.059 vs. a GMM baseline's 0.241 on irregular loads) -- both designs
+solve different problems; this one additionally refuses a specific
+attack surface Ald25's does not defend against.
+
+Residual exposure, acknowledged rather than hidden: STALE-MODEL DRIFT.
+A pseudo-measurement generator fixed at one 60-day snapshot becomes a
+worse predictor as real consumption patterns shift over time (seasonal
+change, new appliances, behaviour change) -- this would show up as
+sigma_pseudo becoming too optimistic relative to the true current
+spread, a data-freshness problem to monitor and periodically re-
+estimate against, not a live-data attack surface.
+
+----------------------------------------------------------------------
+3. Distinct from zero-injection -- verified, not just asserted
+----------------------------------------------------------------------
+Zero-injection (Phase 4, observability/zero_injection.py): load-FREE
+phase-nodes, P=Q=0 known EXACTLY, enforced as hard equality constraints.
+Pseudo-measurements (this phase, observability/pseudo_measurements.py):
+the 42 UNMETERED LOAD nodes, which have REAL, nonzero, just-unmeasured
+consumption, estimated with an honest nonzero sigma from historical
+data. Kept structurally distinct, not just in prose:
+  - Separate modules, separate id namespaces (ZI_* vs. PSEUDO_*) --
+    tests/test_pseudo_measurements.py::
+    test_pseudo_and_zero_injection_use_disjoint_id_namespaces asserts
+    both the id-prefix split AND that the two mechanisms' node sets are
+    disjoint (no bus is ever both a zero-injection node and a pseudo-
+    measurement node) against the REAL compiled circuit, not a mock.
+  - Different treatment in the rank/conditioning machinery
+    (observability/sweep.py): zero-injection rows are Lagrangian
+    equality constraints (in the rank test, excluded from H^T W H);
+    pseudo-measurement rows are ordinary weighted measurements (in
+    both the rank test AND H^T W H, now weighted by their genuinely
+    estimated sigma rather than a placeholder).
+
+======================================================================
+LIMITATIONS
+======================================================================
+  - The minimum sensor set (Sec Part A.3) is not deployed -- config/
+    sensor_registry_multiphase.json's "enabled" flags are unchanged.
+    Wiring the 6 head_P_Q entries (or RES.md's broader recommended set)
+    into the live producer/consumer pipeline (streaming/producer.py
+    does not currently measure or publish head telemetry at all) is a
+    deployment decision this report deliberately did not make --
+    flagged under Known limitation / next step.
+  - sigma_pseudo's hour-of-day bucketing (24 buckets) is the "minimum
+    acceptable" method RES.md names, not the richer Monte-Carlo-dropout
+    learned-generator approach Ald25 uses; a finer time resolution (or
+    day-of-week interaction) was not attempted, judged unnecessary
+    given 900+ held-out samples per bucket already gives a stable
+    estimate.
+  - The train/held-out split (75/25, 45/15 days) is a reasonable,
+    stated choice, not validated against alternative splits.
+  - The critical-measurement search (Sec Part A.3) tested candidates in
+    RES.md's stated priority order and stopped at the first sufficient
+    one (head_P_Q) -- it does not claim head_P_Q is the UNIQUE minimum
+    (e.g. some smaller ad hoc combination of individual branch segments
+    might also work) -- only that it is the smallest of the CATEGORIES
+    RES.md's own D4 Sec 4.3 table names, tested in its own priority
+    order, which is what this task asked for.
+
+======================================================================
+UNBLOCKS
+======================================================================
+Phase 6 (generate the normal-operation corpus) -- the sensor set and
+pseudo-measurement design are now both evidenced and estimated rather
+than assumed, giving Phase 6 a settled measurement model to generate
+data against.
+
+======================================================================
+METHOD
+======================================================================
+observability/pseudo_measurements.py -- sigma_pseudo estimation
+(train/held-out split, hour-of-day buckets), pseudo-entry builder with
+estimated sigma, static/offline circularity-immunity design documented
+in the module docstring.
+observability/minimum_sensor_set.py -- the minimum-addition search
+(base rank/criticality, candidate testing in RES.md's priority order).
+observability/sweep.py -- meters_v filter now works (Correction, above);
+build_pseudo_entries() now calls the estimated-sigma builder.
+sensors/generate_registry.py -- v_entry (both base and multiphase extra-
+phase) now carries "load_name", matching P/Q entries; both registries
+regenerated, diff-verified as load_name-only.
+tests/test_pseudo_measurements.py -- 5 new tests.
+
+Artifacts: artifacts/20260829T165146Z/phase5_sensor_set/
+  sigma_pseudo_summary.json      -- per-node summary, all 42 loads
+  sigma_pseudo_per_hour.json     -- full 24-bucket detail, all 42 loads
+  pseudo_entries.json            -- the 84 pseudo-measurement registry-
+                                     shaped entries with estimated sigma
+  minimum_sensor_set.json        -- Part A's full search result
+  corrected_cumulative_sweep_multiphase.csv -- Phase 4's sweep re-run
+                                     with the meters_v fix applied
+
+Full test suite: 99/99 passed (94 pre-existing + 5 new
+tests/test_pseudo_measurements.py), confirming no regression from the
+generate_registry.py fix, the sweep.py sigma wiring, or the new
+modules.
+======================================================================
+
+======================================================================
+CLAUDE.md Report
+======================================================================
+Implemented:
+RES.md D10 Phase 5 -- found the minimum sensor configuration on top of
+Phase 4's mandatory base (106 multiphase meter P,Q + 366 zero-injection
++ 84 pseudo-measurements = 556 rows, already full rank but with 5
+critical pseudo-measurements at leaf buses 2/107/113/114): just the
+substation head's P,Q per phase (6 entries) eliminates all criticality,
+giving 562 rows at rank=553/553, n_critical=0 -- confirmed via a
+reusable search module (observability/minimum_sensor_set.py) that tests
+every RES.md D4 4.3 category (and head's own P/Q/V/I sub-groups) in
+priority order. |V| at meters and head's V/I sub-groups are redundant
+for this specific goal (V at meters actually shifts the critical count
+to 7, a real if minor finding); full head and full branch also work but
+are far less efficient (12 and 165 entries respectively) once head_P,Q
+is present. Finalised the pseudo-measurement design: sigma_pseudo is
+now estimated per-node from held-out IDEAL-corpus variance (75/25
+train/held-out split, hour-of-day buckets), replacing Phase 4's flat
+10%-of-reading placeholder, ranging 27.7-42.1% of each node's own mean
+across the 42 unmetered loads -- genuinely per-node, verified by test.
+Documented the static/offline design as a deliberate circularity-
+immunity security property (vs. Ald25's live-branch-flow-conditioned
+generator), and verified zero-injection and pseudo-measurements remain
+structurally distinct (disjoint id namespaces, disjoint node sets,
+different treatment in the rank/H^T W H machinery). Also fixed a bug
+found while building this phase: V_magnitude meter registry entries
+never carried a "load_name" field, so Phase 4's own "meters_v" sweep
+step was silently vacuous (0 entries); fixed at the source and both
+registries regenerated (diff-verified: load_name-only change).
+
+Files changed:
+- observability/pseudo_measurements.py (new) -- sigma_pseudo
+  estimation, static/offline pseudo-entry builder
+- observability/minimum_sensor_set.py (new) -- minimum-addition search
+- observability/sweep.py -- meters_v filter now functional;
+  build_pseudo_entries() uses estimated sigma; _sigma_for() prefers a
+  pre-estimated sigma when present
+- sensors/generate_registry.py -- v_entry (base + multiphase extra-
+  phase) now carries "load_name"
+- config/sensor_registry.json, config/sensor_registry_multiphase.json
+  -- regenerated (load_name added to V entries only, diff-verified)
+- tests/test_pseudo_measurements.py (new, 5 tests)
+- reports/phase5_sensor_set_report.txt (this file, new)
+
+Run:
+Interactive searches via observability/minimum_sensor_set.py and
+observability/pseudo_measurements.py; artifacts saved to
+artifacts/20260829T165146Z/phase5_sensor_set/; full suite via pytest.
+
+Result:
+Minimum sensor set: BASE (556, mandatory) + HEAD_P_A/B/C, HEAD_Q_A/B/C
+(6) = 562 rows, rank=553/553, n_critical=0 -- matches Phase 4's 786-row
+maximal configuration's own rank/criticality result using 224 fewer
+rows. sigma_pseudo estimated and reported for all 42 unmetered loads.
+Circularity-immunity stated explicitly as this phase's Part B design
+rationale. Zero-injection/pseudo distinctness verified by test against
+the real compiled circuit, not asserted. 99/99 tests pass (94 pre-
+existing + 5 new), no regressions.
+
+Known limitation / next step:
+The minimum sensor set (head P,Q) is reported, not deployed --
+config/sensor_registry_multiphase.json's "enabled" flags are unchanged,
+and streaming/producer.py does not currently measure or publish head
+telemetry at all. Wiring it into the live pipeline is a deployment
+decision left for a future phase to make explicitly, not silently
+skipped. sigma_pseudo's hour-of-day bucketing is RES.md's stated
+"minimum acceptable" method, not the richer learned-generator approach;
+a finer time resolution was judged unnecessary given 900+ held-out
+samples per bucket. Next: RES.md D10 Phase 6 (generate the normal-
+operation corpus). Phase 6 not started.
+======================================================================
