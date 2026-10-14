@@ -21,13 +21,14 @@ reports/set_A_reproducibility.md). Any run that would write to it is
 refused unless --overwrite-set-A is given, and the check runs before any
 placement work, so a refused run writes nothing.
 
-  --strategy v1 (default) | v2      HybridPlacement | HybridV2Placement
+  --strategy v1 (default) | v2 | v3 HybridPlacement | HybridV2Placement | HybridV3Placement
   --out PATH                         where to save
   no --out, v2                       -> simulation/representative_meters_B.json
+  no --out, v3                       -> simulation/representative_meters_C.json
   no --out, v1                       -> refused (would be set A) unless
                                         --overwrite-set-A
 
-Run: python -m placement.select_meters [--strategy v1|v2] [--out PATH]
+Run: python -m placement.select_meters [--strategy v1|v2|v3] [--out PATH]
                                        [--overwrite-set-A] [--target N] [--verbose]
 """
 
@@ -40,6 +41,7 @@ from placement.feeder_context import FeederContext
 from placement.feeder_adapter import network_and_loads_from_core_extraction
 from placement.placement_strategy import HybridPlacement
 from placement.hybrid_v2 import HybridV2Placement
+from placement.hybrid_v3 import HybridV3Placement
 from placement.metrics import evaluate
 from placement.representative_meters import save_representative_meters
 
@@ -47,10 +49,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SET_A_OUTPUT = BASE_DIR / "simulation" / "representative_meters.json"
 SET_B_OUTPUT = BASE_DIR / "simulation" / "representative_meters_B.json"
+SET_C_OUTPUT = BASE_DIR / "simulation" / "representative_meters_C.json"
 # Kept for any caller that imported the old name; it is set A's path.
 REPRESENTATIVE_OUTPUT = SET_A_OUTPUT
 
-STRATEGIES = {"v1": HybridPlacement, "v2": HybridV2Placement}
+STRATEGIES = {"v1": HybridPlacement, "v2": HybridV2Placement, "v3": HybridV3Placement}
+DEFAULT_OUTPUTS = {"v2": SET_B_OUTPUT, "v3": SET_C_OUTPUT}
 
 
 class SetAOverwriteRefused(Exception):
@@ -63,7 +67,7 @@ def resolve_output(strategy, out, overwrite_set_a):
     running placement."""
 
     if out is None:
-        path = SET_B_OUTPUT if strategy == "v2" else SET_A_OUTPUT
+        path = DEFAULT_OUTPUTS.get(strategy, SET_A_OUTPUT)
     else:
         path = Path(out)
         if not path.is_absolute():
@@ -83,9 +87,10 @@ def build_parser():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--strategy", choices=sorted(STRATEGIES), default="v1",
-                        help="v1 = HybridPlacement (default), v2 = HybridV2Placement")
+                        help="v1 = HybridPlacement (default), v2 = HybridV2Placement, "
+                             "v3 = HybridV3Placement")
     parser.add_argument("--out", default=None,
-                        help="output JSON path (default: set B path for v2; "
+                        help="output JSON path (default: set B path for v2, set C path for v3; "
                              "v1 requires --out or --overwrite-set-A)")
     parser.add_argument("--overwrite-set-A", dest="overwrite_set_a", action="store_true",
                         help="allow writing simulation/representative_meters.json (set A)")
