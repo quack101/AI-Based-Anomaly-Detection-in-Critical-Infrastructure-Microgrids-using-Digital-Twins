@@ -73,7 +73,8 @@ class HybridPlacement(PlacementStrategy):
 
     METER_CEILING = 85  # distinct load buses (model verification: 85 of 91)
 #if target_meters exceeds 85, raises a ValueError explaining why the ceiling exists (three buses share multiple loads).
-    def __init__(self, target_meters=REFERENCE_TARGET_METERS, verbose=False):
+    def __init__(self, target_meters=REFERENCE_TARGET_METERS, verbose=False,
+                 weights=None):
         if target_meters > self.METER_CEILING:
             raise ValueError(
                 f"target_meters={target_meters} exceeds the meter ceiling "
@@ -84,6 +85,22 @@ class HybridPlacement(PlacementStrategy):
 
         self.target_meters = target_meters
         self.verbose = verbose
+        if weights is not None:
+            required = {"kw", "depth", "downstream", "backbone"}
+            if set(weights) != required:
+                raise ValueError(
+                    "weights must contain exactly kw, depth, downstream, "
+                    "and backbone"
+                )
+            if any(value < 0 for value in weights.values()):
+                raise ValueError("placement weights must be non-negative")
+            total = sum(weights.values())
+            if not math.isclose(total, 1.0, rel_tol=0.0, abs_tol=1e-9):
+                raise ValueError("placement weights must sum to 1.0")
+            self.WEIGHT_KW = weights["kw"]
+            self.WEIGHT_DEPTH = weights["depth"]
+            self.WEIGHT_DOWNSTREAM = weights["downstream"]
+            self.WEIGHT_BACKBONE = weights["backbone"]
 
     # --------------------------------------------------
     # Public API
