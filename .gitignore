@@ -27,3 +27,5 @@ dataset/
 # RES.md D10 Phase 6 -- generated normal-operation corpus (~529MB,
 # *.npz isn't covered by the *.csv rule above)
 simulation/phase6_corpus/
+# Rebuilt / per-meter-set corpora (placement-v2 A-vs-B work) -- regenerable, never committed
+simulation/phase6_corpus_*/
