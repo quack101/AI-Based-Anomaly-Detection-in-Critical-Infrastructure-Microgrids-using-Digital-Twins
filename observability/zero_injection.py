@@ -77,6 +77,103 @@ def _regulator_buses():
     return buses
 
 
+def _capacitor_buses():
+    """RES.md D10 Phase 7 CONSTRAINT-FEASIBILITY FIX (Block 6.1,
+    permanent as of the HIGH-LOAD INVESTIGATION task): every bus a
+    Capacitor element is attached to -- e.g. c83 (600 kvar, 3-phase)
+    on this feeder. GENUINE OMISSION, not a near-zero-impedance-branch
+    case like _regulator_buses/_switch_buses: a shunt capacitor
+    injects a KNOWN, nonzero reactive power, exactly like a Load
+    injects known nonzero real/reactive power -- but _load_bus_
+    phases() only ever checked dss.Loads.AllNames(), never dss.
+    Capacitors.AllNames(), so a capacitor-connected phase with no Load
+    object was wrongly treated as genuinely zero-injection.
+
+    Confirmed via direct evidence (validation/
+    phase7_pure_feasibility_check.py, reports/
+    phase7_constraint_feasibility_report.txt Steps 1-3): minimising
+    ||c(x)||^2 alone (no measurement objective at all) from flat start
+    gets stuck at max|c|=24.4 kvar, concentrated at bus 83's rows plus
+    a LEAST-SQUARES SPREADING of that same irreducible residual onto
+    electrically-adjacent buses on the same radial lateral
+    (78->80->81->82->83) and the switch-adjacent buses 60/97/197 --
+    EXCLUDING ONLY bus 83's rows drops max|c| to 0.028 kvar, i.e.
+    every other row becomes near-exactly feasible, proving those were
+    spreading artifacts of this ONE root cause, not independent
+    infeasibilities.
+
+    Not a wrong TARGET (h_zi(x_true)=0 exactly at bus 83, reports/
+    phase7_state_estimator_report.txt Part D.2 -- the capacitor's
+    admittance is already folded into the Y-bus) -- the difficulty is
+    bus 83's "strongly nonlinear (quadratic-in-V) self-susceptance
+    term" making this row hard for a local linearisation-based solve
+    to navigate from a distant start. Demoted via the IDENTICAL
+    existing regulator-demotion pattern, preserving rank/dof rather
+    than dropping the rows.
+
+    MADE PERMANENT here (reports/phase7_constraint_feasibility_report.
+    txt first tried and reverted this exact change, because it
+    regressed estimation/state_estimator.py's hand-rolled solver,
+    which has its OWN separate, already-documented construction defect
+    -- reports/phase7_solver_instability_fix_report.txt). This task
+    (reports/phase7_highload_investigation_report.txt) re-applies it
+    permanently because the model this function feeds is now paired
+    with estimation/state_estimator_scipy.py (an independent solve
+    path) going forward, not the hand-rolled one -- that hand-rolled
+    solver remains broken and is NOT re-tested or re-validated against
+    this change."""
+
+    buses = set()
+    for cap in dss.Capacitors.AllNames():
+        dss.Circuit.SetActiveElement(f"Capacitor.{cap}")
+        for b in dss.CktElement.BusNames():
+            buses.add(b.split(".")[0].lower())
+    return buses
+
+
+def _switch_buses():
+    """RES.md D10 Phase 7 HIGH-LOAD INVESTIGATION (Block 7.1): every
+    bus touching a near-zero-impedance SWITCH line (this feeder's
+    sw1-sw8, e.g. 13/152, 18/135, 61/61s, 97/197, 151/300_open,
+    54/94_open -- confirmed directly, dss.Lines.IsSwitch() returns
+    False for all lines here, so identified via R1=0.001/X1=0.0/
+    Length=0.001, the SAME near-zero-impedance signature
+    _regulator_buses's docstring already describes, and this
+    circuit's own 'sw<N>' naming convention).
+
+    First tried, at FLAT START only, in reports/
+    phase7_node_demotion_test_report.txt -- found to regress the HAND-
+    ROLLED solver (estimation/state_estimator.py) across all 6 pilot
+    points, and reverted. Re-introduced here because reports/
+    phase7_highload_investigation_report.txt's Step 2 found, by
+    decomposing the residual AT THE ACTUAL HIGH-LOAD SOLVE LANDING
+    POINT (not flat start, where the bus-83 capacitor fix's own
+    diagnostic ran) using estimation.state_estimator_scipy's
+    independent trust-constr path, that essentially ALL remaining
+    switch-pair buses (sw2/3/5/6/7/8 -- sw1 and sw4's buses are
+    already regulator-adjacent via 150r/160) show large, near-exactly
+    opposite-sign, near-equal-magnitude residuals at high load,
+    confirming the SAME category of near-zero-impedance-branch
+    fragility the flat-start-only check could not see (the WLS
+    objective pulls a high-load solve far enough from flat start for
+    these specific branches' voltage mismatch to become significant,
+    where it was not at flat start). Tested THIS TIME against the
+    scipy solve path (not the hand-rolled one, which remains broken
+    for separate, already-documented reasons) and WITH the bus-83
+    capacitor fix already in place -- a genuinely different
+    experiment from the one reverted in phase7_node_demotion_test_
+    report.txt, not a blind repeat."""
+
+    buses = set()
+    for name in dss.Lines.AllNames():
+        if not name.lower().startswith("sw"):
+            continue
+        dss.Circuit.SetActiveElement(f"Line.{name}")
+        for b in dss.CktElement.BusNames():
+            buses.add(b.split(".")[0].lower())
+    return buses
+
+
 def _load_bus_phases():
     """{(bus_root_lower, phase_num)} for every (bus,phase) a Load object
     is attached to. Requires a compiled circuit already active. Shared
@@ -142,7 +239,7 @@ def enumerate_zero_injection_nodes(all_node_names):
 
     load_bus_phases = _load_bus_phases()
     source_bus = _source_bus()
-    regulator_buses = _regulator_buses()
+    regulator_buses = _regulator_buses() | _capacitor_buses() | _switch_buses()
 
     zero_injection = []
     for node_name in all_node_names:
@@ -170,7 +267,7 @@ def enumerate_regulator_adjacent_nodes(all_node_names):
 
     load_bus_phases = _load_bus_phases()
     source_bus = _source_bus()
-    regulator_buses = _regulator_buses()
+    regulator_buses = _regulator_buses() | _capacitor_buses() | _switch_buses()
 
     nodes = []
     for node_name in all_node_names:

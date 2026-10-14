@@ -278,7 +278,8 @@ def test_multiphase_registry_variant_has_more_measurements():
     # with zero critical measurements (reports/phase5_sensor_set_report.txt);
     # Phase 6 deploys it so the generated corpus matches the sensor
     # configuration Phase 5 actually validated.
-    assert len(multiphase_entries) == 112
+    # 112 -> 168: 56 V_magnitude sensors enabled for the dof fix (112 original + 56 new V_magnitude entries).
+    assert len(multiphase_entries) == 168
 
 
 def test_multiphase_variant_only_extends_the_two_genuinely_3phase_loads():
@@ -298,11 +299,13 @@ def test_multiphase_variant_only_extends_the_two_genuinely_3phase_loads():
             continue  # HEAD_* entries (Phase 6) aren't tied to a load
         by_load.setdefault(e["load_name"], []).append(e)
 
-    assert len(by_load["s47"]) == 6   # P,Q at each of A,B,C
-    assert len(by_load["s48"]) == 6
-    assert len(by_load["s35a"]) == 2  # unchanged: single delta phase only
-    assert len(by_load["s65c"]) == 2
-    assert len(by_load["s76a"]) == 2
+    # 6 -> 9: was P,Q x 3 phases; now P,Q,V x 3 phases (V_magnitude sensors enabled for the dof fix).
+    assert len(by_load["s47"]) == 9
+    assert len(by_load["s48"]) == 9
+    # 2 -> 3: single delta phase only, but V_magnitude adds a 3rd entry (P,Q,V) for these too.
+    assert len(by_load["s35a"]) == 3
+    assert len(by_load["s65c"]) == 3
+    assert len(by_load["s76a"]) == 3
 
 
 def test_multiphase_variant_default_entries_identical_to_default_registry():
