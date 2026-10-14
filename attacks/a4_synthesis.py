@@ -157,3 +157,17 @@ def random_control(a_attackable, rng):
     if dir_norm == 0.0 or norm == 0.0:
         return np.zeros_like(a_attackable)
     return direction * (norm / dir_norm)
+
+
+def random_sign_control(a_attackable, rng):
+    """Control 2: the SAME per-channel magnitudes as the real attack
+    (|a_i| unchanged on every channel, including the zero ones), each
+    with an independently random +/-1 sign. Unlike random_control
+    (same L2 norm, new random direction spread arbitrarily across the
+    support), this keeps each channel's own perturbation size fixed --
+    it only asks whether the per-channel SIGN pattern null(H_unattackable)
+    picks is doing any work, holding the per-channel magnitude profile
+    exactly as the real attack left it."""
+
+    signs = rng.choice([-1.0, 1.0], size=a_attackable.shape[0])
+    return np.abs(a_attackable) * signs

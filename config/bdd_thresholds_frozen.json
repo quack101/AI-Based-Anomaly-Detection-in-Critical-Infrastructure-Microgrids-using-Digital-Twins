@@ -1,0 +1,7 @@
+{
+  "J99": 60230.2899,
+  "LNR99": 145.9803,
+  "n": 90,
+  "source_file": "validation/phase8_bdd_baseline_results.csv",
+  "note": "Empirical 99th-percentile thresholds on CLEAN data only, computed as df['J'].quantile(0.99) and df['lnr'].quantile(0.99) over the n=90 rows (30 stratified + 60 extra clean points, seed=777) in source_file -- the frozen truncated-SVD estimator's own J and lnr columns, lnr already excluding zero-redundancy/critical channels per estimation/bad_data_detection.py's RHO_CRITICAL_THRESHOLD. Recomputed directly from source_file and confirmed to match to the stated precision before this file was written (see validation/phase8_a4_attack_test.py and siblings). These replace the stale EMPIRICAL_J99=207272.6213 / EMPIRICAL_LNR99=158.7156 constants that were hardcoded (and never updated) in the three phase8_a4_* attack-test scripts before this fix -- those were empirical thresholds from an earlier, pre-TSVD-default baseline run, not the frozen estimator's own clean-data distribution."
+}
