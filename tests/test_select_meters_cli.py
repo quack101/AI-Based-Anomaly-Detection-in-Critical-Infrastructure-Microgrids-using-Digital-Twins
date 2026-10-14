@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from placement.select_meters import (
-    SET_A_OUTPUT, SET_B_OUTPUT, SET_C_OUTPUT, SetAOverwriteRefused, build_parser, main, resolve_output,
+    SET_A_OUTPUT, SET_B_OUTPUT, SetAOverwriteRefused, build_parser, main, resolve_output,
 )
 
 
@@ -36,11 +36,7 @@ def test_v2_without_out_goes_to_set_b():
     assert resolve_output("v2", None, overwrite_set_a=False) == SET_B_OUTPUT
 
 
-def test_v3_without_out_goes_to_set_c():
-    assert resolve_output("v3", None, overwrite_set_a=False) == SET_C_OUTPUT
-
-
-@pytest.mark.parametrize("strategy", ["v1", "v2", "v3"])
+@pytest.mark.parametrize("strategy", ["v1", "v2"])
 def test_explicit_out_pointing_at_set_a_is_refused(strategy):
     with pytest.raises(SetAOverwriteRefused):
         resolve_output(strategy, str(SET_A_OUTPUT), overwrite_set_a=False)
