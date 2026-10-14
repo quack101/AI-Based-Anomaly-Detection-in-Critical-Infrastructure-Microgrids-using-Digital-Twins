@@ -68,7 +68,26 @@ def stratified_picks(df, p_cols):
     return {"low": pick(low, N_PER_STRATUM), "mid": pick(mid, N_PER_STRATUM), "high": pick(high, N_PER_STRATUM)}
 
 
-def main(label, registry, corpus, meter_set=None):
+HEAD_P_IDS = ("HEAD_P_A", "HEAD_P_B", "HEAD_P_C")
+
+
+def head_p_stats(st):
+    """Signed normalised residual of each HEAD_P row and the share of J
+    from the HEAD_P rows, from compute_chi2_and_lnr's own outputs. Row
+    i contributes W_i r_i^2 = nr_i^2 * omega_i / sigma_i^2 = nr_i^2 * rho_i."""
+    ids, nr, rho = st["ids"], st["normalized_residuals"], st["redundancy"]
+    out = {}
+    head_contrib = 0.0
+    for k in HEAD_P_IDS:
+        i = ids.index(k)
+        out[k] = float(nr[i])
+        if np.isfinite(nr[i]):
+            head_contrib += float(nr[i] ** 2 * rho[i])
+    out["J_share_head_p"] = head_contrib / st["J"] if st["J"] > 0 else float("nan")
+    return out
+
+
+def main(label, registry, corpus, max_points=None):
     corpus = Path(corpus)
     t_start = time.time()
     telem_cols = pd.read_csv(corpus / "test_telemetry.csv", nrows=0).columns.tolist()
@@ -100,32 +119,39 @@ def main(label, registry, corpus, meter_set=None):
     p_cols = [c for c in sc_df.columns if c.endswith("_P")]
     strata = stratified_picks(sc_df, p_cols)
     records, errs, dofs = [], [], []
-    for stratum, idxs in strata.items():
-        for i in idxs:
-            reset()
-            z_a, ts_a = z_of(i)
-            t0 = time.time()
-            r_a = est.estimate(z_a, ts_a)
-            dt = time.time() - t0
-            e_a = np.abs(r_a.x_v - x_v_all[i]) / v_base
-            errs.append(e_a)
-            records.append({"condition": "A_flat", "stratum": stratum, "i": i, "converged": r_a.converged,
-                            "iterations": r_a.iterations, "time_s": dt, "max_v_err_pu": e_a.max(), "J": r_a.J})
-            if r_a.converged:
-                st = compute_chi2_and_lnr(est, r_a, z_a, ts_a)
-                dofs.append(st["m_weighted"] - st["n_w"])
-            j = i + 1
-            if j >= len(sc_df):
-                continue
-            z_b, ts_b = z_of(j)
-            state.x0_v, state.x0_delta = list(r_a.x_v), list(r_a.x_delta)
-            t0 = time.time()
-            r_b = est.estimate(z_b, ts_b)
-            dt = time.time() - t0
-            e_b = np.abs(r_b.x_v - x_v_all[j]) / v_base
-            errs.append(e_b)
-            records.append({"condition": "B_warm", "stratum": stratum, "i": j, "converged": r_b.converged,
-                            "iterations": r_b.iterations, "time_s": dt, "max_v_err_pu": e_b.max(), "J": r_b.J})
+    picks = [(stratum, i) for stratum, idxs in strata.items() for i in idxs]
+    if max_points:  # short demo: take picks round-robin across strata until max_points points
+        by = {k: list(v) for k, v in strata.items()}
+        picks = []
+        while len(picks) * 2 < max_points and any(by.values()):
+            for k in by:
+                if by[k] and len(picks) * 2 < max_points:
+                    picks.append((k, by[k].pop(0)))
+    for stratum, i in picks:
+        reset()
+        z_a, ts_a = z_of(i)
+        t0 = time.time()
+        r_a = est.estimate(z_a, ts_a)
+        dt = time.time() - t0
+        e_a = np.abs(r_a.x_v - x_v_all[i]) / v_base
+        errs.append(e_a)
+        records.append({"condition": "A_flat", "stratum": stratum, "i": i, "converged": r_a.converged,
+                        "iterations": r_a.iterations, "time_s": dt, "max_v_err_pu": e_a.max(), "J": r_a.J})
+        if r_a.converged:
+            st = compute_chi2_and_lnr(est, r_a, z_a, ts_a)
+            dofs.append(st["m_weighted"] - st["n_w"])
+        j = i + 1
+        if j >= len(sc_df):
+            continue
+        z_b, ts_b = z_of(j)
+        state.x0_v, state.x0_delta = list(r_a.x_v), list(r_a.x_delta)
+        t0 = time.time()
+        r_b = est.estimate(z_b, ts_b)
+        dt = time.time() - t0
+        e_b = np.abs(r_b.x_v - x_v_all[j]) / v_base
+        errs.append(e_b)
+        records.append({"condition": "B_warm", "stratum": stratum, "i": j, "converged": r_b.converged,
+                        "iterations": r_b.iterations, "time_s": dt, "max_v_err_pu": e_b.max(), "J": r_b.J})
     sc = pd.DataFrame(records)
     pooled = np.concatenate(errs)
 
@@ -136,6 +162,20 @@ def main(label, registry, corpus, meter_set=None):
     order = np.argsort(-med)
     weakest = [{"node": state.all_node_names[k], "median_err_pu": float(med[k]), "p95_err_pu": float(p95[k])}
                for k in order[:10]]
+
+    if max_points:
+        summary = {"label": label, "registry": str(registry), "corpus": str(corpus), "demo_max_points": max_points,
+                   "scorecard": {"source": "validation/measure_meter_set.py --max-points (subset of the phase7 protocol)",
+                                 "n_points": int(len(sc)), "v_err_pu_median": float(np.median(pooled)),
+                                 "v_err_pu_p95": float(np.percentile(pooled, 95)), "v_err_pu_max": float(pooled.max()),
+                                 "converged": int(sc["converged"].sum()), "mean_iterations": float(sc["iterations"].mean()),
+                                 "J_mean": float(sc["J"].mean()), "mean_time_s": float(sc["time_s"].mean())},
+                   "runtime_s": time.time() - t_start}
+        OUT_DIR.mkdir(parents=True, exist_ok=True)
+        (OUT_DIR / f"{label}.json").write_text(json.dumps(summary, indent=2))
+        sc.to_csv(OUT_DIR / f"{label}_scorecard_points.csv", index=False)
+        print(json.dumps(summary, indent=2))
+        return summary
 
     # ---- 2. BDD thresholds + null space (phase8_bdd_baseline.py protocol)
     sweep_idxs = sorted(set(strata["low"] + strata["mid"] + strata["high"]))
@@ -148,7 +188,7 @@ def main(label, registry, corpus, meter_set=None):
         z, ts = z_of(i)
         r = est.estimate(z, ts)
         st = compute_chi2_and_lnr(est, r, z, ts)
-        bdd.append({"i": i, "converged": r.converged, "J": st["J"], "lnr": st["lnr"]})
+        bdd.append({"i": i, "converged": r.converged, "J": st["J"], "lnr": st["lnr"], **head_p_stats(st)})
     bdd = pd.DataFrame(bdd)
     nulls = []
     for i in [sweep_idxs[0], sweep_idxs[len(sweep_idxs) // 2], sweep_idxs[-1]]:
@@ -184,12 +224,19 @@ def main(label, registry, corpus, meter_set=None):
             "J99": float(bdd["J"].quantile(0.99)), "LNR99": float(bdd["lnr"].quantile(0.99)),
         },
         "nullspace": {"source": "estimation.bad_data_detection.unattackable_nullspace_dimension", "points": nulls},
+        "head_p": {
+            "source": "validation/measure_meter_set.py head_p_stats (n=90 clean BDD points)",
+            **{f"{k}_mean_signed_nr": float(bdd[k].mean()) for k in HEAD_P_IDS},
+            "J_share_head_p_mean": float(bdd["J_share_head_p"].mean()),
+            "J_share_head_p_median": float(bdd["J_share_head_p"].median()),
+        },
         "runtime_s": time.time() - t_start,
     }
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     (OUT_DIR / f"{label}.json").write_text(json.dumps(summary, indent=2))
     sc.to_csv(OUT_DIR / f"{label}_scorecard_points.csv", index=False)
-    print(json.dumps({k: summary[k] for k in ("label", "scorecard", "bdd_clean", "nullspace")}, indent=2))
+    bdd.to_csv(OUT_DIR / f"{label}_bdd_points.csv", index=False)
+    print(json.dumps({k: summary[k] for k in ("label", "scorecard", "bdd_clean", "nullspace", "head_p")}, indent=2))
     print("weakest:", weakest[:5])
     return summary
 
@@ -199,6 +246,8 @@ if __name__ == "__main__":
     p.add_argument("--label", required=True)
     p.add_argument("--registry", required=True)
     p.add_argument("--corpus", required=True)
+    p.add_argument("--max-points", type=int, default=None,
+                   help="short demo: scorecard only, on this many points (A_flat+B_warm)")
     a = p.parse_args()
     # resolve now: compiling the feeder changes the working directory
-    main(a.label, Path(a.registry).resolve(), Path(a.corpus).resolve())
+    main(a.label, Path(a.registry).resolve(), Path(a.corpus).resolve(), a.max_points)

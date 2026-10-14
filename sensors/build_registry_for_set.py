@@ -27,10 +27,18 @@ commit-by-commit trace):
          P-type (P_injection, P_head):  amp = hypot(dP/dV * 0.04 * v_base,
                                                      dP/ddelta * 0.03)
          sigma_new = hypot(sigma_old, amp); V_magnitude untouched.
-       Exclusion RULE (decision Q3 = (ii)): channels whose bus is a
-       regulator bus (observability.zero_injection._regulator_buses,
-       e.g. 150/150r, 9/9r, 25/25r, 160/160r) keep sigma_old. The
-       hand-picked M040_P exclusion of 81ff01a is NOT reproduced.
+       Exclusion RULE (ii'): channels whose bus is a regulator bus OR a
+       switch bus (observability.zero_injection._regulator_buses() |
+       _switch_buses(): the near-zero-impedance buses, e.g. 150/150r,
+       9/9r, 25/25r, 160/160r and the Sw1-Sw8 ends such as 60/160) keep
+       sigma_old. This rule was chosen AFTER observing that the formula
+       blows up at bus 60 (switch Sw4 60-160, r1=1e-3, x1=0): under the
+       regulator-only rule (ii) M040_P (set A) and M028_P (set B) got
+       sigma ~2.3e8. Justification: zero_injection.py already groups
+       regulator and switch buses for the same near-singularity. It
+       replaces the hand-picked M040_P exclusion of 81ff01a; capacitor
+       buses are deliberately NOT excluded (that would undo the M042_Q
+       widening of 0366af8).
        Applied to both variants with one sigma per channel id, as
        81ff01a did.
      The REGZI_83 amplification (observability/estimator_model.py
@@ -110,7 +118,7 @@ def build_recal(set_name, corpus_dir):
     from observability.estimator_model import build_estimator_model
     from observability.state_vector import complex_v_from_state
     from observability import jacobian as J
-    from observability.zero_injection import _regulator_buses
+    from observability.zero_injection import _regulator_buses, _switch_buses
     from estimation.state_estimator import StateEstimator
 
     corpus_dir = Path(corpus_dir).resolve()
@@ -128,7 +136,7 @@ def build_recal(set_name, corpus_dir):
     result = est.estimate({c: float(row[c]) for c in z_cols}, str(row["real_timestamp"]))
     at_v = complex_v_from_state(state, result.x_v.copy(), result.x_delta.copy())
 
-    reg_buses = {b.lower() for b in _regulator_buses()}
+    reg_buses = {b.lower() for b in _regulator_buses() | _switch_buses()}  # rule (ii')
     computed, excluded = {}, []
     for entries in noise.values():
         for e in entries:
@@ -152,7 +160,7 @@ def build_recal(set_name, corpus_dir):
             computed[e["id"]] = float(np.hypot(e["sigma"], amp))
 
     out = {"reference_row": TARGET_I, "converged_at_reference": bool(result.converged),
-           "recalibrated": len(computed), "excluded_regulator_bus": sorted(excluded)}
+           "recalibrated": len(computed), "excluded_regulator_or_switch_bus": sorted(excluded)}
     for variant, entries in noise.items():
         for e in entries:
             if e["id"] in computed:
@@ -162,7 +170,8 @@ def build_recal(set_name, corpus_dir):
                              f"(rule of 81ff01a, own corpus, row {TARGET_I}): old={old:.6f}, "
                              f"new={e['sigma']:.6f}")
             elif e["id"] in excluded:
-                e["note"] = "regulator-bus channel: kept original sigma (recalibration exclusion rule)"
+                e["note"] = ("regulator- or switch-bus channel: kept original sigma "
+                             "(recalibration exclusion rule (ii'))")
         out[variant] = str(_write(registry_path(variant, set_name), entries))
     print(json.dumps(out, indent=2))
     return out
