@@ -1,0 +1,306 @@
+================================================================
+RES.md D10 PHASE 4 SUB-STUDY 4A -- TIER 1 SWEEP (placement quality)
+Status: PASS WITH FINDINGS
+Date: 2026-08-22    Run: artifacts/20260822T092205Z/sweep_4a_tier1/
+Previous run (before/after baseline): artifacts/20260821T191138Z/sweep_4a_tier1/
+================================================================
+
+SCOPE
+  Follow-up to the previous Tier-1 sweep: fixed two defects it surfaced
+  in HybridPlacement, then re-ran the identical grid (8 counts x 5
+  strategies x 2 constructions, Random over the SAME 10 seeds) so the
+  two runs are directly comparable. Tier 1 only -- rank(H), cond,
+  critical measurements, security index still need Phase 2/4 and are
+  not attempted. Pre-phase groundwork, not a numbered RES.md phase.
+
+VERDICT
+  Both defects are fixed and verified: the tie-break artifact at the
+  85-meter ceiling is completely gone (all 5 strategies now select
+  identical buses with identical phase composition), and independent/
+  nested divergence on phase-balance dropped from 4-8pp to under ~3.2pp
+  at every count. Getting there cost something real, reported plainly
+  below: Hybrid's OWN independent-construction phase-balance quality
+  got WORSE at most counts (e.g. count=49: 0.58pp -> 3.16pp) -- greedy
+  incremental balancing trades some of the post-hoc swap pass's final-
+  set optimality for prefix-length consistency, and there is no way to
+  have both simultaneously with a single ranking (a prefix that's
+  optimal for its own length is not, in general, also part of an
+  optimal ranking for every other length).
+
+KEY NUMBERS
+  Phase deviation at count=85, all 5 strategies........ 0.9732pp
+    (IDENTICAL across Hybrid/Degree/Community12/Community4/Random --
+    Defect 2 confirmed fixed; was 2.24pp for Hybrid alone, previous run)
+  Hybrid phase-dev divergence (nested-independent), max
+    across 8 counts...................................... 3.18pp
+    (was 5.05-7.91pp at 5 of 8 counts, previous run)
+  Hybrid branch-diversity knee......................... opens ~30,
+    closes ~85 (was ~30 to ~80 -- see ANALYSIS)
+  49-meter set changed vs. pre-this-task baseline...... 4 of 49 buses
+    (removed 30,64,66,76; added 2,12,29,84)
+
+----------------------------------------------------------------------
+DEFECT 1 FIX -- incremental phase balancing
+----------------------------------------------------------------------
+  WHAT CHANGED: _balance_phases() (a post-hoc swap pass run once over
+  the completed target_meters selection) is REMOVED. Phase balancing is
+  now applied at every single pick during selection
+  (_pick_phase_aware()): given running per-phase kW so far, if the
+  currently most under-represented phase (vs. A:1400/B:952.5/C:1137.5
+  kW) has a positive deficit, the highest-scoring available candidate
+  touching that phase is chosen; otherwise the plain highest-scorer
+  (original behaviour) is chosen. This runs inside BOTH the main
+  quota/round-robin selection and the top-up pass.
+
+  A SECOND, NECESSARY restructuring: the outer loop used to process
+  each size class'S ENTIRE quota before moving to the next class. A
+  prefix shorter than the first class's quota therefore reflected only
+  that one class's phase mix, no matter how phase-aware the picks
+  within it were -- incremental balancing alone did not fix nesting
+  until classes were also interleaved GLOBALLY (one pick per class per
+  round, cycling, via a rotating per-class branch queue that preserves
+  branch-diversity cycling across successive turns for that class).
+  This is documented in _representative_selection's docstring as the
+  reason the first attempt at this fix did not close the gap.
+
+  RESULT -- independent vs. nested divergence, Hybrid, max phase
+  deviation (percentage points):
+    count |  BEFORE (indep/nested/diff) |  AFTER (indep/nested/diff)
+    ------+------------------------------+----------------------------
+       15 |   2.72 / 10.63 / +7.91       |   5.52 /  4.69 / -0.83
+       30 |   0.58 /  5.63 / +5.05       |   5.48 /  3.77 / -1.71
+       45 |   0.67 /  6.12 / +5.45       |   3.83 /  0.65 / -3.18
+       49 |   0.58 /  5.66 / +5.08       |   3.16 /  2.93 / -0.23
+       60 |   0.26 /  6.01 / +5.76       |   1.64 /  1.39 / -0.26
+       70 |   0.35 /  4.42 / +4.07       |   1.94 /  2.09 / +0.15
+       80 |   0.70 /  2.16 / +1.46       |   0.99 /  1.53 / +0.54
+       85 |   2.24 /  2.24 / +0.00       |   0.97 /  0.97 / +0.00
+
+  DIVERGENCE DID NOT FULLY CLOSE -- reported, not forced. Max remaining
+  |diff| is 3.18pp (count=45); 5 of 8 counts are now under 1pp. Why it
+  doesn't close to zero: a single append-ordered ranking cannot be
+  simultaneously phase-optimal at every prefix length -- greedy
+  incremental balancing is a genuinely different objective from "each
+  length's own optimum," and quota-rounding introduces additional
+  boundary effects at specific counts (round(target*n_class/total)
+  crossing an integer at slightly different points for different
+  targets). This is a property of the problem, not an implementation
+  shortfall to keep chasing.
+
+  THE COST, stated plainly: independent construction's OWN phase-
+  balance quality got WORSE at 6 of 8 counts (e.g. count=49: 0.58pp ->
+  3.16pp; count=45: 0.67pp -> 3.83pp), because the post-hoc swap pass
+  it replaces was a genuinely more powerful optimizer FOR THE FINAL SET
+  SPECIFICALLY -- it could see the whole selection and correct earlier
+  choices; the incremental picker never revisits a choice once made.
+  Nested construction improved correspondingly (e.g. count=45: 6.12pp
+  -> 0.65pp). Net effect on Hybrid-vs-Random: Hybrid still beats
+  Random's MEAN phase-deviation at 7 of 8 counts (all but 15), but only
+  clearly beats Random's mean+1std band at 1 of 8 (count=60) -- down
+  from 7 of 8 before the fix. This is a real, reportable narrowing of
+  Hybrid's phase-balance advantage margin, traded for phase-balance
+  actually surviving nesting. Whether that trade is worth it depends on
+  which construction Phase 4/12 ends up using -- flagged, not decided
+  here.
+
+  COMMUNITY VARIANTS' divergence is UNCHANGED (their allocation logic
+  was not touched -- Defect 1's scope was HybridPlacement specifically,
+  per the task). Community12 and Community4's independent/nested
+  divergence remains as large as before (up to 6.95pp at count=49 for
+  Community12) -- this task did not fix that, and does not claim to.
+
+----------------------------------------------------------------------
+DEFECT 2 FIX -- consistent tie-break on multi-load buses
+----------------------------------------------------------------------
+  RULE CHOSEN (now applied by ALL FOUR strategies uniformly): where a
+  bus hosts more than one Load object (S49a/b/c, S65a/b/c, S76a/b/c),
+  the HIGHEST-kW load is that bus's sole representative; ties (none
+  occur in this feeder's data) would go to the first-encountered load
+  in input order. This is _one_load_per_bus(), already used by Random/
+  Degree/Community -- HybridPlacement now calls it too, as literally
+  the first line of select(), before size classes or scores are even
+  assigned.
+
+  VERIFIED: at count=85 (the ceiling), all 5 strategies now select the
+  IDENTICAL 85 buses with IDENTICAL phase composition (max deviation
+  0.9732pp for every one of Hybrid/Degree/Community12/Community4/
+  Random(seed0)) -- confirmed by direct comparison, not just equal
+  metric values. Previously Hybrid alone showed 2.24pp at the same
+  forced bus set, because it picked s49a/s65a/s76a via its own score-
+  based tie-break while the others picked s49b/s65c/s76a via highest-
+  kW. That 3-bus discrepancy is gone.
+
+----------------------------------------------------------------------
+REGRESSION TEST SUITE
+----------------------------------------------------------------------
+  All 60 tests still pass (python -m pytest tests/ -v) -- they assert
+  invariants (exact count, ceiling>85 raises, no duplicate buses, phase
+  balance within a 5pp tolerance, determinism), not the specific
+  pre-this-task selection, so they remain valid without modification.
+  OUTPUT DID CHANGE, reported separately from the fix itself as
+  instructed: at target_meters=49, 4 of 49 selected buses differ from
+  the pre-this-task baseline (removed 30, 64, 66, 76; added 2, 12, 29,
+  84) -- attributable to the combination of both fixes together (the
+  candidate pool changed via Defect 2's collapse, and the selection
+  mechanism changed via Defect 1's restructuring); disentangling which
+  specific bus-swap came from which fix was not attempted, since both
+  necessarily apply together in the shipped algorithm.
+
+----------------------------------------------------------------------
+RE-MEASURED PLACEMENT-QUALITY KNEE (branch-diversity vs. Random's
+between-seed mean+1std band, independent construction)
+----------------------------------------------------------------------
+    count | BEFORE Hybrid (beats mean+1std?) | AFTER Hybrid (beats mean+1std?)
+    ------+-----------------------------------+----------------------------------
+       15 |  14  (NO -- tied)                 |  14  (NO -- tied, unchanged)
+       30 |  28  (YES)                        |  29  (YES)
+       45 |  39  (YES)                        |  40  (YES)
+       49 |  41  (YES)                        |  42  (YES)
+       60 |  49  (YES)                        |  51  (YES)
+       70 |  51  (YES)                        |  53  (YES)
+       80 |  52  (NO -- closes here, before)  |  53  (YES -- stays open)
+       85 |  53  (NO -- ceiling)              |  53  (NO -- ceiling)
+
+  THE KNEE MOVED: it still opens between count=15 and 30 (unchanged),
+  but now stays open through count=80 instead of closing there --
+  closing only at the forced 85 ceiling. Side effect of the global
+  class-interleaving restructuring (Defect 1's second half): branches
+  now get visited in a more evenly-paced order across the WHOLE
+  target_meters budget rather than being front-loaded by class, which
+  incidentally improved branch coverage at several counts (e.g. 60:
+  49->51, 70: 51->53) as well as fixing phase-balance nesting. Not
+  something this task set out to improve, but real and worth noting.
+
+----------------------------------------------------------------------
+DOWNSTREAM-LOAD COVERAGE -- relabeled, not dropped from the CSV
+----------------------------------------------------------------------
+  Still computed and present in cells.csv (dropping the column would
+  make the artifact incomparable with the previous run). Its ROLE is
+  now explicitly: a deterministic-vs-Random sanity check only. It
+  saturates to 1.00 for all four deterministic strategies at every
+  count (confirmed again this run, unchanged) and is NOT used below as
+  a placement-quality discriminator among them -- only Random's own
+  climb from 0.659 (count=15) to 1.000 (count=85) uses it, as evidence
+  that non-random strategies reach full downstream coverage far faster
+  than chance, which is the one thing this metric actually shows.
+
+FINDINGS
+  1. Defect 2 (tie-break) is fully resolved: identical 85-bus,
+     identical-phase-composition selection across all 5 strategies at
+     the ceiling. This was a clean fix with no discovered trade-off.
+
+  2. Defect 1 (incremental phase balance) substantially narrows
+     independent/nested divergence (from a 4-8pp gap to under ~3.2pp,
+     mostly under 1-2pp) but does not eliminate it, and the elimination
+     that DID happen came partly at the cost of independent
+     construction's own absolute phase-balance quality in the low-to-
+     mid count range. Both facts are reported together per the task's
+     instruction not to force convergence and not to hide costs.
+
+  3. A second restructuring (global class interleaving, not explicitly
+     asked for but necessary to make Defect 1's fix actually work)
+     incidentally widened the branch-diversity knee's open window
+     (closes at ~85 instead of ~80) and improved several branch-
+     diversity values outright. Reported as a real, unplanned benefit.
+
+  4. Community12/Community4's independent/nested divergence is
+     untouched and remains large (up to ~7pp) -- this task's Defect 1
+     was scoped to HybridPlacement only, per the task description's own
+     framing of the defect as specifically about Hybrid's swap pass.
+
+LIMITATIONS
+  - Tier 1 only, same as the previous run.
+  - The "small tolerance" acceptance bar for independent/nested
+    agreement was not given a numeric target by the task; ~3.2pp max
+    (mostly <2pp) is reported as the achieved result and left for you
+    to judge as sufficient or not.
+  - Random still 10 seeds, same as before, for direct comparability.
+  - The 4-bus change at count=49 versus the pre-this-task baseline is
+    reported as a combined effect of both fixes; no experiment isolated
+    Defect 1's and Defect 2's individual contribution to that specific
+    diff (both fixes are permanent, coupled changes to the same
+    select() pipeline -- isolating them would mean maintaining two
+    parallel code paths, which was not done).
+
+UNBLOCKS
+  - Phase 4/12 can now choose independent construction with confidence
+    that nested would give a similar (not identical) phase-balance
+    result, if nested is ever preferred for other reasons (e.g. only
+    needing one 85-meter run's worth of compute).
+  - The ceiling-artifact question is closed: any future comparison at
+    or near count=85 no longer needs to account for a spurious
+    Hybrid-specific tie-break effect.
+
+BLOCKS
+  - Tier 2 (observability) still needs Phase 2/4, unchanged from the
+    previous run.
+  - Whether the independent-construction phase-balance quality cost is
+    acceptable is a judgment call for Phase 4/12, not resolved here.
+
+METHOD
+  Same validation/sweep_4a_tier1.py, same COUNTS/SEEDS constants (10
+  seeds, identical seed values 0-9) as the previous run, for direct
+  comparability. placement/placement_strategy.py: HybridPlacement's
+  select(), _representative_selection(), _top_up_shortfall() rewritten;
+  _balance_phases/_lowest_scoring_on_phase/_highest_scoring_on_phase
+  removed. Run: python -m validation.sweep_4a_tier1
+  Artifacts (this run): artifacts/20260822T092205Z/sweep_4a_tier1/
+  Artifacts (previous run, kept for before/after): artifacts/
+  20260821T191138Z/sweep_4a_tier1/
+  Tests: python -m pytest tests/ -v (60 passed)
+
+================================================================
+CLAUDE.md Report
+================================================================
+Implemented:
+Fixed the two placement defects the previous Tier-1 sweep surfaced
+(reports/sweep_4a_tier1_report.txt), then re-ran the identical 8x5x2
+grid with the same 10 random seeds for direct before/after comparison.
+Defect 1: phase balancing is now incremental (applied at every pick,
+using running per-phase kW), replacing the post-hoc swap pass that
+didn't survive nested construction -- required a second restructuring
+(global class interleaving) beyond what was initially attempted, since
+incremental picks alone didn't help while classes were still processed
+sequentially. Defect 2: all four strategies now use the identical
+highest-kW tie-break rule on the three multi-load buses, eliminating
+the artifact where Hybrid alone diverged from the others at the forced
+85-meter ceiling.
+
+Files changed:
+- placement/placement_strategy.py -- HybridPlacement.select(),
+  _representative_selection() (restructured for global class
+  interleaving + phase-aware picks), _top_up_shortfall() (phase-aware),
+  new _phase_deficits()/_pick_phase_aware()/_accumulate_phase_kw()/
+  _pick_one_for_class(); _balance_phases and its two helpers removed
+- reports/sweep_4a_tier1_report.txt -- updated in place with before/
+  after comparison (both artifact runs referenced, previous run's
+  artifacts preserved untouched)
+
+Run:
+python -m pytest tests/ -v                (60 passed, invariant-based)
+python -m validation.sweep_4a_tier1        (224 cells, new run_id)
+
+Result:
+Defect 2: fully fixed, verified directly (identical 85-bus selection
+and identical 0.9732pp phase-deviation across all 5 strategies at the
+ceiling; was 2.24pp for Hybrid alone). Defect 1: divergence dropped
+from 4-8pp to under 3.18pp at every count (mostly <2pp), but did not
+close to zero and came with a real cost -- independent construction's
+own phase-balance quality got worse at 6 of 8 counts (e.g. count=49:
+0.58pp->3.16pp), because the incremental picker is a genuinely weaker
+optimizer for a single fixed-length set than the post-hoc swap pass it
+replaced, in exchange for consistency across prefix lengths. Both
+reported plainly, per instruction not to force full convergence. The
+branch-diversity placement-quality knee, re-measured, still opens
+~count=30 but now stays open through count=80 (previously closed
+there) -- an unplanned side effect of the class-interleaving
+restructuring. Community12/Community4's nested/independent divergence
+is untouched (out of this task's scope). Output changed at every count
+tested; 4 of 49 buses differ from the pre-this-task baseline at
+count=49, reported separately from the fix description itself.
+
+Known limitation / next step:
+Whether the phase-balance quality/consistency trade-off is acceptable
+is a judgment call for whoever runs Phase 4/12's actual analysis, not
+resolved here. No numbered RES.md phase was started.
+================================================================

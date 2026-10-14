@@ -1,0 +1,608 @@
+======================================================================
+RES.md D10 Phase 4 -- Observability Analysis Report
+======================================================================
+
+Scope: build H_abc(x) = dh/dx analytically at flat start (no finite-
+differencing through OpenDSS solves); confirm dim(x); enumerate zero-
+injection phase-nodes; sweep cumulative sensor configurations for both
+sensor-registry variants; decide the registry-variant question Phase 3
+deferred; sub-study 4A Tier 2 (observability/security metrics across
+the meter-density x placement-strategy grid, rescoped axis).
+Corpus-independent throughout -- runs off the network model and sensor
+registry only, no load data.
+
+======================================================================
+PART A -- THE OBSERVABILITY CORE
+======================================================================
+
+----------------------------------------------------------------------
+1. dim(x) -- recomputed, not assumed
+----------------------------------------------------------------------
+N_phase_nodes = 278 (from the COMPILED circuit's AllNodeNames(), not
+design metadata -- includes 150r.1/2/3 and other regulator-secondary
+phase-nodes design documents don't name).
+3 source-bus phase angles fixed as references (150.1/2/3), per RES.md's
+resolution (Vsource balanced to 0.002 deg of 0/-120/+120 -- known
+exactly, not estimated). Source MAGNITUDES remain states.
+
+  dim(x) = 2 x 278 - 3 = 553
+
+Matches RES.md D4 Sec 4.2(a) exactly. State vector layout: V-block
+(columns 0-277, one per phase-node, actual line-neutral volts) + delta-
+block (columns 278-552, one per NON-reference phase-node, radians).
+observability/state_vector.py.
+
+----------------------------------------------------------------------
+2. The Jacobian -- built analytically from the compiled circuit's Y-bus
+----------------------------------------------------------------------
+Standard AC power-flow injection/branch-flow Jacobian (Sayghe eq. 2-3
+generalised per-phase), differentiated by hand from the closed-form
+algebraic P(V,delta)/Q(V,delta)/|I|(V,delta) expressions -- never by
+re-solving OpenDSS at perturbed states. Two scales:
+  - Bus injection rows (P_injection, Q_injection, zero-injection,
+    pseudo-measurements): FULL system Y-bus row for the target phase-
+    node (placement.electrical_distance.get_system_y_index()).
+  - Branch/head flow rows (P_flow, Q_flow, I_magnitude_branch, P_head,
+    Q_head, I_magnitude_head): that ELEMENT's own primitive Y
+    (CktElement.YPrim()) -- captures genuine 3-phase mutual coupling
+    within one branch, not the whole network row. The substation head's
+    terminal 2 is the Vsource's fixed internal EMF (not a state) --
+    treated as a "one-sided branch" against a constant, mirroring how
+    the 3 source angles are handled.
+  H's row order is built in the SAME single pass that would build z
+  (registry.enabled_entries() order) -- asserted equal, per RES.md's
+  explicit silent-wrong-answer warning about mismatched z/H ordering.
+
+VERIFIED (tests/test_observability.py, 6 tests): every row-builder
+(bus injection, branch flow, current magnitude, head P/Q) checked via
+finite-differencing the module's OWN forward power-flow formula --
+never OpenDSS a second time. One real bug caught and fixed this way: an
+index-collision between the V-block and delta-block (delta_index was
+0-based instead of offset past the V-block, so V and delta
+contributions were silently overwriting each other in the same row
+array) -- confirmed via the FD check landing on a completely wrong
+column before the fix, and matching to 1e-6 after. Current-magnitude
+rows needed a much smaller finite-difference epsilon than power rows
+(|I| is near-zero at flat start, since neighbouring flat-start voltages
+are nearly identical -- a large perturbation overshoots the local-
+linear regime); documented in the test, not a code defect.
+
+SCOPE NOTE -- Y-bus load contamination. OpenDSS's system Y-bus folds in
+constant-impedance/current load admittances (Model != 1) at their
+CURRENTLY-SET value, confirmed empirically (bus 6.3's diagonal, where
+Model=2 load s6c attaches, shifts when s6c's kW is scaled). A pure
+state-estimation H should be topology-only. Measured magnitude of the
+contamination at a representative well-connected node: ~0.1-1% of the
+nodal admittance. Disabling all loads and re-solving to obtain a load-
+free Y-bus was tested and works, but introduces its own uncertainty
+(regulator taps may respond to a near-zero-load operating point rather
+than the nominal one). RANK is a structural, not numeric, property and
+is essentially never changed by a perturbation this small -- this
+module uses the standard system Y-bus (loads at as-authored nominal
+values, one normal solve), not a load-disabled variant. Stated here,
+not a silent shortcut.
+
+----------------------------------------------------------------------
+3. Zero-injection phase-nodes
+----------------------------------------------------------------------
+Enumerated PER (bus, phase) from the compiled circuit -- every Load
+object's actual NodeOrder/NumPhases, not a bus-level approximation.
+
+  Zero-injection phase-nodes: 183 of 278  ->  366 exact constraint rows (P=0, Q=0)
+
+(An earlier bus-level approximation taken during scoping this task
+found 125 -- that check marked a WHOLE bus non-zero-injection if ANY
+load touched it at ANY phase, incorrectly excluding that bus's OTHER,
+genuinely load-free phases. The phase-resolved 183 is the correct
+figure and the one used throughout this report; the 125 was a rough
+estimate superseded by the actual enumeration, not a discrepancy in
+the enumeration itself.)
+
+Enforced as HARD LAGRANGIAN EQUALITY CONSTRAINTS (Sha25 Sec II eq. 1-6)
+for the RANK/observability test -- i.e. stacked as additional exact
+rows alongside the noisy measurement rows when testing whether the
+combined linear system uniquely determines x. They are EXCLUDED from
+the WEIGHTED normal-equations matrix H^T W H (see Sec 5) -- exactly the
+conditioning damage Sha25 motivates the Lagrangian form to avoid.
+
+----------------------------------------------------------------------
+4. Cumulative sensor-configuration sweep -- both registry variants
+----------------------------------------------------------------------
+{49/53 P,Q} -> {+|V| at meters} -> {+substation head, 12} ->
+{+branch units} -> {+zero-injection, 366} -> {+pseudo, 84}
+
+  DEFAULT variant (config/sensor_registry.json, m=98)
+  Step                  m(rows)  m(weighted)  rank  rank/553  redundancy  n_critical
+  1 meters P,Q             98        98         98    0.1772        0        98
+  2 +meters V               98        98         98    0.1772        0        98
+  3 +head (12)             110       110        101    0.1826        9       101
+  4 +branch (165)          275       275        205    0.3707       70       104
+  5 +zero-injection (366)  641       275(*)     508    0.9186      133       333
+  6 +pseudo (84)           725       359(*)     550    0.9946      175       147
+
+  MULTIPHASE variant (config/sensor_registry_multiphase.json, m=106)
+  Step                  m(rows)  m(weighted)  rank  rank/553  redundancy  n_critical
+  1 meters P,Q            106       106        106    0.1917        0       106
+  2 +meters V              106       106        106    0.1917        0       106
+  3 +head (12)             118       118        109    0.1971        9       109
+  4 +branch (165)          283       283        213    0.3852       70       112
+  5 +zero-injection (366)  649       283(*)     516    0.9331      133       342
+  6 +pseudo (84)           733       367(*)     553    1.0000      180         0
+
+(*) "m(weighted)" excludes the 366 zero-injection rows from that step
+onward -- they are Lagrangian constraints, not weighted measurements
+(Sec 5). "rank" always includes them (it's a question about the full
+combined linear system).
+
+cond(H^T W H): INFINITE at every single step listed above, in BOTH
+variants. This is a real, and CORRECT, finding, not a gap in the
+analysis: m(weighted) never reaches dim(x)=553 at ANY step (359/367 at
+the maximum), so the noisy-measurement-only WLS normal-equations matrix
+is ALWAYS singular by construction, regardless of how many sensors are
+added -- the classical WLS estimator, as narrowly formulated (weighted
+measurements only, no equality constraints folded in), can NEVER be
+well-posed on this feeder without the zero-injection rows INSIDE it.
+Sha25's own point, independently reconfirmed: a real AC-DSSE here MUST
+use the Lagrangian-constrained formulation (Phase 7's job) -- trying to
+report a finite cond() for the weighted-only block would have meant
+either mis-scoping zero-injection as a high-weight pseudo-measurement
+(exactly what Sha25 warns against) or reporting a number that doesn't
+answer the question asked.
+
+----------------------------------------------------------------------
+5. FULL RANK -- achieved, and only with one specific configuration
+----------------------------------------------------------------------
+YES, full rank (dim(x)=553) IS achieved -- but ONLY with the MULTIPHASE
+registry variant's MAXIMAL configuration (meters P,Q,V + head + branch
++ zero-injection + pseudo, 733 total rows): rank = 553/553 EXACTLY, and
+n_critical = 0 (no single measurement's removal breaks observability
+anywhere in that configuration).
+
+The DEFAULT variant's identical maximal configuration (725 rows) NEVER
+reaches full rank: capped at 550/553, 147 critical measurements,
+REGARDLESS of what else is added. Null-space analysis of the maximal-
+config default-variant H (SVD, 3 near-exactly-zero singular values,
+~1.4e-6 vs the next smallest at 3.0e-3) shows the 3 unconstrained
+dimensions are, with no ambiguity, EXACTLY bus 48's three phase-nodes
+(48.1/48.2/48.3 -- V and delta at S48's B and C phases dominate the
+first three right-singular vectors at >60% weight each; the fourth-
+smallest singular value, 3e-3, jumps to a completely different part of
+the network).
+
+Bus 48 hosts S48, `New Load.S48 Bus1=48 Phases=3 Conn=Wye` -- one of
+only TWO genuinely 3-phase loads on this feeder (with S47; see Sec 7).
+The default registry meters S48 on its primary phase only (m=98's
+scoping decision, RES.md D10 Phase 2). Phases B and C at bus 48 are
+NOT zero-injection nodes (S48 draws real, nonzero power there) and are
+NOT separately metered -- so no sensor in the default registry, at ANY
+step of the cumulative sweep, EVER touches those two phase-nodes'
+states directly. This is not a subtle numerical artifact; it is a
+structural, exactly-diagnosable hole traceable to one specific modelling
+shortcut.
+
+----------------------------------------------------------------------
+6. Registry variant decision
+----------------------------------------------------------------------
+DECISION: adopt the MULTIPHASE variant (m=106).
+
+Evidence, not assertion:
+  - Full rank (553/553) is achieved ONLY with multiphase's maximal
+    config; default's maximal config is permanently short by exactly
+    the 3 dimensions traced to S48's unmetered phases (Sec 5).
+  - n_critical drops from 147 (default, maximal config) to 0
+    (multiphase, maximal config) -- not a marginal improvement.
+  - The gap is not diffuse "under-coverage somewhere" -- it is provably
+    caused by the single-phase-metering shortcut on the one load type
+    (genuinely 3-phase Wye) that shortcut actually affects, exactly the
+    failure mode this task asked to check for: "If S47/S48 appear as
+    critical measurements under the base variant but not the multiphase
+    one, that is an artifact of the single-phase-metering shortcut."
+    Confirmed directly: neither S47 nor S48's phase-A entries appear in
+    either variant's maximal-config critical set (both have enough
+    surrounding redundancy once zero-injection/pseudo are present) --
+    the artifact isn't "S47/S48 are critical," it's the STRUCTURAL RANK
+    HOLE their B/C phases leave when unmetered, which is a stronger,
+    more definitive form of the same finding than a critical-measurement
+    flag would have been.
+
+----------------------------------------------------------------------
+7. Correction to Phase 2 Finding #1 (context, already applied in Phase 3)
+----------------------------------------------------------------------
+Phase 2 named 5 loads "multi-phase" (S35a, S47, S48, S76a, S65c). Phase
+3 corrected this against 123Bus/IEEE123Loads.DSS: only S47 and S48 are
+`Phases=3 Conn=Wye` (genuinely 3-phase). S35a, S65c, S76a are
+`Phases=1 Conn=Delta` -- single-phase, line-to-line -- already fully
+metered by their one primary-phase entry; there is no second phase's
+worth of power to meter on those three. This report's rank-hole finding
+(Sec 5) independently confirms that correction was right: the ONLY
+observability defect traceable to under-metered multi-phase loads is at
+S48 (and, structurally, would be at S47 too, absent enough surrounding
+redundancy from zero-injection/pseudo to cover it -- S47 is NOT the
+source of the 3 missing dimensions, only S48 is, at THIS specific
+maximal configuration; the multiphase variant closes both).
+
+----------------------------------------------------------------------
+8. RES.md's expected result -- does it hold?
+----------------------------------------------------------------------
+"49x(P,Q) is far from observable; zero-injection constraints are the
+decisive addition; head + branch units then supply the redundancy that
+makes residuals meaningful. At the 85-bus ceiling m=170 against n=553,
+still 3.3x short on meters alone."
+
+HOLDS, confirmed quantitatively:
+  - Meters alone (98 or 106): rank/dim = 0.177 / 0.192 -- far from
+    observable, exactly as predicted.
+  - Adding |V| at meters: ZERO rank improvement in either variant (98
+    and 106 stay unchanged) -- |V| at an already-metered bus adds a
+    trivial row (coefficient 1 on that bus's OWN V column) but every
+    meter already has a P_injection row touching that SAME V column via
+    the diagonal self-term, so no NEW column gets its first nonzero
+    entry. |V| becomes valuable later, for CONDITIONING (Sec 4's cond()
+    discussion) and cross-checking, not for closing the rank gap by
+    itself -- worth stating since RES.md's own step list orders it
+    second, before head/branch.
+  - Head: +9 rank (110->101 rows->rank in default) -- modest but real,
+    exactly the "operationally free, high-value" sensor RES.md
+    describes.
+  - Branch: the single largest jump before zero-injection (+104 rank,
+    101->205 in default) -- backbone coverage matters.
+  - Zero-injection: THE decisive addition, confirmed -- +303 rank in
+    one step (205->508 in default), taking rank/dim from 37% to 92% in
+    a single addition that costs nothing (183 nodes' worth of exact,
+    free constraints).
+  - Pseudo: closes most of the remainder (508->550 default, 516->553
+    multiphase).
+  - Tier-2 sub-study 4A (Part B) independently reconfirms the "meters
+    alone" half of this from the STRATEGY-COMPARISON angle: at every
+    density up to 85 (m=170) and every one of 5 placement strategies,
+    rank(H)=m EXACTLY (no internal redundancy among meter-only rows)
+    and EVERY meter is individually critical -- see Part B Sec 2.
+
+======================================================================
+PART B -- SUB-STUDY 4A, TIER 2
+======================================================================
+
+----------------------------------------------------------------------
+1. Axis rescope and grid
+----------------------------------------------------------------------
+Instrumentation fraction of the 85 candidate buses, not raw count:
+
+  10%   20%   30%   34%(sic->40%)  50%   60%   80%   100%
+   9    17    26     34             43    51    68    85
+
+(40% retained per RES.md: Ald25 fixes ~40% smart-meter coverage as its
+given constraint, the only stated coverage fraction in the 32-paper
+corpus.) BUG CAUGHT AND FIXED before this table was trusted: computing
+these counts as `round(85 * fraction)` silently produced 8 (not 9) at
+10% and 42 (not 43) at 50%, because Python's round() is round-half-to-
+even and 85*0.10=8.5, 85*0.50=42.5 are exact ties. Fixed by using
+RES.md's stated integers directly (9/17/26/34/43/51/68/85), not
+recomputing them; the first (wrong-count) sweep run was discarded, not
+kept as a comparison point, since it reflects a code bug, not a
+deliberate scoping choice.
+
+Grid: Hybrid, Degree, Community12 (raw), Community4 (merged), Random.
+Independent construction only (Tier 1 already established that nested-
+vs-independent divergence is a placement-QUALITY question; Tier 2's new
+metrics are properties of the selected SET at a given count, and this
+report does not double every new metric across both constructions).
+152 total cells.
+
+RandomPlacement seed policy (RES.md): 30 seeds where instrumentation
+fraction < 30% (counts 9, 17 -- 60 cells), 10 seeds at/above 30%
+(counts 26, 34, 43, 51, 68, 85 -- 60 cells). 120 Random cells total,
+confirmed exactly in cells.csv (n_seeds column).
+
+----------------------------------------------------------------------
+2. Headline finding: meters-only H is placement-strategy-agnostic
+----------------------------------------------------------------------
+H built from ONLY the placed meters' P,Q rows (no zero-injection/head/
+branch/pseudo -- this is deliberately the "how good is meter placement
+alone" question Tier 2 asks, distinct from Part A's full-sensor-stack
+analysis). Across ALL 152 cells (5 strategies x 8 counts, up to 30
+Random seeds per cell):
+
+  rank(H) == m(H)                    EXACTLY, always (zero exceptions)
+  n_critical == m(H)                 EXACTLY, always -- every meter's
+                                      own P,Q rows are critical
+  alpha_k (security index)           1.000 for every meter, every
+                                      strategy, every count, every seed
+                                      -- ZERO variance, including across
+                                      all 30 Random seeds at count=9/17
+
+This is a clean, structural consequence, not noise: with no zero-
+injection, branch or head constraints tying meters together, each
+meter's P,Q rows depend on that bus's own state plus its immediate
+Y-bus neighbours -- generically always linearly independent from every
+OTHER meter's rows (no two meters share a phase-node), so rank=m and
+every row is critical by construction. alpha_k=1 follows directly: an
+attacker can corrupt exactly one meter's reading with a state
+perturbation touching only that meter's own local injection, with
+nothing else in the measurement set to contradict it.
+
+CONCLUSION: placement STRATEGY and DENSITY are irrelevant to
+observability/security when meters are the only measurement type --
+the curve is flat at every count, for every strategy, matching RES.md
+Part A's "zero-injection constraints, not meters, close the gap"
+finding from an independent, per-strategy angle. m/n at count=85 (170/
+553 = 0.307) matches the 3.3x-short figure Part A/RES.md state (553/
+170 = 3.25x).
+
+----------------------------------------------------------------------
+3. Security index alpha_k -- method and limitation
+----------------------------------------------------------------------
+alpha_k = min ||Hc||_0 s.t. H(k,:)c=1 (Sayghe eq. 38), NP-hard in
+general. Relaxed to an L1 linear program: min ||Hc||_1 s.t. H(k,:)c=1,
+solved via scipy.optimize.linprog (HiGHS). ~5-15ms per solve; 3,850+
+solves completed in under 100s total. LIMITATION, stated per RES.md's
+instruction: L1 is a convex proxy for L0 and can over- or under-
+estimate the true sparsest solution when H's columns are not
+sufficiently incoherent -- used here because exact L0 minimisation over
+a 553-dimensional c is combinatorial and RES.md explicitly authorises
+the relaxation. One alpha_k per metered node (its P_injection row is
+the representative k; Q_injection was not separately computed --
+stated scoping choice, not an oversight).
+
+----------------------------------------------------------------------
+4. Hybrid placement score vs. alpha_k -- correlation
+----------------------------------------------------------------------
+Pearson r = -0.0393 (n=333 meter-count pairs, all 8 Hybrid counts
+pooled).
+
+THIS NUMBER IS NOT MEANINGFULLY INTERPRETABLE AS "WEAK CORRELATION" --
+it is a near-zero coefficient computed against a variable (alpha_k)
+that has ESSENTIALLY ZERO VARIANCE (1.000 +/- LP-solver tolerance
+noise, per Sec 2). Pearson correlation against a near-constant is
+statistically degenerate: the coefficient is dominated by numerical
+noise in the fourth decimal place of alpha_k, not by any real
+relationship between hybrid score and security. Reporting it as
+"correlated" or "uncorrelated" would both overstate what -0.04 actually
+measures.
+
+The HONEST answer to RES.md's question ("does the alpha_k ranking
+correlate with the hybrid placement score?") is: the question is MOOT
+at the meters-only configuration, because alpha_k does not meaningfully
+vary there AT ALL -- every meter, regardless of hybrid score, sits at
+the same (minimal) security level. This is itself the N2-relevant
+finding RES.md anticipates two possible outcomes for ("correlated means
+the coverage heuristic is a cheap vulnerability proxy; divergent means
+coverage-optimal metering is not attack-robust") -- the actual outcome
+is a THIRD case neither anticipated: coverage-optimal metering is not
+even DIFFERENTIATED on security, let alone correlated or divergent,
+until zero-injection/other constraints are added. A meaningful
+correlation test would need alpha_k computed WITH zero-injection folded
+into H (so meters are no longer uniformly alpha_k=1) -- not attempted
+here; Tier 2's brief was specifically the meter-placement comparison,
+and this is flagged as a natural follow-up, not silently worked around.
+
+Scatter data: artifacts/20260829T165146Z/sweep_4a_tier2/
+hybrid_alpha_correlation.json (30-pair sample) and alpha_k.csv (full
+333-row detail, all strategies) -- for anyone who wants to plot it
+directly; not rendered as an image in this text report.
+
+----------------------------------------------------------------------
+5. Strategy fixes applied before this sweep
+----------------------------------------------------------------------
+CommunityDetectionPlacement degeneracy (task's own diagnosis: "kW-
+proportional allocation across 12 communities leaves most with zero").
+VERIFIED empirically before fixing, and the exact mechanism is more
+specific than the allocation FORMULA: the existing largest-remainder
+apportionment was already exact (sums to target_meters correctly at
+every count) -- INDEPENDENT construction at count=9 left only 2 of 9
+communities-with-candidates at zero, not "most". The real degeneracy
+was in NESTED construction's SELECTION ORDER: select() built `selected`
+by BLOCK-CONCATENATING each community's full allocation (all of
+community 0, then all of community 1, ...) -- so a nested run's first-9
+prefix (sliced from an 85-meter selection) came ENTIRELY from whichever
+1-2 communities sorted first: only 2 of 9 communities represented at
+count=9, unchanged through count=26.
+
+FIX applied (placement/placement_strategy.py): (a) largest-remainder
+allocation, now followed by a MINIMUM-SHARE top-up -- once every
+community is floored to >=1 (feasible whenever target_meters >= number
+of communities, guaranteed by conservation of the fixed total), donate
+one meter to each zero-share community from the currently-largest
+allocation; (b) ROUND-ROBIN selection order (one pick per community per
+round, mirroring HybridPlacement's own branch-queue pattern) replacing
+block concatenation. VERIFIED after the fix: nested count=9 prefix now
+represents 9 of 9 communities (was 2 of 9); independent count=9
+allocation represents 9 of 9 (was 7 of 9); all 8 target counts still
+honoured exactly; full 94-test suite (pre-existing 88 + this session's
+new 6) still passes -- no regression.
+
+Reference configuration (config/reference_configuration.json):
+target_meters=49 (57.65% of 85), status "provisional, retained for
+continuity with earlier runs, carries no optimality claim". All four
+placement-strategy constructors (Hybrid/Random/Degree/
+CommunityDetection) now default to this value via
+REFERENCE_TARGET_METERS rather than each hardcoding its own literal 49.
+
+----------------------------------------------------------------------
+6. Deterministic strategies vs. Random -- Tier 2 metrics
+----------------------------------------------------------------------
+Per Sec 2's finding, rank/critical/alpha_k are IDENTICAL across
+Hybrid, Degree, Community12, Community4 and every Random seed at every
+count (m/n and rank_frac columns below apply to all five strategies
+simultaneously; Random's std across seeds is exactly 0.0 on every
+metric, confirmed in cells.csv):
+
+  count   fraction   m     m/n     rank/dim   n_critical   alpha_k
+    9      10.6%      18   0.0325   0.0325       18         1.000
+   17      20.0%      34   0.0615   0.0615       34         1.000
+   26      30.6%      52   0.0940   0.0940       52         1.000
+   34      40.0%      68   0.1230   0.1230       68         1.000
+   43      50.6%      86   0.1555   0.1555       86         1.000
+   51      60.0%     102   0.1844   0.1844      102         1.000
+   68      80.0%     136   0.2459   0.2459      136         1.000
+   85     100.0%     170   0.3074   0.3074      170         1.000
+
+The Tier-1 "placement-quality knee" (does the hybrid algorithm earn its
+keep) is therefore NOT decidable from observability/security metrics
+at the meters-only level -- it must be judged on Tier 1's own metrics
+(downstream coverage, phase balance, branch diversity), which is
+consistent with, not contradicted by, this report: Part A already
+establishes that RANK is meter-COUNT-driven, not meter-PLACEMENT-driven,
+until zero-injection/pseudo enter the picture, and this table confirms
+that holds identically across strategies too.
+
+======================================================================
+LIMITATIONS
+======================================================================
+  - Y-bus load contamination (Part A Sec 2): system Y-bus includes
+    Model!=1 load admittances at nominal value; ~0.1-1% effect at a
+    representative node, judged immaterial to rank conclusions, not
+    eliminated.
+  - cond(H^T W H) is reported as infinite everywhere in this report by
+    design (Sec 4/Part A) -- this is the correct answer to "is the
+    weighted-only WLS normal-equations matrix invertible," not a
+    missing number. A finite conditioning number for the CONSTRAINED
+    (Lagrangian) system is a Phase-7 estimator-design question, not
+    attempted here.
+  - alpha_k's L1 relaxation is a convex proxy for an NP-hard L0
+    problem (Part B Sec 3) -- can mis-rank in either direction when H's
+    columns are coherent; not validated against exact L0 on a smaller
+    sub-problem in this pass.
+  - The hybrid-score/alpha_k correlation (Part B Sec 4) is reported at
+    the meters-only configuration, where alpha_k is nearly constant --
+    a genuinely discriminating version of this test needs zero-
+    injection folded into H, not attempted here.
+  - Tier 2 used independent construction only, not nested -- Tier 1
+    already covers that axis for placement quality; this report does
+    not re-litigate it for the new observability/security metrics.
+  - sigma_pseudo (10% of nominal reading, used only to weight
+    H^T W H's excluded-from-rank pseudo block) is a Phase-4-scope
+    placeholder, wider than Phase 2's 1% AMI figure but not the
+    Phase-5 empirical estimate RES.md's own Phase-5 section requires.
+
+======================================================================
+UNBLOCKS
+======================================================================
+Phase 5 (add the minimum sensor set + finalise pseudo-measurements) --
+this report supplies the concrete, evidenced minimum configuration
+(multiphase registry + head + branch + zero-injection + pseudo reaches
+full rank with zero critical measurements) Phase 5 is scoped to
+implement "exactly what Phase 4 says is needed, and no more."
+
+======================================================================
+BLOCKS
+======================================================================
+Phase 7's classical WLS arm cannot be built as a plain weighted-least-
+squares system on this feeder (Sec 4/Part A) -- it requires the
+Lagrangian-constrained formulation Sha25 specifies. This was already
+anticipated by RES.md D4 Sec 4.2(b) ("Phase 7's classical arm operates
+in a regime nobody has validated. Budget for that.") and is now
+confirmed, not merely predicted, by this report's cond()=inf finding
+at every single swept configuration.
+
+======================================================================
+METHOD
+======================================================================
+observability/state_vector.py -- flat-start state vector, 553-dim,
+V-block/delta-block column layout, 3 fixed source-bus angle references.
+observability/jacobian.py -- analytic H row-builders per quantity type,
+verified via finite-differencing their own forward formulas
+(tests/test_observability.py, 6 tests).
+observability/zero_injection.py -- phase-resolved zero-injection
+enumeration and constraint-row builder.
+observability/sweep.py -- cumulative sensor-configuration sweep,
+rank/cond/redundancy/critical-measurement computation for Part A.
+validation/sweep_4a_tier2.py -- Tier-2 grid (5 strategies x 8 counts x
+seed policy), rank/cond/critical/alpha_k per cell, hybrid-score
+correlation.
+placement/placement_strategy.py -- CommunityDetectionPlacement round-
+robin + minimum-share fix; REFERENCE_TARGET_METERS wired into all four
+strategy constructors.
+config/reference_configuration.json -- the one place target_meters=49
+is hardcoded.
+tests/test_observability.py -- 6 new tests (dim(x), column-disjointness,
+row-order invariant, 3 finite-difference checks).
+
+Artifacts: artifacts/20260829T165146Z/phase4_observability/
+(cumulative_sweep.csv, zero_injection_nodes.json,
+critical_measurements.json) and artifacts/20260829T165146Z/
+sweep_4a_tier2/ (cells.csv, alpha_k.csv,
+hybrid_alpha_correlation.json). Prior sweep artifacts
+(artifacts/20260820T*, 20260821T*, 20260822T*) kept unmodified --
+sub-study 4A Tier 1 remains attributable against the old axis.
+
+Full test suite: 94/94 passed (88 pre-existing + 6 new
+tests/test_observability.py), confirming no regression from the
+CommunityDetectionPlacement fix or the reference-configuration wiring.
+======================================================================
+
+======================================================================
+CLAUDE.md Report
+======================================================================
+Implemented:
+RES.md D10 Phase 4 -- built H_abc(x) = dh/dx analytically from the
+compiled circuit's Y-bus (bus-injection rows from the full system
+Y-bus, branch/head rows from each element's own primitive Y, no
+finite-differencing through OpenDSS solves), confirmed dim(x)=553,
+enumerated 183 zero-injection phase-nodes (phase-resolved, correcting
+an earlier bus-level estimate of 125), and swept the cumulative sensor
+configuration for both sensor-registry variants. Full rank (553/553)
+is achieved only by the multiphase registry's maximal configuration,
+with zero critical measurements; the default (m=98) variant permanently
+caps at 550/553 with 147 critical measurements, traced via null-space
+analysis to exactly bus 48/S48's two unmetered phases -- decided to
+adopt the multiphase variant on that evidence. Sub-study 4A Tier 2 ran
+a 152-cell grid (Hybrid/Degree/Community12/Community4/Random x 8 counts,
+9/17/26/34/43/51/68/85) computing rank/cond/critical-measurement-count
+and the security index alpha_k (L1-relaxed LP, Sayghe eq. 38); headline
+finding is that meters-only H has rank(H)=m and alpha_k=1.0 identically
+across every strategy, count and seed -- placement strategy and density
+are irrelevant to security until zero-injection/other constraints enter,
+independently reconfirming RES.md's core prediction. Fixed
+CommunityDetectionPlacement's nested-construction degeneracy (round-
+robin selection order + minimum-share allocation top-up) and wired a
+config-driven reference configuration (49 meters, provisional) into all
+four placement-strategy constructors.
+
+Files changed:
+- observability/ (new) -- state_vector.py, jacobian.py,
+  zero_injection.py, sweep.py
+- validation/sweep_4a_tier2.py (new)
+- placement/placement_strategy.py -- CommunityDetectionPlacement
+  round-robin + minimum-share fix; REFERENCE_TARGET_METERS wired into
+  all four constructors
+- config/reference_configuration.json (new)
+- tests/test_observability.py (new, 6 tests)
+- reports/phase4_observability_report.txt (this file, new)
+
+Run:
+Interactive Jacobian construction + finite-difference verification
+(tests/test_observability.py); python -m validation.sweep_4a_tier2 for
+the Tier-2 grid; a small ad hoc script (not kept) to save Part A's
+cumulative-sweep/critical-measurement/zero-injection artifacts to
+artifacts/20260829T165146Z/phase4_observability/; full suite via
+python -m pytest.
+
+Result:
+Full rank achieved (553/553) with the multiphase registry variant's
+maximal sensor configuration; the default variant never reaches full
+rank at any configuration (capped 550/553). Registry variant decision:
+adopt multiphase, backed by a specific, null-space-traced structural
+cause (bus 48/S48's unmetered B/C phases), not a general impression.
+Tier 2's 152-cell sweep shows observability/security metrics are flat
+across all 5 placement strategies at every density -- the Tier-1
+"placement-quality knee" is not decidable from these metrics alone.
+Hybrid-score-vs-alpha_k Pearson r=-0.039, reported with the caveat that
+it is statistically degenerate (alpha_k has near-zero variance at the
+meters-only configuration) rather than genuine weak correlation.
+cond(H^T W H)=infinite at every single swept configuration, in both
+parts -- confirms Phase 7's classical WLS arm cannot be built as a
+plain weighted system on this feeder and must use Sha25's Lagrangian
+formulation. 94/94 tests pass (88 pre-existing + 6 new), no regressions.
+
+Known limitation / next step:
+sigma_pseudo (10% of nominal, used only for the H^T W H weighting) is a
+Phase-4-scope placeholder pending Phase 5's proper empirical estimate.
+The hybrid-score/alpha_k correlation needs alpha_k computed WITH zero-
+injection folded in for a non-degenerate test -- not attempted here,
+flagged as a follow-up rather than worked around. Y-bus load-admittance
+contamination (~0.1-1% at a representative node) was measured, judged
+immaterial to rank conclusions, and not eliminated. Next: RES.md D10
+Phase 5 (add the minimum sensor set + finalise pseudo-measurements),
+using this report's evidenced minimum configuration as its brief. Phase
+5 not started.
+======================================================================

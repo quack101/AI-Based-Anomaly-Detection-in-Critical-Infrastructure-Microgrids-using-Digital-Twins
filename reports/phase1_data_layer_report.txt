@@ -1,0 +1,85 @@
+======================================================================
+RES.md D10 Phase 1 -- Data Layer Validation Report
+======================================================================
+
+Replay length          : 1440 timestamps (full day)
+N_phase_nodes           : 278
+As-authored nominal total load: 3490.0 kW
+
+----------------------------------------------------------------------
+Acceptance criteria (RES.md D10 Phase 1)
+----------------------------------------------------------------------
+[PASS] Aggregate feeder load within +/-10% of nominal: avg feeder-head P = 3615.4 kW (103.6% of 3490.0 kW nominal)
+[PASS] Per-meter pairwise correlation not degenerate: mean r = -0.0079 (min -0.5812, max 0.5928) vs. raw pre-Phase-1 baseline of ~0.997 (see reports/phase0_validation_report.txt / generate_scaled_datasets.py output)
+[PASS] Convergence (Phase-0 check still holds): 1440/1440 (100.00%)
+[PASS] V_pu in [0.90, 1.10] (Phase-0 check, now expected in a realistic range): violated at 0/1440 timestamps, observed [0.946282, 1.062870]
+[PASS] Losses 1-5% of feeder load (Phase-0 check): average = 2.7658%
+[PASS] Solve time well under 60s: max 0.0023s, mean 0.0003s
+
+----------------------------------------------------------------------
+Interpretation
+----------------------------------------------------------------------
+All Phase 1 acceptance criteria pass. The feeder is now loaded at 103.6% of its as-authored nominal total (compare Phase 0's 47.9%), driven by all 91 loads instead of leaving 42 unmetered loads static, and the 49 metered profiles are no longer near-identical clones (mean pairwise correlation dropped from ~0.997 to -0.0079).
+
+----------------------------------------------------------------------
+What changed vs. Phase 0 (RES.md 3.1, D10 Phase 1)
+----------------------------------------------------------------------
+(i)   49 metered series rescaled per-node to nominal kW/kvar (config/load_metadata.json), shape-preserving: P_k(t) = P_k^nom * (p_src(t)/mean(p_src)).
+(ii)  Voltage/Global_intensity/Sub_metering_* removed from the telemetry path entirely -- streaming/producer.py now publishes only {timestamp, meter_id, load_name, bus, p_kw, q_kvar}; bus voltage/current in digital_twin_telemetry.csv come only from the OpenDSS solve.
+(iii) Per-meter diversification (temporal offset + lag + scale jitter, simulation/load_scaling.py) applied before rescaling; raw pairwise correlation ~0.997 -> -0.0079 mean after.
+(iv)  42 unmetered loads now driven by explicit pseudo-load series (data/pseudo_loads/), each tagged with sigma_pseudo_frac in data/pseudo_measurement_registry.json, instead of held static at nominal.
+
+======================================================================
+
+======================================================================
+CLAUDE.md Report
+======================================================================
+Implemented:
+RES.md D10 Phase 1 -- fixed the data layer per the four defects in RES.md
+3.1: (i) shape-preserving rescale of the 49 metered series to nominal
+kW/kvar, (ii) Voltage/Global_intensity/Sub_metering_* dropped from the
+telemetry path entirely, (iii) per-meter diversification (temporal
+offset + lag + scale jitter) to break the near-identical correlation
+structure, (iv) the 42 unmetered loads modeled as explicit pseudo-load
+series with a recorded sigma_pseudo, replacing the static-nominal
+Phase-0 assumption.
+
+Files changed:
+- simulation/load_scaling.py (new) -- rescale/diversification math
+- simulation/generate_scaled_datasets.py (new) -- dataset generator:
+  reads config/load_metadata.json + raw synthetic_*.csv, writes
+  data/scaled_datasets/ (49), data/pseudo_loads/ (42),
+  data/pseudo_measurement_registry.json
+- streaming/producer.py -- sources data/scaled_datasets/ keyed by
+  load_name (was fragile positional glob-order pairing); message no
+  longer includes voltage/current
+- streaming/consumer.py -- loads pseudo_loads/ at startup, drives all 91
+  loads (49 metered from Kafka + 42 pseudo, locally loaded -- never
+  published, per the cyber/physical boundary) each timestamp; dropped
+  input_voltage/input_current from digital_twin_telemetry.csv
+- simulation/validate_phase1.py (new) -- full-day replay + acceptance
+  check against the fixed data layer
+
+Run:
+simulation/generate_scaled_datasets.py -> simulation/validate_phase1.py
+(direct-replay check) -> live smoke test via Docker Kafka (producer +
+consumer, ~13 timestamps, confirmed no runtime errors, then torn down)
+
+Result:
+[PASS] Aggregate load within +/-10% of nominal -- 103.6% (3615.4/3490 kW),
+       vs. Phase 0's 47.9%
+[PASS] Correlation not degenerate -- mean r = -0.0079, vs. raw ~0.997
+[PASS] Convergence -- 1440/1440 (100%)
+[PASS] V_pu in [0.90,1.10] -- observed [0.9463, 1.0629], realistic spread
+       now (vs. Phase 0's suspiciously tight [0.9801,1.0456])
+[PASS] Losses 1-5% -- 2.77%
+[PASS] Solve time well under 60s -- max 0.0023s
+All six Phase 1 acceptance criteria pass.
+
+Known limitation / next step:
+Live smoke test only ran ~13 of 1440 timestamps (fast confirmation, not
+a full-day live-Kafka run -- the direct-replay validate_phase1.py run
+already covers full-day physics identically to how Phase 0's two
+methods agreed). Per CLAUDE.md scope, Phase 2 (formal sensor registry /
+h(.)) is next and untouched.
+======================================================================

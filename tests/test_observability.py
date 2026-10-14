@@ -175,3 +175,101 @@ def test_current_magnitude_jacobian_matches_finite_difference(state, flat_v):
     fd = (Ip - Im) / (2 * eps)
 
     assert row[state.v_index[target]] == pytest.approx(fd, rel=1e-2)
+
+
+@pytest.fixture(scope="module")
+def perturbed_v(flat_v):
+    """A genuinely non-flat-start operating point -- every node's V
+    magnitude AND angle displaced from nominal. The two regression
+    tests below (RES.md D10 Phase 7/8 Jacobian bugs) specifically need
+    this: both bugs were invisible at flat start (the Q-angle sign
+    bug happens to be masked wherever theta==0 identically, which flat
+    start's per-phase-only angle spread does not trigger; the frozen
+    V_magnitude h0 bug is invisible whenever x0_v happens to equal the
+    evaluation point, which flat start trivially does)."""
+
+    rng = np.random.default_rng(42)
+    pv = {}
+    for name, v in flat_v.items():
+        mag = abs(v) * (1.0 + rng.uniform(-0.05, 0.05))
+        ang = math.atan2(v.imag, v.real) + rng.uniform(-0.05, 0.05)
+        pv[name] = mag * complex(math.cos(ang), math.sin(ang))
+    return pv
+
+
+def test_q_injection_angle_jacobian_matches_finite_difference(state, system_y, perturbed_v):
+    """RES.md D10 Phase 7/8 Q-ANGLE JACOBIAN BUG, regression guard.
+    _scatter_injection's dQ_ddt previously carried an erroneous extra
+    unary negative (`Vt*Vk*(-Gk*cos_t-Bk*sin_t)` instead of
+    `Vt*Vk*(Gk*cos_t+Bk*sin_t)`), sign-flipping dQ/d(delta) for every
+    Q-type measurement in the system -- found via exactly this kind
+    of finite-difference check, but at a flat start where the existing
+    P-only test (test_bus_injection_jacobian_matches_finite_difference)
+    never exercised Q at all. Uses perturbed_v, not flat start, so a
+    reintroduced bug can't hide behind flat start's special angle
+    structure."""
+
+    Y, node_index = system_y
+    registry = load_registry()
+    entries = enabled_entries(registry)
+    entry = next(e for e in entries if e["quantity"] == "Q_injection")
+    node = f"{entry['node']}.{J.PHASE_LETTER_TO_NUM[entry['phase']]}"
+    y_row = J._system_y_row(node, Y, node_index)
+
+    H, _ = J.build_jacobian([entry], Y, node_index, state, at_v=perturbed_v)
+    row = H[0] * 1000.0  # undo kvar scaling -- compare in native VAR
+
+    neighbor = next(k for k in y_row if k != node)
+    k_d_idx = state.delta_index.get(neighbor)
+    assert k_d_idx is not None, "test fixture needs a neighbor with a free angle"
+
+    eps_d = 1e-6
+    fv_p = _perturb_d(perturbed_v, neighbor, eps_d)
+    fv_m = _perturb_d(perturbed_v, neighbor, -eps_d)
+    rp, rq = np.zeros(state.dim), np.zeros(state.dim)
+    _, Qp = J._scatter_injection(rp, rq, node, y_row, state, fv_p)
+    rp2, rq2 = np.zeros(state.dim), np.zeros(state.dim)
+    _, Qm = J._scatter_injection(rp2, rq2, node, y_row, state, fv_m)
+    fd = (Qp - Qm) / (2 * eps_d)
+
+    assert row[k_d_idx] == pytest.approx(fd, rel=1e-3)
+
+    t_d_idx = state.delta_index.get(node)
+    if t_d_idx is not None:
+        fv_p2 = _perturb_d(perturbed_v, node, eps_d)
+        fv_m2 = _perturb_d(perturbed_v, node, -eps_d)
+        rp3, rq3 = np.zeros(state.dim), np.zeros(state.dim)
+        _, Qp2 = J._scatter_injection(rp3, rq3, node, y_row, state, fv_p2)
+        rp4, rq4 = np.zeros(state.dim), np.zeros(state.dim)
+        _, Qm2 = J._scatter_injection(rp4, rq4, node, y_row, state, fv_m2)
+        fd2 = (Qp2 - Qm2) / (2 * eps_d)
+        assert row[t_d_idx] == pytest.approx(fd2, rel=1e-3)
+
+
+def test_voltage_magnitude_jacobian_tracks_current_iterate(state, perturbed_v):
+    """RES.md D10 Phase 7/8 V_MAGNITUDE FROZEN-h0 BUG, regression
+    guard. build_voltage_row previously took no at_v parameter at all
+    and always read state.x0_v -- so every V_magnitude measurement's
+    forward value (h0) stayed frozen at the solve's STARTING guess for
+    the entire Gauss-Newton iteration, never updated to the current
+    iterate. The Jacobian row itself (1/v_base, a constant) was always
+    correct; only h0 was stale -- invisible at flat start because
+    state.x0_v IS the flat-start value there. Goes through the full
+    build_jacobian dispatch (not build_voltage_row directly), so a
+    regression at the call site (forgetting to pass flat_v through)
+    is also caught."""
+
+    registry = load_registry(variant="multiphase")
+    entries = enabled_entries(registry)
+    entry = next((e for e in entries if e["quantity"] == "V_magnitude"), None)
+    assert entry is not None, "multiphase registry should have V_magnitude entries enabled"
+
+    node = f"{entry['node']}.{J.PHASE_LETTER_TO_NUM[entry['phase']]}"
+    _, h0_arr = J.build_jacobian([entry], None, None, state, at_v=perturbed_v)
+    h0 = h0_arr[0]
+
+    expected = abs(perturbed_v[node]) / state.v_base[node]
+    frozen_would_be = state.x0_v[state.v_index[node]] / state.v_base[node]
+
+    assert h0 == pytest.approx(expected, rel=1e-9)
+    assert abs(h0 - frozen_would_be) > 1e-4, "perturbation too small to distinguish from the frozen-x0 bug"

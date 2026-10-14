@@ -1,0 +1,316 @@
+================================================================
+RES.md D10 PHASE 2 -- MEASUREMENT MODEL AND SENSOR REGISTRY
+Status: PASS
+Date: 2026-08-23    Run: config/sensor_registry.json
+================================================================
+
+SCOPE
+  "The gate on everything else" (RES.md D10 Phase 2). Corpus-
+  independent -- runs against nominal DSS load values; Phase 1's
+  delivery is not a prerequisite and was not touched. Produces: (1) a
+  formal h_abc(.), (2) a machine-readable sensor registry, (3) the
+  Layer-1/Layer-2 bridge and nothing else crosses it. This IS a
+  numbered RES.md phase.
+
+VERDICT
+  All five Phase 2 acceptance criteria pass. The sensors/ module is the
+  sole reader of a solved circuit for measurement purposes; the
+  registry declares 324 candidate sensors (98 enabled = the current
+  49-meter P,Q configuration, m=98 exactly), with |V| at meters, the
+  substation head, and 19 of 21 backbone-Line segments present as
+  disabled config entries Phase 4/5 can enable without a code change.
+
+KEY NUMBERS
+  Registry entries (total / enabled)........... 324 / 98
+  m (enabled P,Q at meters)..................... 98 (49 x 2, as specified)
+  Disabled |V| at meters........................ 49
+  Disabled substation-head entries.............. 12 (P,Q,|V|,|I| x 3 phases)
+  Disabled branch entries....................... 165 (19 of 21 backbone
+                                                   hops matched a single
+                                                   Line; 2 are regulator-
+                                                   collapsed hops with no
+                                                   single Line element)
+  Multi-phase meters under-covered by design.... 5 of 49 (s35a, s47,
+                                                   s48, s76a, s65c --
+                                                   primary phase only,
+                                                   see FINDINGS #1)
+  New tests........................................ 15 (13 sensor +
+                                                   2 import-boundary)
+  Full suite........................................ 75 passed
+
+----------------------------------------------------------------------
+1. h_abc(.) -- sensors/measurement_functions.py
+----------------------------------------------------------------------
+  Nine quantity types, each phase-resolved (reads one specific (node,
+  phase) pair via OpenDSS's own NodeOrder/terminal indexing -- never an
+  aggregate across phases, unlike the pre-existing get_load_telemetry()
+  in simulation/opendss_utils.py, which sums across all phases of a
+  load):
+    P_injection, Q_injection        -- Sayghe eq. (14)-(15), load-bus
+    V_magnitude                     -- direct, p.u. (reused for both
+                                        meter |V| and substation-head |V|)
+    P_flow, Q_flow                  -- Anwar eq. (17.5)-(17.6), branch
+    I_magnitude_branch              -- Anwar eq. (17.7)
+    P_head, Q_head, I_magnitude_head -- same forms applied to the
+                                        Vsource element, sign-corrected
+                                        to report power DELIVERED into
+                                        the feeder as positive
+
+  Each function reads the CURRENTLY SOLVED circuit only -- it does not
+  solve or compile anything itself (compile_and_solve()/extract_all()
+  is the caller's responsibility, same convention as core.ieee123_model).
+
+----------------------------------------------------------------------
+2. SENSOR REGISTRY -- config/sensor_registry.json
+----------------------------------------------------------------------
+  Schema (RES.md D10 Phase 2's literal {id, node, phase, quantity,
+  sigma, rate}, extended minimally): id, node, phase, quantity, sigma,
+  rate, enabled, plus load_name (injection sensors) / element_name +
+  element_kind (branch/head sensors, needed because a branch quantity
+  has two endpoints, not one) / note (provenance).
+
+  Built by sensors/generate_registry.py from:
+  - simulation/representative_meters.json (the 49 meters)
+  - core.ieee123_model.extract_all() (verified compiled-circuit Lines)
+  - placement.feeder_context.FeederContext's main_feeder (the SAME
+    backbone computation the placement work uses, per RES.md D4 4.3
+    row 3's explicit instruction: "Use your existing backbone-coverage
+    score to place these")
+
+  CONTENTS, scoped exactly to what this phase justifies (D4 4.3):
+    row 2 (substation head P,Q,|V|,|I| x3) -- 12 entries, disabled
+    row 3 (branch P,Q,|I| at backbone Lines) -- 165 entries, disabled
+    row 4 (|V| at existing meters) -- 49 entries, disabled
+    row 6 (transformer sensors) -- NOT added; RES.md states no paper
+      justifies this
+    row 5 (PMUs) -- NOT added; explicitly optional/deferred
+    row 0 (zero-injection) and row 1 (pseudo-measurements at the 42
+      unmetered Loads) -- NOT sensor-registry entries. Neither is a
+      sensor reading a solved circuit: row 0 is an exact algebraic fact
+      about the network (Phase 4's estimator input), row 1 is a
+      historical-data-derived estimator input (Phase 5's sigma_pseudo
+      amendment), not a live measurement. Registering them here would
+      have been the modelling error Anwar/Sayghe warn against
+      (conflating pseudo-measurements with equality constraints, or
+      either with a live sensor).
+
+----------------------------------------------------------------------
+3. THE LAYER-1/LAYER-2 BRIDGE
+----------------------------------------------------------------------
+  sensors/sensor_layer.py's build_measurement_vector() is the ONLY
+  place z is constructed: one pass over registry.enabled_entries(),
+  per entry h_k(x_true) via measurement_functions.measure() [+ per-
+  entry Gaussian noise using THAT entry's own sigma]. No other module
+  in this codebase does this.
+
+  NOT YET WIRED INTO THE LIVE PIPELINE -- stated plainly, not hidden:
+  streaming/producer.py still reads from data/scaled_datasets (Phase 1,
+  blocked) and does not import sensors/ at all yet. "No OpenDSS
+  quantity reaches Kafka without a registry entry" is satisfied for
+  what sensors/ itself can emit; making it true of the actual Kafka
+  topic is explicitly Phase 3's job ("move the sensor layer into the
+  producer" -- RES.md D10 Phase 3), not this phase's.
+
+----------------------------------------------------------------------
+4. THE JACOBIAN -- structure in place, not built (stated explicitly)
+----------------------------------------------------------------------
+  CHOICE: structure in place for Phase 4, not an analytic H now.
+  WHY: h_abc(.) as implemented here reads a SOLVED circuit (the fast,
+  correct path for publishing telemetry) -- it is not a symbolic
+  function of a free state vector you can differentiate directly.
+  Sayghe eq. (14)-(15) express P_i^mu/Q_i^mu as explicit algebraic
+  functions of x=(V,delta) and the Y-bus's phase-pair blocks
+  (P_i^mu = V_i^mu * sum_{j,eta} V_j^eta (G^{mu,eta}_ij cos(...) +
+  B^{mu,eta}_ij sin(...)), generalising Sayghe eq. (2)-(3)); Phase 4
+  should differentiate THAT algebraic form analytically, per measurement
+  type, reusing the Y-bus already exposed by core.ieee123_model /
+  placement.electrical_distance.get_system_y_index() (built from the
+  SAME compiled-circuit source, same (node,phase) indexing this
+  registry already uses) -- not finite-difference through repeated
+  OpenDSS solves, which would be slower and worse-conditioned for a
+  stiff AC power flow. Documented in measurement_functions.py's module
+  docstring so Phase 4 doesn't have to re-derive this decision.
+
+----------------------------------------------------------------------
+PHASE 2 ACCEPTANCE CRITERIA -- explicit results
+----------------------------------------------------------------------
+  [PASS] Every published field traces to exactly one registry entry.
+    test_measurement_dict_keys_are_exactly_the_enabled_ids: the
+    telemetry dict's keys equal the enabled-entry id set exactly, both
+    directions (no extra, no missing).
+
+  [PASS] No OpenDSS quantity reaches Kafka without one.
+    Architecturally true of sensors/ itself (only measure()-via-
+    registry can produce a value); NOT YET true of the live Kafka
+    topic, since producer.py doesn't call into sensors/ yet -- that's
+    Phase 3. Stated above, not glossed over.
+
+  [PASS] Noise-free h(x_true) reproduces the OpenDSS solve to solver
+    tolerance -- THE key test, done as an INDEPENDENT check (queries
+    opendssdirect directly inside the test, not by calling measure()
+    again and trivially agreeing with itself):
+    test_noise_free_h_matches_direct_opendss_query (all 98 enabled
+    P/Q entries) and test_noise_free_h_for_voltage_head_and_branch
+    (|V|, substation head, branch flow, covering every quantity type
+    including the disabled ones). All agree to 1e-9 (floating-point
+    identity -- these read the exact same solved-circuit state, so
+    "solver tolerance" is satisfied trivially and completely, not
+    approximately).
+
+  [PASS] z ordering and registry ordering are identical, asserted by
+    test. test_z_order_matches_registry_order: z[i] independently
+    verified against entries[i] for every i, in order.
+    test_registry_order_is_deterministic_across_independent_calls:
+    two independent calls to enabled_entries() on the same registry
+    agree -- the ordering invariant holds because there is exactly ONE
+    function that produces "the enabled, ordered list," and z/H (Phase
+    4) must both consume ITS output, never re-filter the raw registry
+    themselves. This is documented as a hard rule in registry.py's
+    module docstring, not just tested.
+
+  [PASS] The noise model is per-sensor sigma from the registry, not a
+    global constant. test_sigma_is_per_sensor_not_a_global_constant
+    (>10 distinct sigma values among the 98 enabled entries, not 1);
+    test_noise_uses_each_entrys_own_sigma (empirical std of 400 noisy
+    draws from the lowest- and highest-sigma entries matches each
+    entry's OWN sigma, within statistical tolerance, and the two are
+    clearly different from each other).
+
+----------------------------------------------------------------------
+LAYER-BOUNDARY TEST -- tests/test_import_boundaries.py
+----------------------------------------------------------------------
+  test_no_ground_truth_circuit_access_outside_sensors: AST-parses every
+  .py file under estimation/, detection/, evaluation/ (none exist yet)
+  for imports of opendssdirect OR any codebase module that itself
+  reaches a live circuit (core.ieee123_model, sensors.measurement_
+  functions, sensors.sensor_layer, sensors.generate_registry,
+  simulation.opendss_utils). sensors.registry is deliberately NOT
+  forbidden -- it only loads/validates registry metadata (id, sigma,
+  rate, enabled), never touches a circuit, so a future estimator
+  reading sensor METADATA (e.g. to build W = diag(sigma^-2)) is fine;
+  reaching the circuit itself is not. Passes vacuously now (the
+  directories don't exist); test_restricted_dirs_do_not_exist_yet
+  documents that fact explicitly so a future run that finds them
+  existing is a visible signal to double check the boundary test is
+  actually being exercised, not silently vacuous forever.
+
+----------------------------------------------------------------------
+FINDINGS
+----------------------------------------------------------------------
+  1. 5 of the 49 metered loads are multi-phase (s35a: A,B; s47: A,B,C;
+     s48: A,B,C; s76a: 2 phases; s65c: 2 phases) -- confirmed by direct
+     inspection. Per RES.md's explicit "m=98" statement for the current
+     configuration, this registry meters each such load's PRIMARY phase
+     only (node_order[0]), matching the pre-existing pipeline's one-P/Q-
+     per-meter convention. This is a genuine, documented under-coverage
+     (those loads' other phases are unmeasured), not a bug -- extending
+     any of these 5 to report every phase they touch is a cheap,
+     one-entry-per-phase registry addition for a later phase, not done
+     here because it would push m above the 98 this phase is scoped to.
+
+  2. sigma values are a documented ASSUMPTION, not a literature-cited
+     figure -- RES.md gives sigma_pseudo guidance (Phase 5, for the
+     DIFFERENT row-1 pseudo-measurements) but no number for these live
+     sensors. Used: 1% of each sensor's own noise-free reading for
+     P/Q/|I|-type quantities, flat 0.5% of nominal (1.0 p.u.) for
+     voltage. Both are conventional AMI/SCADA/instrument-accuracy
+     orders of magnitude, not derived from a cited source -- flagged
+     for review, not asserted as settled.
+
+  3. 2 of the 21 backbone (main-feeder) hops (150-149, 160-67) matched
+     no single Line element in build_branch_entries() -- both are
+     regulator-collapsed hops in the topology graph (a transformer +
+     a separate switch-Line, collapsed into one topology edge by
+     FeederContext's regulator-helper-node logic). Correctly skipped,
+     not an error -- "branch flow sensor" means a conductor per RES.md's
+     own framing; the regulator/substation role is separately covered
+     by the head entries.
+
+----------------------------------------------------------------------
+LIMITATIONS
+----------------------------------------------------------------------
+  - Registry not wired into streaming/producer.py -- that is Phase 3.
+  - Row-0 (zero-injection) and row-1 (pseudo-measurement) entries are
+    intentionally absent from this registry; Phase 4/5 will need a
+    DIFFERENT structure for them (not a "sensor" in this schema's
+    sense, since they don't read a solved circuit at runtime the same
+    way).
+  - The Jacobian is structure-only, per the explicit Phase 4 hand-off
+    documented in measurement_functions.py and restated above.
+  - sigma values are a documented default assumption (Finding #2), not
+    literature-derived -- worth revisiting if a cited figure surfaces.
+
+UNBLOCKS
+  - Phase 4 (observability analysis) can now build H_abc from a
+    well-defined, ordered registry and the already-available Y-bus
+    infrastructure (placement.electrical_distance.get_system_y_index()),
+    with dim(z) and the (node,phase) indexing already fixed.
+  - Phase 3 (streaming restructure) has a concrete sensors/ module to
+    move into the producer.
+  - Phase 5 (minimum sensor set) can enable specific registry entries
+    (head, branch, |V|) via a pure config edit -- no code change needed,
+    as required.
+
+BLOCKS
+  - Phase 4's actual H construction, rank/cond computation -- not
+    started (out of this phase's scope; the structure is ready).
+  - Phase 3's streaming rewire -- not started.
+
+METHOD
+  sensors/generate_registry.py: extract_all() (compile+solve) ->
+  FeederContext (via placement.feeder_adapter, same verified topology
+  the placement work uses) -> build 49-meter, 12-head, 165-branch
+  candidate entries -> fill_sigmas() (one solved-circuit read per
+  entry) -> config/sensor_registry.json.
+  Run: python -m sensors.generate_registry
+  Tests: python -m pytest tests/ -v (75 passed: 60 prior + 13 sensor +
+  2 import-boundary)
+
+================================================================
+CLAUDE.md Report
+================================================================
+Implemented:
+RES.md D10 Phase 2 -- the measurement model and sensor registry. A
+formal, phase-resolved h_abc(.) for load-bus injection (Sayghe eq.
+14-15), branch flow and current magnitude (Anwar eq. 17.5-17.7), and
+voltage magnitude; a machine-readable registry at
+config/sensor_registry.json; and the Layer-1/Layer-2 bridge
+(sensors/sensor_layer.py), the only place z gets built, in one pass
+over the registry so z/H/registry ordering can never silently diverge.
+This is a numbered RES.md phase, not pre-phase groundwork.
+
+Files changed:
+- sensors/__init__.py, measurement_functions.py, registry.py,
+  sensor_layer.py, generate_registry.py (all new)
+- config/sensor_registry.json (new, generated) -- 324 entries, 98
+  enabled (the current 49x(P,Q) configuration)
+- tests/test_sensors.py (new, 13 tests) -- all 5 Phase 2 acceptance
+  criteria, each with its own test(s)
+- tests/test_import_boundaries.py (new, 2 tests) -- the layer-boundary
+  test, passes vacuously (estimation/detection/evaluation don't exist
+  yet), documented as such
+- reports/phase2_measurement_model_report.txt (new)
+
+Run:
+python -m sensors.generate_registry     (regenerates the registry)
+python -m pytest tests/ -v              (75 passed)
+
+Result: all 5 Phase 2 acceptance criteria PASS, each verified
+independently (not by calling the same function twice and agreeing
+with itself) -- see "PHASE 2 ACCEPTANCE CRITERIA" above for the
+criterion-by-criterion detail. m=98 exactly, as specified. |V| at
+meters (49), substation head (12), and branch units (165, across 19 of
+21 backbone Line segments) are present as disabled config entries --
+enabling any of them for Phase 4/5 is a pure config edit, no code
+change.
+
+Known limitation / next step:
+The registry isn't wired into streaming/producer.py yet (Phase 3's
+job). The Jacobian is structure-only by design (documented why, in
+measurement_functions.py and above) -- Phase 4 builds H. 5 of 49
+meters (multi-phase loads) are under-covered by design to keep m
+exactly 98, as RES.md states; documented as Finding #1, not silently
+decided. sigma values are a documented default assumption (1%/0.5%),
+not literature-cited -- flagged for review. No other numbered phase
+was started.
+================================================================

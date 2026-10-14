@@ -1,0 +1,348 @@
+================================================================
+COMMUNITY-DETECTION PLACEMENT -- XuIoT26 IMPLEMENTATION
+Pre-phase groundwork for RES.md D10 Phase 4 sub-study 4A -- not a
+numbered phase
+================================================================
+
+SOURCE
+  Xu, Cao, Liu, Wu, Hu, Zhang, Wu, Yu, "A Multiarea Data Reconstruction
+  Framework to Mitigate FDIA in IoT-Enabled Power Distribution
+  Systems," IEEE IoT J. 13(14):31737-31751, 2026. Section II-B,
+  eq. (1)-(10), worked examples eq. (33)-(38), Section III-B.
+
+----------------------------------------------------------------------
+STAGE 1 -- EQUIVALENT ELECTRICAL DISTANCE (XuIoT26'S, verified)
+----------------------------------------------------------------------
+  d^{mu,eta}_ij = |Y^{mu,eta}_ij|/|Y^{eta,eta}_jj| + |Y^{mu,eta}_ij|/|Y^{mu,mu}_ii|   eq.(4)-(5)
+  d_ij = sum over mu,eta in {a,b,c} of d^{mu,eta}_ij                                  eq.(6)
+
+  Y from OpenDSS SystemY (dss.YMatrix.getYsparse() + dss.Circuit.YNodeOrder()
+  on the compiled, solved circuit) -- never a text parse.
+  placement/electrical_distance.py.
+
+  VERIFICATION against the paper's worked examples (eq. 33-38):
+
+    Three-phase line, buses 1-7 (our unmodified IEEE-123):
+      D_17 (row=phase of bus 1, col=phase of bus 7) =
+        [[0.97, 0.36, 0.21],
+         [0.29, 0.80, 0.22],
+         [0.18, 0.23, 0.83]]
+      -- EXACT match to the paper's matrix (2 decimals).
+      sum d_17 = 4.101 (full precision) / 4.09 (summing the paper's
+      rounded entries) -- exact match once you account for rounding
+      accumulation. Paper states 4.09.
+      diagonal share = 63.49% vs paper's 63.6% -- matches to rounding.
+
+    Single-phase (phase b) line, buses 1-2:
+      d^{bb}_12 = 1.3078 vs paper's 1.31 -- matches to rounding.
+      All 8 other phase-pair entries = exactly 0.0, matching "all other
+      entries 0."
+
+  Our feeder is the unmodified IEEE-123; XuIoT26's is DG-modified, so
+  exact bit-for-bit agreement was not expected and was not required --
+  what was found is agreement to the paper's own stated rounding on
+  both worked examples. The formula reading is confirmed correct.
+  Tests: tests/test_electrical_distance.py (4 tests, all passing).
+
+----------------------------------------------------------------------
+STAGE 2 -- COMMUNITY DETECTION (XuIoT26'S mechanism, OUR simplification)
+----------------------------------------------------------------------
+  THREE GENUINE AMBIGUITIES IN THE SOURCE, as flagged in the task:
+
+  (a) eq. (9)'s omega_ij term is never defined anywhere in the paper.
+  (b) eq. (10) is written over A_ij and kappa_i*kappa_j (node-graph
+      quantities) while the surrounding prose calls F (the edge graph
+      built in eq. 7-9) the adjacency matrix being maximised over.
+      Inconsistent as written.
+  (c) The prose says smaller d_ij = tighter coupling = larger edge
+      weight. The paper's OWN arithmetic disagrees: d_17=4.09
+      (three-phase, tightly coupled) > d_12=1.31 (single-phase,
+      loosely coupled) -- larger d for the TIGHTER connection. d_ij is
+      a similarity, not a distance.
+
+  RESOLUTION, given (a) and (b): standard weighted Louvain modularity
+  maximisation runs directly on the NODE (bus) graph, A_ij = d_ij, not
+  on the eq.(7)-(9) edge-graph transformation. XuIoT26 states that
+  transformation's purpose is "scale equalization of each subregion" --
+  a size-balancing refinement, not the core partitioning mechanism --
+  so omitting it is a real, documented simplification of the
+  algorithm, not an approximation of an unambiguous spec.
+  placement/community_detection.py: standard multi-level Louvain
+  (local-moving + aggregation), hand-implemented (no networkx /
+  python-louvain in the environment), validated on a synthetic
+  two-clique toy graph before running on the feeder.
+
+  RESOLUTION of (c), tested empirically, not assumed
+  (tests/test_community_detection.py::test_d_ij_weighting_beats_inverse_weighting):
+
+    weight = d_ij:     modularity 0.9513, largest community 24/132 (18%)
+    weight = 1/d_ij:   modularity 0.7415, largest community 53/132 (40%)
+
+  weight=1/d_ij collapses into one dominant community absorbing 40% of
+  the whole feeder plus small fragments -- not a sensible partition of
+  a radial distribution feeder. weight=d_ij produces communities that
+  visibly follow the feeder's actual laterals (see below). weight=d_ij
+  is used, confirming the paper's arithmetic over its prose.
+
+  RESULT at standard resolution (1.0, no tuning):
+    12 raw communities. TWO are trivial: {"300_OPEN"} and {"94_OPEN"},
+    the isolated dead-end stub buses from the switch-modelling quirk
+    already flagged in model_verification_report.txt (FINDINGS #1) --
+    genuinely electrically isolated, correctly left as singletons, not
+    a partitioning failure.
+    The other TEN are substantive and follow real feeder laterals:
+      24: {67-79, 86-96}                (lower-right lateral)
+      21: {97-114, 197, 300, 450}       (another lateral)
+      19: {18-33, 135, 250, 25r}        (another lateral)
+      18: {1-8, 12,13,15-17,34,149,150,152,150r}  (near source/head)
+      18: {35-51, 151}                  (another lateral)
+       8: {52-59}
+       8: {60,62-66,160,160r}
+       6: {80-85}
+       5: {9,10,11,14,9r}
+       3: {61,610,61s}
+
+  COMPARISON to XuIoT26 Section III-B (their target: 4 subareas of
+  ~30 nodes on their DG-modified IEEE-123; boundary nodes 18 between
+  I/II, 67 between I/IV, 76 between III/IV):
+    Our partition is FINER (10 substantive communities vs their 4) and
+    NOT size-balanced (3-24 nodes vs their ~30 each). Most plausible
+    cause: the omitted eq.(7)-(9) step's stated purpose IS size
+    balancing -- without it, Louvain finds its unconstrained modularity
+    optimum, which follows lateral boundaries tightly rather than
+    grouping several laterals into one larger subarea.
+    A resolution-parameter sweep (standard Reichardt-Bornholdt
+    generalisation, not a new mechanism -- community_detection.py's
+    `resolution` argument) was run to see whether a coarser partition
+    recovers the paper's balance: resolution 0.2/0.1 gives 6
+    communities sized [51,39,37,3,1,1] -- fewer, but MORE unbalanced,
+    not less. No resolution value produced anything close to 4 balanced
+    ~30-node communities; lower resolution just merges the three
+    largest laterals into increasingly lopsided blobs while the small
+    fragments persist regardless. This is further evidence that the
+    balance comes specifically from the omitted step, not from a
+    tunable modularity parameter -- so resolution=1.0 (standard, no
+    arbitrary tuning) is what ships, and the divergence from the
+    paper's balance is reported rather than forced away.
+    Boundary nodes: 18 and 67 ARE boundary nodes in our partition
+    (different community than at least one topological neighbour) --
+    matches the paper. 76 is NOT a boundary node in our partition (all
+    its neighbours are in its own community, 76-79/86-96) -- does not
+    match. 2 of 3 named boundary nodes reproduce.
+  Tests: tests/test_community_detection.py (10 tests covering weight
+  choice, determinism, the pinned 12-community/size result, and the
+  2/3 boundary-node match).
+
+----------------------------------------------------------------------
+STAGE 3 -- METER SELECTION FROM COMMUNITIES (OURS -- no source)
+----------------------------------------------------------------------
+  XuIoT26 partitions the feeder for distributed state-estimation data
+  reconstruction, not for meter placement -- this stage has no paper to
+  follow and is entirely our design, documented as such per your
+  instruction (goes in the RES.md D8 traceability table as "ours").
+
+  Algorithm: allocate the target_meters budget across communities
+  proportional to each community's share of TOTAL CONNECTED kW
+  (largest-remainder / Hare-Niemeyer apportionment -- exact integer sum,
+  deterministic tie-break by community id, same proportional-kW
+  reasoning HybridPlacement's phase-balance uses). Within each
+  community, select its highest-kW loads first, one per bus, up to its
+  allocation. If a community's allocation exceeds its available
+  distinct load buses (small/load-free communities exist -- e.g. the
+  two dead-end stubs have none), the shortfall tops up globally from
+  the highest-kW remaining candidates across all communities, exactly
+  like HybridPlacement's top-up pass (Step-3 defect #1).
+
+  Verified: len(selected) == target_meters exactly across all 9
+  sub-study counts (15/30/44/45/49/60/70/80/85); target_meters > 85
+  raises; no duplicate buses; deterministic; allocation sums to target
+  exactly (tested directly, including a proportionality check: 900kW
+  vs 100kW communities at target=10 allocate 9/1). At target=49, the
+  selection spans 9 of the 10 substantive communities (2 got zero
+  budget, proportional to their small kW share) -- not degenerating
+  into a single-community selection.
+
+----------------------------------------------------------------------
+TRACEABILITY SPLIT (for RES.md D8)
+----------------------------------------------------------------------
+  XuIoT26'S, reused as verified:
+    - equivalent electrical distance d_ij, eq.(4)-(6)
+
+  XuIoT26'S mechanism, OUR simplification (documented, not silent):
+    - Louvain modularity maximisation on the node graph with A_ij=d_ij,
+      replacing eq.(7)-(9)'s edge-graph transformation (blocked by
+      undefined omega_ij and the A_ij/F inconsistency) plus eq.(10)'s
+      maximisation, reused as standard weighted modularity
+
+  OURS, no source:
+    - Stage 3: kW-proportional budget allocation + highest-kW selection
+      per community (meter placement was never XuIoT26's problem)
+
+----------------------------------------------------------------------
+FILES
+----------------------------------------------------------------------
+  placement/electrical_distance.py   -- Stage 1
+  placement/community_detection.py   -- Stage 2 (Louvain, hand-implemented)
+  placement/placement_strategy.py    -- CommunityDetectionPlacement (Stage 3
+                                         + orchestration), replacing the stub
+  tests/test_electrical_distance.py  -- Stage 1 (4 tests)
+  tests/test_community_detection.py  -- Stage 2/3 (10 tests)
+  scipy added as a dependency (sparse Y-matrix handling; not previously
+  installed in .venv)
+
+----------------------------------------------------------------------
+UPDATE -- MERGED (4-COMMUNITY) VARIANT (OURS, no XuIoT26 source)
+----------------------------------------------------------------------
+  Follow-up task: add a variant that agglomeratively merges the 12 raw
+  communities down to a target count (default 4, matching XuIoT26's
+  reported subarea count) by strongest inter-community edge weight (sum
+  of d_ij across the boundary, merging the strongest-coupled pair each
+  step). Both variants are kept selectable
+  (CommunityDetectionPlacement(num_communities=None) for the raw
+  12-community result, num_communities=4 for the merged one) -- the
+  raw result is not replaced; it remains the faithful output of the
+  equations we can implement, per your instruction.
+
+  RESULT at target=4: sizes [93, 37, 1, 1] -- NOT balanced (the paper's
+  reported subareas are ~30 nodes each). The two size-1 communities are
+  the same isolated dead-end switch stubs (300_OPEN, 94_OPEN) from
+  FINDINGS #1 of model_verification_report.txt -- correctly untouched,
+  since they share no edge with anything to merge into. Of the 93+37
+  real nodes, one community absorbs 93 (70% of the whole feeder).
+
+  WHY: greedy merge-by-total-edge-weight is size-blind -- it keeps
+  attaching the next community to whichever existing community already
+  has the largest AGGREGATE boundary weight, which tends to be the
+  already-largest community (more member nodes -> more boundary edges
+  -> more accumulated weight), so growth snowballs into one dominant
+  cluster rather than balancing. This is a real and reportable
+  limitation of the specified merge heuristic, not a bug -- the
+  algorithm was implemented exactly as specified (sum of d_ij across
+  the boundary, strongest pair each step, no size normalisation).
+
+  BOUNDARY NODES in the merged variant:
+    node 18: boundary  -- YES (same as the raw 12-community result)
+    node 67: boundary  -- NO  (REGRESSION -- was a boundary node in the
+                                raw 12-community result; merging put it
+                                and its neighbour 97 in the same
+                                surviving giant community)
+    node 76: boundary  -- NO  (still does not reproduce -- unchanged
+                                from the raw 12-community result)
+
+  So merging to match XuIoT26's reported COUNT (4) does NOT bring the
+  boundary-node comparison closer to their result -- it goes from 2/3
+  matching (raw 12-community: 18, 67) to 1/3 matching (merged: 18 only).
+  Getting the count right and getting the boundaries right are
+  different problems, and this heuristic solves neither well beyond
+  the count itself. Both facts -- the count now matches, the boundary
+  match got WORSE -- are reported together, not cherry-picked.
+
+  Tests: tests/test_community_detection.py (5 new tests: exact target
+  count, determinism, monotonic non-increase, the pinned [93,37,1,1]/
+  boundary-node result, both variants independently selectable and
+  distinct).
+
+================================================================
+CLAUDE.md Report
+================================================================
+Implemented:
+CommunityDetectionPlacement, replacing the stub from the placement
+refactor task. Pre-phase groundwork for RES.md D10 Phase 4 sub-study
+4A, not a numbered phase. Three stages: (1) XuIoT26's equivalent
+electrical distance from OpenDSS SystemY, verified exactly against the
+paper's two worked examples; (2) Louvain community detection on the
+electrical-distance-weighted bus graph, with three paper ambiguities
+resolved and documented (undefined omega_ij and an A_ij/F inconsistency
+-> operate on the node graph directly; the prose/arithmetic
+contradiction on which weighting direction is correct -> tested
+empirically, d_ij confirmed over 1/d_ij); (3) our own kW-proportional
+meter-budget allocation across communities, since XuIoT26 partitions
+for data reconstruction, not meter placement.
+
+Files changed:
+- placement/electrical_distance.py (new) -- Stage 1, verified formula
+- placement/community_detection.py (new) -- Stage 2, hand-rolled
+  multi-level Louvain (no networkx/python-louvain available)
+- placement/placement_strategy.py -- CommunityDetectionPlacement stub
+  replaced with the full three-stage implementation
+- tests/test_electrical_distance.py (new, 4 tests) -- eq.(33)-(38)
+  fixtures hardcoded from the paper
+- tests/test_community_detection.py (new, 10 tests) -- weight-choice
+  empirical test, determinism, pinned community result, boundary-node
+  comparison, budget-allocation correctness, shared invariants
+- reports/community_detection_report.txt (new) -- full traceability
+  split and comparison against XuIoT26 Section III-B
+- scipy installed into .venv (sparse Y-matrix handling)
+
+Run:
+python -m pytest tests/ -v   (55 passed: 33 prior + 4 electrical-
+distance + 18 community-detection/Stage-3)
+
+Result:
+Stage 1 matches the paper's worked examples to its own stated rounding
+on both the three-phase (D_17, sum 4.09, diagonal share 63.6%) and
+single-phase (d^bb_12=1.31, all else 0) cases. Stage 2, at standard
+resolution with weight=d_ij: 12 communities (10 substantive, sized
+3-24, following real feeder laterals; 2 trivial -- the known dead-end
+switch stubs), vs the paper's ~4 balanced ~30-node subareas -- finer
+and unbalanced, most plausibly because the omitted eq.(7)-(9) step's
+stated purpose is exactly that balancing. A resolution-parameter sweep
+confirmed lower resolution does not recover the paper's balance (it
+just produces fewer, MORE unbalanced communities), supporting that
+conclusion rather than suggesting a tuning fix. 2 of the paper's 3
+named boundary nodes (18, 67) reproduce; 76 does not. Stage 3 passes
+every shared invariant (count==target across 9 counts, ceiling>85
+raises, no duplicate buses, determinism) plus its own (budget sums to
+target exactly, proportional to kW, spans multiple communities).
+
+Known limitation / next step:
+Community structure is recomputed on every CommunityDetectionPlacement
+instantiation (cached only within one instance's repeated select()
+calls) -- a real Phase-4 sweep script should compute it once and reuse
+it across all 8 target_meters counts, since community structure doesn't
+depend on target_meters. Not implemented here since the sweep itself is
+Phase 4, explicitly out of scope. The eq.(7)-(9) edge-graph
+transformation remains genuinely un-implementable as written (undefined
+omega_ij) -- if XuIoT26's authors are ever reachable, that is the one
+open question worth asking them directly.
+================================================================
+
+================================================================
+CLAUDE.md Report (Part A follow-up: merged-community variant)
+================================================================
+Implemented:
+Added a merged (agglomeratively-reduced) community variant to
+CommunityDetectionPlacement, keeping the raw 12-community result
+selectable alongside it. Both are real, documented outputs; neither
+replaces the other.
+
+Files changed:
+- placement/community_detection.py -- merge_communities() (new,
+  OURS -- no XuIoT26 source)
+- placement/placement_strategy.py -- CommunityDetectionPlacement takes
+  num_communities=None|int; class-level _raw_cache shared across
+  instances/variants so the expensive Y-matrix + Louvain computation
+  runs once regardless of how many CommunityDetectionPlacement
+  instances get created (needed for the Part B sweep)
+- tests/test_community_detection.py -- 5 new tests
+
+Run:
+python -m pytest tests/ -v   (60 passed)
+
+Result:
+Merged-to-4 sizes: [93, 37, 1, 1] -- unbalanced (paper: ~30 each), one
+community absorbs 70% of the feeder. Root cause: greedy total-edge-
+weight merging is size-blind and snowballs into the already-largest
+community. Boundary nodes: 18 still matches; 67 REGRESSES from
+matching (raw) to not matching (merged); 76 still doesn't match either
+way. Net: matching XuIoT26's subarea COUNT via this heuristic does not
+improve, and slightly worsens, the boundary-node comparison.
+
+Known limitation / next step:
+The merge heuristic as specified (sum of d_ij, strongest pair, no size
+normalisation) is exactly what was asked for and is exactly why it
+snowballs -- a size-normalised variant (e.g. weight / (size_i * size_j))
+would likely balance better but was not requested and would be a
+further, separate adaptation beyond what's documented here. Feeds
+directly into Part B's sweep as one of five strategies.
+================================================================

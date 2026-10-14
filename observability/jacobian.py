@@ -106,7 +106,14 @@ def _scatter_injection(row_p, row_q, target_name, y_row_complex, state, flat_v):
 
         dQ_dVt = Vk * (Gk * sin_t - Bk * cos_t)
         dQ_dVk = Vt * (Gk * sin_t - Bk * cos_t)
-        dQ_ddt = Vt * Vk * (-Gk * cos_t - Bk * sin_t)
+        # BUG FIXED HERE (found via finite-difference verification,
+        # RES.md D10 Phase 7/8 Q-angle Jacobian bug): Q = Vt*Vk*(Gk*sin
+        # theta - Bk*cos theta), so dQ/dtheta = Vt*Vk*(Gk*cos theta +
+        # Bk*sin theta) -- this line carried an erroneous extra unary
+        # negative on the whole expression, sign-flipping dQ/d(delta)
+        # for every Q-type measurement in the system. Confirmed by FD
+        # agreement at every eps from 1e-3 to 1e-8.
+        dQ_ddt = Vt * Vk * (Gk * cos_t + Bk * sin_t)
         dQ_ddk = -dQ_ddt
 
         row_p[t_v_idx] += dP_dVt
@@ -184,11 +191,22 @@ def build_meter_pq_row(entry, Y, node_index, state, flat_v):
     return row_q, Q
 
 
-def build_voltage_row(entry, state):
+def build_voltage_row(entry, state, flat_v):
+    """BUG FIXED HERE (RES.md D10 Phase 7/8 Q-angle Jacobian bug
+    investigation, found alongside it): this function previously took
+    no at_v/flat_v parameter at all and always read state.x0_v --
+    meaning every V_magnitude measurement's forward value (h0) stayed
+    frozen at the SOLVE'S STARTING GUESS for the entire Gauss-Newton
+    iteration, never updated to the current iterate, at any point
+    where the solver moves away from its start. The Jacobian row
+    itself (1.0/v_base, a constant) was always correct; only h0 was
+    stale. Now computed from flat_v, the SAME at_v every other row
+    builder in this module receives."""
+
     node = f"{entry['node']}.{PHASE_LETTER_TO_NUM[entry['phase']]}"
     row = np.zeros(state.dim)
     row[state.v_index[node]] = 1.0 / state.v_base[node]
-    h_value = state.x0_v[state.v_index[node]] / state.v_base[node]
+    h_value = abs(flat_v[node]) / state.v_base[node]
     return row, h_value
 
 
@@ -304,7 +322,9 @@ def build_branch_or_head_row(entry, state, flat_v, want="P"):
         dP_dVt = Vk * (Gk * cos_t + Bk * sin_t)
         dP_ddt = Vt * Vk * (-Gk * sin_t + Bk * cos_t)
         dQ_dVt = Vk * (Gk * sin_t - Bk * cos_t)
-        dQ_ddt = Vt * Vk * (-Gk * cos_t - Bk * sin_t)
+        # BUG FIXED HERE -- same sign error as _scatter_injection's
+        # dQ_ddt, see that function's comment for the derivation.
+        dQ_ddt = Vt * Vk * (Gk * cos_t + Bk * sin_t)
 
         row_p[t_v_idx] += dP_dVt
         row_q[t_v_idx] += dQ_dVt
@@ -399,7 +419,7 @@ def build_jacobian(entries, Y, node_index, state, at_v=None):
         if q in ("P_injection", "Q_injection"):
             row, val = build_meter_pq_row(entry, Y, node_index, state, flat_v)
         elif q == "V_magnitude":
-            row, val = build_voltage_row(entry, state)
+            row, val = build_voltage_row(entry, state, flat_v)
         elif q in ("P_flow", "Q_flow"):
             want = "P" if q == "P_flow" else "Q"
             row, val = build_branch_or_head_row(entry, state, flat_v, want=want)

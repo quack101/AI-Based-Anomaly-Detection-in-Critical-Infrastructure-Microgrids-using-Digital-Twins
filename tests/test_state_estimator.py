@@ -117,7 +117,15 @@ def test_recovers_x_true_on_normal_timestamp(model, estimator):
     NOT concentrated at regulator-adjacent nodes, see the report) rather
     than a solver defect. Asserted here at a looser bound (10% pu / 0.3
     rad) than the typical observed max, so this fails only on a genuine
-    regression, not ordinary run-to-run noise."""
+    regression, not ordinary run-to-run noise.
+
+    TOLERANCE NOT CHANGED (fix-jacobian-bugs branch, TSVD default):
+    this test briefly failed convergence after the Q-angle/V_magnitude
+    Jacobian fixes alone (LM damping got stuck -- see the branch's own
+    conditioning findings). Measured under the new TSVD default:
+    converged=True, err_v_pu.max=0.047, err_delta.max=0.065 -- both
+    comfortably inside the EXISTING 0.10/0.30 bounds, so no loosening
+    was needed; the solver change fixed the root cause directly."""
 
     state = model.state
     v_base = np.array([state.v_base[n] for n in state.all_node_names])

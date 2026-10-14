@@ -5,10 +5,10 @@
     "phase": "A",
     "quantity": "P_injection",
     "load_name": "s1a",
-    "sigma": 0.40000104678158965,
+    "sigma": 6395.474354687863,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.400001, new=6395.474355, dP/dV=36.0285 dP/ddelta=179262.3337, amplified_term=6395.4743 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M001_Q",
@@ -16,10 +16,10 @@
     "phase": "A",
     "quantity": "Q_injection",
     "load_name": "s1a",
-    "sigma": 0.1999999630497378,
+    "sigma": 7172.095335479706,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.200000, new=7172.095335, dQ/dV=74.6540, amplified_term=7172.0953 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M001_V",
@@ -29,8 +29,8 @@
     "load_name": "s1a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M002_P",
@@ -38,10 +38,10 @@
     "phase": "C",
     "quantity": "P_injection",
     "load_name": "s4c",
-    "sigma": 0.399998513174606,
+    "sigma": 2841.7497586984678,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.399999, new=2841.749759, dP/dV=23.5587 dP/ddelta=57280.5976, amplified_term=2841.7497 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M002_Q",
@@ -49,10 +49,10 @@
     "phase": "C",
     "quantity": "Q_injection",
     "load_name": "s4c",
-    "sigma": 0.19999714841422694,
+    "sigma": 2292.827640737582,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.199997, new=2292.827641, dQ/dV=23.8659, amplified_term=2292.8276 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M002_V",
@@ -62,8 +62,8 @@
     "load_name": "s4c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M003_P",
@@ -71,10 +71,10 @@
     "phase": "C",
     "quantity": "P_injection",
     "load_name": "s6c",
-    "sigma": 0.4208469961398506,
+    "sigma": 2273.9070051205613,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.420847, new=2273.907005, dP/dV=18.8536 dP/ddelta=45824.3802, amplified_term=2273.9070 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M003_Q",
@@ -82,10 +82,10 @@
     "phase": "C",
     "quantity": "Q_injection",
     "load_name": "s6c",
-    "sigma": 0.21042127924932036,
+    "sigma": 1834.580546130483,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.210421, new=1834.580546, dQ/dV=19.0961, amplified_term=1834.5805 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M003_V",
@@ -95,8 +95,8 @@
     "load_name": "s6c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M004_P",
@@ -107,7 +107,7 @@
     "sigma": 0.400002395766581,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "excluded from global sigma recalibration: regulator-adjacent Jacobian near-singularity (this bus's transformer has a RegControl), not a real amplification case -- kept at original sigma (0.400002)."
   },
   {
     "id": "M004_Q",
@@ -118,7 +118,7 @@
     "sigma": 0.1999999515960118,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "excluded from global sigma recalibration: regulator-adjacent Jacobian near-singularity (this bus's transformer has a RegControl), not a real amplification case -- kept at original sigma (0.200000)."
   },
   {
     "id": "M004_V",
@@ -128,8 +128,8 @@
     "load_name": "s9a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M005_P",
@@ -137,10 +137,10 @@
     "phase": "A",
     "quantity": "P_injection",
     "load_name": "s11a",
-    "sigma": 0.40521064493433856,
+    "sigma": 2273.907245726654,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.405211, new=2273.907246, dP/dV=18.8536 dP/ddelta=45824.4210, amplified_term=2273.9072 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M005_Q",
@@ -148,10 +148,10 @@
     "phase": "A",
     "quantity": "Q_injection",
     "load_name": "s11a",
-    "sigma": 0.2026040595283223,
+    "sigma": 1834.581943610598,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.202604, new=1834.581944, dQ/dV=19.0961, amplified_term=1834.5819 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M005_V",
@@ -161,8 +161,8 @@
     "load_name": "s11a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M006_P",
@@ -170,10 +170,10 @@
     "phase": "C",
     "quantity": "P_injection",
     "load_name": "s16c",
-    "sigma": 0.39999558934059976,
+    "sigma": 1516.7877649967375,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.399996, new=1516.787765, dP/dV=12.5802 dP/ddelta=30549.5879, amplified_term=1516.7877 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M006_Q",
@@ -181,10 +181,10 @@
     "phase": "C",
     "quantity": "Q_injection",
     "load_name": "s16c",
-    "sigma": 0.19999125637001305,
+    "sigma": 1223.5882217354908,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.199991, new=1223.588222, dQ/dV=12.7363, amplified_term=1223.5882 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M006_V",
@@ -194,8 +194,8 @@
     "load_name": "s16c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M007_P",
@@ -203,10 +203,10 @@
     "phase": "A",
     "quantity": "P_injection",
     "load_name": "s20a",
-    "sigma": 0.3964409297901964,
+    "sigma": 1749.74921622557,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.396441, new=1749.749216, dP/dV=14.5105 dP/ddelta=35249.6212, amplified_term=1749.7492 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M007_Q",
@@ -214,10 +214,10 @@
     "phase": "A",
     "quantity": "Q_injection",
     "load_name": "s20a",
-    "sigma": 0.1982178413309229,
+    "sigma": 1411.588565406546,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.198218, new=1411.588565, dQ/dV=14.6932, amplified_term=1411.5886 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M007_V",
@@ -227,8 +227,8 @@
     "load_name": "s20a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M008_P",
@@ -236,10 +236,10 @@
     "phase": "B",
     "quantity": "P_injection",
     "load_name": "s22b",
-    "sigma": 0.42057369657567234,
+    "sigma": 1084.1500712849204,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.420574, new=1084.150071, dP/dV=8.9954 dP/ddelta=21821.1620, amplified_term=1084.1500 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M008_Q",
@@ -247,10 +247,10 @@
     "phase": "B",
     "quantity": "Q_injection",
     "load_name": "s22b",
-    "sigma": 0.21029493325104137,
+    "sigma": 874.4501422473448,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.210295, new=874.450142, dQ/dV=9.1021, amplified_term=874.4501 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M008_V",
@@ -260,8 +260,8 @@
     "load_name": "s22b",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M009_P",
@@ -269,10 +269,10 @@
     "phase": "C",
     "quantity": "P_injection",
     "load_name": "s24c",
-    "sigma": 0.39999047406578603,
+    "sigma": 1034.9852460290392,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.399990, new=1034.985246, dP/dV=8.5880 dP/ddelta=20829.2780, amplified_term=1034.9852 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M009_Q",
@@ -280,10 +280,10 @@
     "phase": "C",
     "quantity": "Q_injection",
     "load_name": "s24c",
-    "sigma": 0.19997988767814917,
+    "sigma": 834.7750064550124,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.199980, new=834.775006, dQ/dV=8.6891, amplified_term=834.7750 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M009_V",
@@ -293,8 +293,8 @@
     "load_name": "s24c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M010_P",
@@ -302,10 +302,10 @@
     "phase": "C",
     "quantity": "P_injection",
     "load_name": "s30c",
-    "sigma": 0.39998940797898597,
+    "sigma": 8613.708560918732,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.399989, new=8613.708561, dP/dV=48.5167 dP/ddelta=241455.2477, amplified_term=8613.7086 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M010_Q",
@@ -313,10 +313,10 @@
     "phase": "C",
     "quantity": "Q_injection",
     "load_name": "s30c",
-    "sigma": 0.19997754392342487,
+    "sigma": 9659.815525126645,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.199978, new=9659.815525, dQ/dV=100.5486, amplified_term=9659.8155 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M010_V",
@@ -326,8 +326,8 @@
     "load_name": "s30c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M011_P",
@@ -335,10 +335,10 @@
     "phase": "A",
     "quantity": "P_injection",
     "load_name": "s33a",
-    "sigma": 0.4008452665851946,
+    "sigma": 1138.2281219382241,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.400845, new=1138.228122, dP/dV=9.4435 dP/ddelta=22912.1936, amplified_term=1138.2281 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M011_Q",
@@ -346,10 +346,10 @@
     "phase": "A",
     "quantity": "Q_injection",
     "load_name": "s33a",
-    "sigma": 0.20041868517843764,
+    "sigma": 918.0911926393544,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.200419, new=918.091193, dQ/dV=9.5564, amplified_term=918.0912 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M011_V",
@@ -359,8 +359,8 @@
     "load_name": "s33a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M012_P",
@@ -368,10 +368,10 @@
     "phase": "C",
     "quantity": "P_injection",
     "load_name": "s34c",
-    "sigma": 0.41060733382719833,
+    "sigma": 9466.556597629457,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.410607, new=9466.556598, dP/dV=78.4513 dP/ddelta=190935.5491, amplified_term=9466.5566 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M012_Q",
@@ -379,10 +379,10 @@
     "phase": "C",
     "quantity": "Q_injection",
     "load_name": "s34c",
-    "sigma": 0.20529694553866104,
+    "sigma": 7639.028394055642,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.205297, new=7639.028394, dQ/dV=79.5143, amplified_term=7639.0284 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M012_V",
@@ -392,8 +392,8 @@
     "load_name": "s34c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M013_P",
@@ -401,10 +401,10 @@
     "phase": "A",
     "quantity": "P_injection",
     "load_name": "s35a",
-    "sigma": 0.25446499121796157,
+    "sigma": 8604.503963641082,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.254465, new=8604.503964, dP/dV=47.0611 dP/ddelta=244031.3027, amplified_term=8604.5040 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M013_Q",
@@ -412,10 +412,10 @@
     "phase": "A",
     "quantity": "Q_injection",
     "load_name": "s35a",
-    "sigma": 0.02020610216111286,
+    "sigma": 9761.122976182294,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.020206, new=9761.122976, dQ/dV=101.6031, amplified_term=9761.1230 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M013_V",
@@ -425,8 +425,8 @@
     "load_name": "s35a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M014_P",
@@ -434,10 +434,10 @@
     "phase": "A",
     "quantity": "P_injection",
     "load_name": "s37a",
-    "sigma": 0.39108037568965354,
+    "sigma": 1895.3485592508778,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.391080, new=1895.348559, dP/dV=15.7169 dP/ddelta=38187.0178, amplified_term=1895.3485 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M014_Q",
@@ -445,10 +445,10 @@
     "phase": "A",
     "quantity": "Q_injection",
     "load_name": "s37a",
-    "sigma": 0.1955375832743728,
+    "sigma": 1529.084336521863,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.195538, new=1529.084337, dQ/dV=15.9162, amplified_term=1529.0843 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M014_V",
@@ -458,8 +458,8 @@
     "load_name": "s37a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M015_P",
@@ -467,10 +467,10 @@
     "phase": "B",
     "quantity": "P_injection",
     "load_name": "s43b",
-    "sigma": 0.41664623971537135,
+    "sigma": 1138.2307642862197,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.416646, new=1138.230764, dP/dV=9.4435 dP/ddelta=22912.2272, amplified_term=1138.2307 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M015_Q",
@@ -478,10 +478,10 @@
     "phase": "B",
     "quantity": "Q_injection",
     "load_name": "s43b",
-    "sigma": 0.20832989403734828,
+    "sigma": 918.0928145094877,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.208330, new=918.092815, dQ/dV=9.5564, amplified_term=918.0928 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M015_V",
@@ -491,8 +491,8 @@
     "load_name": "s43b",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M016_P",
@@ -500,10 +500,10 @@
     "phase": "C",
     "quantity": "P_injection",
     "load_name": "s50c",
-    "sigma": 0.39999254533105694,
+    "sigma": 8770.293118482075,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.399993, new=8770.293118, dP/dV=49.3982 dP/ddelta=245845.4345, amplified_term=8770.2931 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M016_Q",
@@ -511,10 +511,10 @@
     "phase": "C",
     "quantity": "Q_injection",
     "load_name": "s50c",
-    "sigma": 0.1999848949900247,
+    "sigma": 9835.423638567558,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.199985, new=9835.423639, dQ/dV=102.3765, amplified_term=9835.4236 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M016_V",
@@ -524,8 +524,8 @@
     "load_name": "s50c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M017_P",
@@ -533,10 +533,10 @@
     "phase": "A",
     "quantity": "P_injection",
     "load_name": "s53a",
-    "sigma": 0.4000031201709261,
+    "sigma": 14250.646819457397,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.400003, new=14250.646819, dP/dV=80.2513 dP/ddelta=399498.9040, amplified_term=14250.6468 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M017_Q",
@@ -544,10 +544,10 @@
     "phase": "A",
     "quantity": "Q_injection",
     "load_name": "s53a",
-    "sigma": 0.19999988255219542,
+    "sigma": 15981.561386424975,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.200000, new=15981.561386, dQ/dV=166.3514, amplified_term=15981.5614 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M017_V",
@@ -557,8 +557,8 @@
     "load_name": "s53a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M018_P",
@@ -566,10 +566,10 @@
     "phase": "A",
     "quantity": "P_injection",
     "load_name": "s63a",
-    "sigma": 0.4000028780210972,
+    "sigma": 7037.558237205481,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.400003, new=7037.558237, dP/dV=68.6763 dP/ddelta=81623.7879, amplified_term=7037.5582 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M018_Q",
@@ -577,10 +577,10 @@
     "phase": "A",
     "quantity": "Q_injection",
     "load_name": "s63a",
-    "sigma": 0.19999971314596454,
+    "sigma": 3266.55583968764,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.200000, new=3266.555840, dQ/dV=34.0014, amplified_term=3266.5558 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M018_V",
@@ -590,8 +590,8 @@
     "load_name": "s63a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M019_P",
@@ -599,10 +599,10 @@
     "phase": "A",
     "quantity": "P_injection",
     "load_name": "s71a",
-    "sigma": 0.4000028308751009,
+    "sigma": 2067.4208447915526,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.400003, new=2067.420845, dP/dV=17.1427 dP/ddelta=41658.5903, amplified_term=2067.4208 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M019_Q",
@@ -610,10 +610,10 @@
     "phase": "A",
     "quantity": "Q_injection",
     "load_name": "s71a",
-    "sigma": 0.1999996502652248,
+    "sigma": 1667.9464827884842,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.200000, new=1667.946483, dQ/dV=17.3616, amplified_term=1667.9465 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M019_V",
@@ -623,8 +623,8 @@
     "load_name": "s71a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M020_P",
@@ -632,10 +632,10 @@
     "phase": "C",
     "quantity": "P_injection",
     "load_name": "s75c",
-    "sigma": 0.3999957211376846,
+    "sigma": 1422.1484957103355,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.399996, new=1422.148496, dP/dV=11.7960 dP/ddelta=28640.2850, amplified_term=1422.1484 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M020_Q",
@@ -643,10 +643,10 @@
     "phase": "C",
     "quantity": "Q_injection",
     "load_name": "s75c",
-    "sigma": 0.19999210773644524,
+    "sigma": 1147.2153546649024,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.199992, new=1147.215355, dQ/dV=11.9413, amplified_term=1147.2153 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M020_V",
@@ -656,8 +656,8 @@
     "load_name": "s75c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M021_P",
@@ -665,10 +665,10 @@
     "phase": "B",
     "quantity": "P_injection",
     "load_name": "s77b",
-    "sigma": 0.3999984479324262,
+    "sigma": 12963.60323218794,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.399998, new=12963.603232, dP/dV=69.3302 dP/ddelta=370721.6500, amplified_term=12963.6032 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M021_Q",
@@ -676,10 +676,10 @@
     "phase": "B",
     "quantity": "Q_injection",
     "load_name": "s77b",
-    "sigma": 0.20000262147091458,
+    "sigma": 14830.497857549233,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.200003, new=14830.497858, dQ/dV=154.3700, amplified_term=14830.4979 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M021_V",
@@ -689,8 +689,8 @@
     "load_name": "s77b",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M022_P",
@@ -698,10 +698,10 @@
     "phase": "A",
     "quantity": "P_injection",
     "load_name": "s79a",
-    "sigma": 0.4354230374251494,
+    "sigma": 4873.142624571843,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.435423, new=4873.142625, dP/dV=27.4582 dP/ddelta=136580.3591, amplified_term=4873.1426 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M022_Q",
@@ -709,10 +709,10 @@
     "phase": "A",
     "quantity": "Q_injection",
     "load_name": "s79a",
-    "sigma": 0.2177095637656886,
+    "sigma": 5464.824788284378,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.217710, new=5464.824788, dQ/dV=56.8831, amplified_term=5464.8248 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M022_V",
@@ -722,8 +722,8 @@
     "load_name": "s79a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M023_P",
@@ -731,10 +731,10 @@
     "phase": "B",
     "quantity": "P_injection",
     "load_name": "s80b",
-    "sigma": 0.39999846174458886,
+    "sigma": 8110.214885109089,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.399998, new=8110.214885, dP/dV=43.3831 dP/ddelta=231911.2576, amplified_term=8110.2149 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M023_Q",
@@ -742,10 +742,10 @@
     "phase": "B",
     "quantity": "Q_injection",
     "load_name": "s80b",
-    "sigma": 0.20000262842763705,
+    "sigma": 9278.044850980234,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.200003, new=9278.044851, dQ/dV=96.5748, amplified_term=9278.0448 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M023_V",
@@ -755,8 +755,8 @@
     "load_name": "s80b",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M024_P",
@@ -764,10 +764,10 @@
     "phase": "A",
     "quantity": "P_injection",
     "load_name": "s82a",
-    "sigma": 0.4000028358577631,
+    "sigma": 8770.335109645004,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.400003, new=8770.335110, dP/dV=49.3984 dP/ddelta=245846.8330, amplified_term=8770.3351 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M024_Q",
@@ -775,10 +775,10 @@
     "phase": "A",
     "quantity": "Q_injection",
     "load_name": "s82a",
-    "sigma": 0.19999958655320269,
+    "sigma": 9835.447284173935,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.200000, new=9835.447284, dQ/dV=102.3768, amplified_term=9835.4473 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M024_V",
@@ -788,8 +788,8 @@
     "load_name": "s82a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M025_P",
@@ -797,10 +797,10 @@
     "phase": "C",
     "quantity": "P_injection",
     "load_name": "s85c",
-    "sigma": 0.399995711179562,
+    "sigma": 1198.0033418946218,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.399996, new=1198.003342, dP/dV=9.9388 dP/ddelta=24118.1721, amplified_term=1198.0033 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M025_Q",
@@ -808,10 +808,10 @@
     "phase": "C",
     "quantity": "Q_injection",
     "load_name": "s85c",
-    "sigma": 0.19999218018353865,
+    "sigma": 966.3298331366815,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.199992, new=966.329833, dQ/dV=10.0585, amplified_term=966.3298 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M025_V",
@@ -821,8 +821,8 @@
     "load_name": "s85c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M026_P",
@@ -830,10 +830,10 @@
     "phase": "B",
     "quantity": "P_injection",
     "load_name": "s87b",
-    "sigma": 0.3999984535985184,
+    "sigma": 6076.752969210362,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.399998, new=6076.752969, dP/dV=32.5119 dP/ddelta=173752.6535, amplified_term=6076.7530 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M026_Q",
@@ -841,10 +841,10 @@
     "phase": "B",
     "quantity": "Q_injection",
     "load_name": "s87b",
-    "sigma": 0.20000258619297392,
+    "sigma": 6951.722517865916,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.200003, new=6951.722518, dQ/dV=72.3602, amplified_term=6951.7225 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M026_V",
@@ -854,8 +854,8 @@
     "load_name": "s87b",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M027_P",
@@ -863,10 +863,10 @@
     "phase": "A",
     "quantity": "P_injection",
     "load_name": "s88a",
-    "sigma": 0.40000279918308346,
+    "sigma": 3247.38125112726,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.400003, new=3247.381251, dP/dV=26.9198 dP/ddelta=65464.1177, amplified_term=3247.3812 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M027_Q",
@@ -874,10 +874,10 @@
     "phase": "A",
     "quantity": "Q_injection",
     "load_name": "s88a",
-    "sigma": 0.1999996097624553,
+    "sigma": 2616.165128033901,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.200000, new=2616.165128, dQ/dV=27.2316, amplified_term=2616.1651 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M027_V",
@@ -887,8 +887,8 @@
     "load_name": "s88a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M028_P",
@@ -896,10 +896,10 @@
     "phase": "C",
     "quantity": "P_injection",
     "load_name": "s5c",
-    "sigma": 0.20528028543636812,
+    "sigma": 4019.8310364103836,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.205280, new=4019.831036, dP/dV=33.3141 dP/ddelta=81073.9676, amplified_term=4019.8310 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M028_Q",
@@ -907,10 +907,10 @@
     "phase": "C",
     "quantity": "Q_injection",
     "load_name": "s5c",
-    "sigma": 0.10263906042430694,
+    "sigma": 3243.765885034552,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.102639, new=3243.765885, dQ/dV=33.7642, amplified_term=3243.7659 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M028_V",
@@ -920,8 +920,8 @@
     "load_name": "s5c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M029_P",
@@ -929,10 +929,10 @@
     "phase": "A",
     "quantity": "P_injection",
     "load_name": "s7a",
-    "sigma": 0.2000009262216316,
+    "sigma": 9134.789604520583,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.200001, new=9134.789605, dP/dV=51.4385 dP/ddelta=256089.1765, amplified_term=9134.7896 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M029_Q",
@@ -940,10 +940,10 @@
     "phase": "A",
     "quantity": "Q_injection",
     "load_name": "s7a",
-    "sigma": 0.09999997637960663,
+    "sigma": 10244.367229651312,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.100000, new=10244.367230, dQ/dV=106.6332, amplified_term=10244.3672 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M029_V",
@@ -953,8 +953,8 @@
     "load_name": "s7a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M030_P",
@@ -962,10 +962,10 @@
     "phase": "A",
     "quantity": "P_injection",
     "load_name": "s10a",
-    "sigma": 0.20136576673731063,
+    "sigma": 2272.633570263808,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.201366, new=2272.633570, dP/dV=18.8370 dP/ddelta=45824.4580, amplified_term=2272.6336 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M030_Q",
@@ -973,10 +973,10 @@
     "phase": "A",
     "quantity": "Q_injection",
     "load_name": "s10a",
-    "sigma": 0.10068225563876276,
+    "sigma": 1833.7818176097492,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.100682, new=1833.781818, dQ/dV=19.0878, amplified_term=1833.7818 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M030_V",
@@ -986,8 +986,8 @@
     "load_name": "s10a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M031_P",
@@ -995,10 +995,10 @@
     "phase": "C",
     "quantity": "P_injection",
     "load_name": "s17c",
-    "sigma": 0.19999779139886176,
+    "sigma": 1623.6741036044566,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.199998, new=1623.674104, dP/dV=13.4597 dP/ddelta=32731.7496, amplified_term=1623.6741 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M031_Q",
@@ -1006,10 +1006,10 @@
     "phase": "C",
     "quantity": "Q_injection",
     "load_name": "s17c",
-    "sigma": 0.099995624769758,
+    "sigma": 1310.0728192519493,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.099996, new=1310.072819, dQ/dV=13.6365, amplified_term=1310.0728 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M031_V",
@@ -1019,8 +1019,8 @@
     "load_name": "s17c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M032_P",
@@ -1028,10 +1028,10 @@
     "phase": "C",
     "quantity": "P_injection",
     "load_name": "s32c",
-    "sigma": 0.19999201922694063,
+    "sigma": 1894.0747748837073,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.199992, new=1894.074775, dP/dV=15.7003 dP/ddelta=38187.0785, amplified_term=1894.0748 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M032_Q",
@@ -1039,10 +1039,10 @@
     "phase": "C",
     "quantity": "Q_injection",
     "load_name": "s32c",
-    "sigma": 0.09998517941991569,
+    "sigma": 1528.286527605549,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.099985, new=1528.286528, dQ/dV=15.9079, amplified_term=1528.2865 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M032_V",
@@ -1052,8 +1052,8 @@
     "load_name": "s32c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M033_P",
@@ -1061,10 +1061,10 @@
     "phase": "B",
     "quantity": "P_injection",
     "load_name": "s39b",
-    "sigma": 0.19999833179589982,
+    "sigma": 1748.4746022300692,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.199998, new=1748.474602, dP/dV=14.4938 dP/ddelta=35249.6029, amplified_term=1748.4746 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M033_Q",
@@ -1072,10 +1072,10 @@
     "phase": "B",
     "quantity": "Q_injection",
     "load_name": "s39b",
-    "sigma": 0.10000245345702596,
+    "sigma": 1410.7872404319642,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.100002, new=1410.787240, dQ/dV=14.6848, amplified_term=1410.7872 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M033_V",
@@ -1085,8 +1085,8 @@
     "load_name": "s39b",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M034_P",
@@ -1094,10 +1094,10 @@
     "phase": "C",
     "quantity": "P_injection",
     "load_name": "s41c",
-    "sigma": 0.1999962587200497,
+    "sigma": 1748.4745875004648,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.199996, new=1748.474588, dP/dV=14.4938 dP/ddelta=35249.6160, amplified_term=1748.4746 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M034_Q",
@@ -1105,10 +1105,10 @@
     "phase": "C",
     "quantity": "Q_injection",
     "load_name": "s41c",
-    "sigma": 0.09999235441324658,
+    "sigma": 1410.7860689042507,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.099992, new=1410.786069, dQ/dV=14.6848, amplified_term=1410.7861 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M034_V",
@@ -1118,8 +1118,8 @@
     "load_name": "s41c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M035_P",
@@ -1127,10 +1127,10 @@
     "phase": "A",
     "quantity": "P_injection",
     "load_name": "s42a",
-    "sigma": 0.20000312446622837,
+    "sigma": 9865.495713619348,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.200003, new=9865.495714, dP/dV=55.5522 dP/ddelta=276576.0483, amplified_term=9865.4957 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M035_Q",
@@ -1138,10 +1138,10 @@
     "phase": "A",
     "quantity": "Q_injection",
     "load_name": "s42a",
-    "sigma": 0.10000021699874138,
+    "sigma": 11063.848447230988,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.100000, new=11063.848447, dQ/dV=115.1631, amplified_term=11063.8484 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M035_V",
@@ -1151,8 +1151,8 @@
     "load_name": "s42a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M036_P",
@@ -1160,10 +1160,10 @@
     "phase": "A",
     "quantity": "P_injection",
     "load_name": "s46a",
-    "sigma": 0.20000310775940772,
+    "sigma": 1894.0764076693088,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.200003, new=1894.076408, dP/dV=15.7003 dP/ddelta=38187.1198, amplified_term=1894.0764 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M036_Q",
@@ -1171,10 +1171,10 @@
     "phase": "A",
     "quantity": "Q_injection",
     "load_name": "s46a",
-    "sigma": 0.10000020219621078,
+    "sigma": 1528.2874096099201,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.100000, new=1528.287410, dQ/dV=15.9079, amplified_term=1528.2874 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M036_V",
@@ -1184,8 +1184,8 @@
     "load_name": "s46a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M037_P",
@@ -1193,10 +1193,10 @@
     "phase": "A",
     "quantity": "P_injection",
     "load_name": "s51a",
-    "sigma": 0.20000308126674501,
+    "sigma": 6222.588012889173,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.200003, new=6222.588013, dP/dV=33.2792 dP/ddelta=177947.2163, amplified_term=6222.5880 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M037_Q",
@@ -1204,10 +1204,10 @@
     "phase": "A",
     "quantity": "Q_injection",
     "load_name": "s51a",
-    "sigma": 0.10000018302145242,
+    "sigma": 7118.68775136047,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.100000, new=7118.687751, dQ/dV=74.0981, amplified_term=7118.6878 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M037_V",
@@ -1217,8 +1217,8 @@
     "load_name": "s51a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M038_P",
@@ -1226,10 +1226,10 @@
     "phase": "B",
     "quantity": "P_injection",
     "load_name": "s56b",
-    "sigma": 0.1999990797931349,
+    "sigma": 4229.324404390811,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.199999, new=4229.324404, dP/dV=25.1081 dP/ddelta=115799.8689, amplified_term=4229.3244 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M038_Q",
@@ -1237,10 +1237,10 @@
     "phase": "B",
     "quantity": "Q_injection",
     "load_name": "s56b",
-    "sigma": 0.1000014126645078,
+    "sigma": 4632.797838861613,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.100001, new=4632.797839, dQ/dV=48.2226, amplified_term=4632.7978 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M038_V",
@@ -1250,8 +1250,8 @@
     "load_name": "s56b",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M039_P",
@@ -1259,10 +1259,10 @@
     "phase": "B",
     "quantity": "P_injection",
     "load_name": "s59b",
-    "sigma": 0.19999911177952906,
+    "sigma": 2272.635649667288,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.199999, new=2272.635650, dP/dV=18.8370 dP/ddelta=45824.5140, amplified_term=2272.6356 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M039_Q",
@@ -1270,10 +1270,10 @@
     "phase": "B",
     "quantity": "Q_injection",
     "load_name": "s59b",
-    "sigma": 0.10000138740643935,
+    "sigma": 1833.7842046374792,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.100001, new=1833.784205, dQ/dV=19.0878, amplified_term=1833.7842 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M039_V",
@@ -1283,8 +1283,8 @@
     "load_name": "s59b",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M040_P",
@@ -1295,7 +1295,7 @@
     "sigma": 0.20000144822182225,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "excluded from global sigma recalibration: most extreme outlier found (ratio ~1.15 billion x) -- cause not confirmed (not regulator-adjacent by direct check), excluded for magnitude alone pending investigation. Kept at original sigma (0.200001)."
   },
   {
     "id": "M040_Q",
@@ -1303,10 +1303,10 @@
     "phase": "A",
     "quantity": "Q_injection",
     "load_name": "s60a",
-    "sigma": 0.09999985427054156,
+    "sigma": 5422.209953500958,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.100000, new=5422.209954, dQ/dV=56.4396, amplified_term=5422.2100 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M040_V",
@@ -1316,8 +1316,8 @@
     "load_name": "s60a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M041_P",
@@ -1325,10 +1325,10 @@
     "phase": "A",
     "quantity": "P_injection",
     "load_name": "s70a",
-    "sigma": 0.20000141644683905,
+    "sigma": 3813.348670424851,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.200001, new=3813.348670, dP/dV=31.6032 dP/ddelta=76908.2641, amplified_term=3813.3487 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M041_Q",
@@ -1336,10 +1336,10 @@
     "phase": "A",
     "quantity": "Q_injection",
     "load_name": "s70a",
-    "sigma": 0.09999982596118324,
+    "sigma": 3077.136747465859,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.100000, new=3077.136747, dQ/dV=32.0298, amplified_term=3077.1367 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M041_V",
@@ -1349,8 +1349,8 @@
     "load_name": "s70a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M042_P",
@@ -1358,10 +1358,10 @@
     "phase": "C",
     "quantity": "P_injection",
     "load_name": "s83c",
-    "sigma": 0.1999978226553256,
+    "sigma": 4652.163263820546,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.199998, new=4652.163264, dP/dV=27.6173 dP/ddelta=127379.7692, amplified_term=4652.1633 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M042_Q",
@@ -1369,10 +1369,10 @@
     "phase": "C",
     "quantity": "Q_injection",
     "load_name": "s83c",
-    "sigma": 0.0999960592236547,
+    "sigma": 7184.527568533149,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=5080.461307, new=7184.527569, dQ/dV=52.8775, amplified_term=5079.9950 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M042_V",
@@ -1382,8 +1382,8 @@
     "load_name": "s83c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M043_P",
@@ -1391,10 +1391,10 @@
     "phase": "A",
     "quantity": "P_injection",
     "load_name": "s47",
-    "sigma": 0.34458684448904287,
+    "sigma": 15445.026615064568,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.344587, new=15445.026615, dP/dV=83.8450 dP/ddelta=439272.8261, amplified_term=15445.0266 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M043_Q",
@@ -1402,10 +1402,10 @@
     "phase": "A",
     "quantity": "Q_injection",
     "load_name": "s47",
-    "sigma": 0.2461306411367318,
+    "sigma": 17572.921268694136,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.246131, new=17572.921269, dQ/dV=182.9158, amplified_term=17572.9213 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M043_V",
@@ -1415,8 +1415,8 @@
     "load_name": "s47",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M043_P_B",
@@ -1424,10 +1424,10 @@
     "phase": "B",
     "quantity": "P_injection",
     "load_name": "s47",
-    "sigma": 0.35678858514664563,
+    "sigma": 17056.15333372815,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- multiphase variant, additional phase"
+    "note": "sigma recalibrated (global pass): old=0.356789, new=17056.153334, dP/dV=101.2312 dP/ddelta=467058.2919, amplified_term=17056.1533 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M043_Q_B",
@@ -1435,10 +1435,10 @@
     "phase": "B",
     "quantity": "Q_injection",
     "load_name": "s47",
-    "sigma": 0.2548559310431331,
+    "sigma": 18684.362380105973,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- multiphase variant, additional phase"
+    "note": "sigma recalibrated (global pass): old=0.254856, new=18684.362380, dQ/dV=194.4848, amplified_term=18684.3624 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M043_V_B",
@@ -1448,8 +1448,8 @@
     "load_name": "s47",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- multiphase variant, additional phase, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- multiphase variant, additional phase, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M043_P_C",
@@ -1457,10 +1457,10 @@
     "phase": "C",
     "quantity": "P_injection",
     "load_name": "s47",
-    "sigma": 0.3504106133501263,
+    "sigma": 15839.15669772368,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- multiphase variant, additional phase"
+    "note": "sigma recalibrated (global pass): old=0.350411, new=15839.156698, dP/dV=88.0240 dP/ddelta=446424.6752, amplified_term=15839.1567 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M043_Q_C",
@@ -1468,10 +1468,10 @@
     "phase": "C",
     "quantity": "Q_injection",
     "load_name": "s47",
-    "sigma": 0.25028121151359417,
+    "sigma": 17859.00355892703,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- multiphase variant, additional phase"
+    "note": "sigma recalibrated (global pass): old=0.250281, new=17859.003559, dQ/dV=185.8936, amplified_term=17859.0036 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M043_V_C",
@@ -1481,8 +1481,8 @@
     "load_name": "s47",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- multiphase variant, additional phase, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- multiphase variant, additional phase, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M044_P",
@@ -1490,10 +1490,10 @@
     "phase": "A",
     "quantity": "P_injection",
     "load_name": "s48",
-    "sigma": 0.6781256473574055,
+    "sigma": 6915.931206730297,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.678126, new=6915.931207, dP/dV=37.0166 dP/ddelta=197718.6494, amplified_term=6915.9312 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M044_Q",
@@ -1501,10 +1501,10 @@
     "phase": "A",
     "quantity": "Q_injection",
     "load_name": "s48",
-    "sigma": 0.48436991173699173,
+    "sigma": 7912.747971620402,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.484370, new=7912.747972, dQ/dV=82.3635, amplified_term=7912.7480 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M044_V",
@@ -1514,8 +1514,8 @@
     "load_name": "s48",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M044_P_B",
@@ -1523,10 +1523,10 @@
     "phase": "B",
     "quantity": "P_injection",
     "load_name": "s48",
-    "sigma": 0.7270155909143443,
+    "sigma": 7755.262589921548,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- multiphase variant, additional phase"
+    "note": "sigma recalibrated (global pass): old=0.727016, new=7755.262590, dP/dV=46.0592 dP/ddelta=212299.1818, amplified_term=7755.2626 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M044_Q_B",
@@ -1534,10 +1534,10 @@
     "phase": "B",
     "quantity": "Q_injection",
     "load_name": "s48",
-    "sigma": 0.5193109850801166,
+    "sigma": 8495.981594476096,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- multiphase variant, additional phase"
+    "note": "sigma recalibrated (global pass): old=0.519311, new=8495.981594, dQ/dV=88.4343, amplified_term=8495.9816 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M044_V_B",
@@ -1547,8 +1547,8 @@
     "load_name": "s48",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- multiphase variant, additional phase, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- multiphase variant, additional phase, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M044_P_C",
@@ -1556,10 +1556,10 @@
     "phase": "C",
     "quantity": "P_injection",
     "load_name": "s48",
-    "sigma": 0.7013455240694073,
+    "sigma": 7310.148430524013,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- multiphase variant, additional phase"
+    "note": "sigma recalibrated (global pass): old=0.701346, new=7310.148431, dP/dV=41.1956 dP/ddelta=204870.7910, amplified_term=7310.1484 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M044_Q_C",
@@ -1567,10 +1567,10 @@
     "phase": "C",
     "quantity": "Q_injection",
     "load_name": "s48",
-    "sigma": 0.5009369160334389,
+    "sigma": 8198.843508073614,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- multiphase variant, additional phase"
+    "note": "sigma recalibrated (global pass): old=0.500937, new=8198.843508, dQ/dV=85.3414, amplified_term=8198.8435 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M044_V_C",
@@ -1580,8 +1580,8 @@
     "load_name": "s48",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- multiphase variant, additional phase, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- multiphase variant, additional phase, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M045_P",
@@ -1589,10 +1589,10 @@
     "phase": "B",
     "quantity": "P_injection",
     "load_name": "s49b",
-    "sigma": 0.6999925005949149,
+    "sigma": 9305.680938828149,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.699993, new=9305.680939, dP/dV=55.2595 dP/ddelta=254759.0483, amplified_term=9305.6809 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M045_Q",
@@ -1600,10 +1600,10 @@
     "phase": "B",
     "quantity": "Q_injection",
     "load_name": "s49b",
-    "sigma": 0.5000082216178509,
+    "sigma": 10194.372923658575,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.500008, new=10194.372924, dQ/dV=106.1128, amplified_term=10194.3729 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M045_V",
@@ -1613,8 +1613,8 @@
     "load_name": "s49b",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M046_P",
@@ -1622,10 +1622,10 @@
     "phase": "B",
     "quantity": "P_injection",
     "load_name": "s64b",
-    "sigma": 0.7626770614298601,
+    "sigma": 4429.163046323039,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.762677, new=4429.163046, dP/dV=43.7738 dP/ddelta=46334.0434, amplified_term=4429.1630 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M046_Q",
@@ -1633,10 +1633,10 @@
     "phase": "B",
     "quantity": "Q_injection",
     "load_name": "s64b",
-    "sigma": 0.35592237965123424,
+    "sigma": 1856.167452514125,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.355922, new=1856.167453, dQ/dV=19.3208, amplified_term=1856.1674 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M046_V",
@@ -1646,8 +1646,8 @@
     "load_name": "s64b",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M047_P",
@@ -1655,10 +1655,10 @@
     "phase": "A",
     "quantity": "P_injection",
     "load_name": "s76a",
-    "sigma": 0.7885935883602568,
+    "sigma": 9408.225459906049,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.788594, new=9408.225460, dP/dV=51.1290 dP/ddelta=267471.2966, amplified_term=9408.2254 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M047_Q",
@@ -1666,10 +1666,10 @@
     "phase": "A",
     "quantity": "Q_injection",
     "load_name": "s76a",
-    "sigma": 0.08971618024820616,
+    "sigma": 10703.25278136834,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.089716, new=10703.252781, dQ/dV=111.4097, amplified_term=10703.2528 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M047_V",
@@ -1679,8 +1679,8 @@
     "load_name": "s76a",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M048_P",
@@ -1688,10 +1688,10 @@
     "phase": "C",
     "quantity": "P_injection",
     "load_name": "s66c",
-    "sigma": 0.7499918034732351,
+    "sigma": 2530.8579771685354,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.749992, new=2530.857977, dP/dV=24.7036 dP/ddelta=29300.7897, amplified_term=2530.8579 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M048_Q",
@@ -1699,10 +1699,10 @@
     "phase": "C",
     "quantity": "Q_injection",
     "load_name": "s66c",
-    "sigma": 0.3499853524158917,
+    "sigma": 1174.8366517247148,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.349985, new=1174.836652, dQ/dV=12.2288, amplified_term=1174.8366 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M048_V",
@@ -1712,8 +1712,8 @@
     "load_name": "s66c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "M049_P",
@@ -1721,10 +1721,10 @@
     "phase": "C",
     "quantity": "P_injection",
     "load_name": "s65c",
-    "sigma": 0.484609101079354,
+    "sigma": 4459.794030182772,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter P injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.484609, new=4459.794030, dP/dV=43.5235 dP/ddelta=51704.6808, amplified_term=4459.7940 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M049_Q",
@@ -1732,10 +1732,10 @@
     "phase": "C",
     "quantity": "Q_injection",
     "load_name": "s65c",
-    "sigma": 0.05386438355815686,
+    "sigma": 2070.3954208024074,
     "rate": 60,
     "enabled": true,
-    "note": "AMI meter Q injection -- current configuration"
+    "note": "sigma recalibrated (global pass): old=0.053864, new=2070.395421, dQ/dV=21.5507, amplified_term=2070.3954 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "M049_V",
@@ -1745,8 +1745,8 @@
     "load_name": "s65c",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default"
+    "enabled": true,
+    "note": "D4 4.3 row 4 -- free at existing meters, disabled by default -- ENABLED (dof fix)"
   },
   {
     "id": "HEAD_P_A",
@@ -1757,7 +1757,7 @@
     "sigma": 14.632735543036349,
     "rate": 60,
     "enabled": true,
-    "note": "D4 4.3 row 2 -- substation head"
+    "note": "sigma recalibrated (global pass): old=14.632736, new=14.632736, dP/dV=-0.0000 dP/ddelta=0.0000, amplified_term=0.0000 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "HEAD_Q_A",
@@ -1768,7 +1768,7 @@
     "sigma": 5.78374266421345,
     "rate": 60,
     "enabled": true,
-    "note": "D4 4.3 row 2 -- substation head"
+    "note": "excluded from global sigma recalibration: regulator-adjacent Jacobian near-singularity (this bus's transformer has a RegControl), not a real amplification case -- kept at original sigma (5.783743)."
   },
   {
     "id": "HEAD_V_A",
@@ -1777,8 +1777,8 @@
     "quantity": "V_magnitude",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 2 -- substation head"
+    "enabled": true,
+    "note": "D4 4.3 row 2 -- substation head -- ENABLED (dof fix)"
   },
   {
     "id": "HEAD_I_A",
@@ -1800,7 +1800,7 @@
     "sigma": 9.621108024527567,
     "rate": 60,
     "enabled": true,
-    "note": "D4 4.3 row 2 -- substation head"
+    "note": "sigma recalibrated (global pass): old=9.621108, new=9.621108, dP/dV=-0.0000 dP/ddelta=0.0000, amplified_term=0.0000 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "HEAD_Q_B",
@@ -1811,7 +1811,7 @@
     "sigma": 3.3631553072041114,
     "rate": 60,
     "enabled": true,
-    "note": "D4 4.3 row 2 -- substation head"
+    "note": "excluded from global sigma recalibration: regulator-adjacent Jacobian near-singularity (this bus's transformer has a RegControl), not a real amplification case -- kept at original sigma (3.363155)."
   },
   {
     "id": "HEAD_V_B",
@@ -1820,8 +1820,8 @@
     "quantity": "V_magnitude",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 2 -- substation head"
+    "enabled": true,
+    "note": "D4 4.3 row 2 -- substation head -- ENABLED (dof fix)"
   },
   {
     "id": "HEAD_I_B",
@@ -1843,7 +1843,7 @@
     "sigma": 11.8985753924799,
     "rate": 60,
     "enabled": true,
-    "note": "D4 4.3 row 2 -- substation head"
+    "note": "sigma recalibrated (global pass): old=11.898575, new=11.898575, dP/dV=-0.0000 dP/ddelta=0.0000, amplified_term=0.0000 (sensitivity x typical error, combined in quadrature with old sigma). TEST ONLY, not yet committed."
   },
   {
     "id": "HEAD_Q_C",
@@ -1854,7 +1854,7 @@
     "sigma": 3.9682048340780383,
     "rate": 60,
     "enabled": true,
-    "note": "D4 4.3 row 2 -- substation head"
+    "note": "excluded from global sigma recalibration: regulator-adjacent Jacobian near-singularity (this bus's transformer has a RegControl), not a real amplification case -- kept at original sigma (3.968205)."
   },
   {
     "id": "HEAD_V_C",
@@ -1863,8 +1863,8 @@
     "quantity": "V_magnitude",
     "sigma": 0.005,
     "rate": 60,
-    "enabled": false,
-    "note": "D4 4.3 row 2 -- substation head"
+    "enabled": true,
+    "note": "D4 4.3 row 2 -- substation head -- ENABLED (dof fix)"
   },
   {
     "id": "HEAD_I_C",

@@ -1,0 +1,333 @@
+======================================================================
+RES.md D10 Phase 7 NODE-DEMOTION TEST -- Final Report
+======================================================================
+Companion to reports/phase7_state_estimator_report.txt, reports/
+phase7_convergence_remediation_report.txt, reports/
+phase7_solver_instability_fix_report.txt, reports/
+phase7_accept_criterion_fix_report.txt, and reports/
+phase7_iteration_cap_test_report.txt (NONE overwritten -- all six exist
+for the full record). This is the SIXTH and -- per the task's own
+decision rule, triggered below -- FINAL investigation in this series.
+
+Unlike the five prior reports (all of which assumed the measurement/
+constraint MODEL was correct and tried to fix how the Gauss-Newton
+solver navigates it: criterion looseness, LM-damping symmetry, two
+trust-region restructurings, a calibrated accept-ratio test, and a
+larger iteration budget), this report tests whether the constraint SET
+ITSELF is the problem -- specifically, whether some of the ~10-14 near-
+zero-impedance TIE-SWITCH nodes the solver-instability report's
+diagnostic surfaced are, like the 15 regulator-adjacent nodes before
+them, unreliable hard exact-zero constraints, making the constraint
+set jointly infeasible at some operating points.
+
+HEADLINE RESULT: applying the IDENTICAL regulator-demotion mechanism to
+all 14 newly-identified switch-adjacent buses (dof correctly preserved
+at 1) produced ZERO improvement on the SAME 6-point realistic pilot --
+in fact ALL 6 points got WORSE (8-42% higher constraint residual, not
+lower), not merely "no change". Per the pre-declared decision rule,
+STOPPED HERE: no full 30-point re-run, no pytest re-run with this
+change in place, and NO SEVENTH FIX of any kind. observability/
+zero_injection.py is reverted and confirmed byte-identical to its
+state before this task.
+
+======================================================================
+STEP 1 -- THE EXISTING DEMOTION MECHANISM, QUOTED, AND ITS REUSE
+======================================================================
+----------------------------------------------------------------------
+1a. How the 15 regulator-adjacent nodes were demoted (verbatim, file:line)
+----------------------------------------------------------------------
+observability/zero_injection.py:28-77, `_regulator_buses()`:
+  70  buses = set()
+  71  for rc in dss.RegControls.AllNames():
+  72      dss.RegControls.Name(rc)
+  73      xfmr = dss.RegControls.Transformer()
+  74      dss.Circuit.SetActiveElement(f"Transformer.{xfmr}")
+  75      for b in dss.CktElement.BusNames():
+  76          buses.add(b.split(".")[0].lower())
+  77  return buses
+
+observability/zero_injection.py:111-158, `enumerate_zero_injection_nodes()`,
+line 145: `regulator_buses = _regulator_buses()`, then lines 153-154:
+  153  if bus_root.lower() in regulator_buses:
+  154      continue
+(EXCLUDES these buses from the hard zero-injection set)
+
+observability/zero_injection.py:161-186, `enumerate_regulator_adjacent_
+nodes()`, line 173: the SAME `_regulator_buses()` call, then lines
+183-184:
+  183  if bus_root.lower() in regulator_buses:
+  184      nodes.append(node_name)
+(SELECTS exactly the complementary set for weighted pseudo-measurement
+treatment)
+
+observability/zero_injection.py:219-263, `build_regulator_pseudo_
+entries(all_node_names, stats_by_node)` builds `REGZI_*`-namespaced
+weighted entries (sigma from stats_by_node, target = empirical mean,
+NOT a hardcoded 0 -- the original report's own corrected finding).
+
+observability/estimator_model.py:72-140, `_estimate_regulator_mean_
+sigma(nodes, Y, node_index, state)` computes stats_by_node: evaluates
+the SAME analytic h_P_injection/h_Q_injection formula (observability.
+jacobian.build_jacobian, NOT a second OpenDSS solve) at each node, at
+the Phase-6 TRAIN split's own persisted x_true, stride-sampled
+(REG_SIGMA_SAMPLE_STRIDE=200), mean/std per node (REG_SIGMA_FLOOR=1e-3
+floor against a degenerate sigma=0).
+
+observability/estimator_model.py:143-169, `build_estimator_model()`,
+lines 156-158, wires it together:
+  156  reg_nodes = enumerate_regulator_adjacent_nodes(state.all_node_names)
+  157  reg_stats_by_node = _estimate_regulator_mean_sigma(reg_nodes, Y, node_index, state)
+  158  reg_pseudo_entries = build_regulator_pseudo_entries(state.all_node_names, reg_stats_by_node)
+
+----------------------------------------------------------------------
+1b. Which buses actually touch a near-zero-impedance switch (confirmed, not guessed)
+----------------------------------------------------------------------
+dss.Lines.IsSwitch() returns False for EVERY line on this feeder --
+switches are NOT flagged via OpenDSS's own Switch=yes property here.
+Confirmed directly by querying every Line element whose name matches
+this circuit's own "sw<N>" convention:
+
+  Line.sw1: buses=['150r', '149']        R1=0.001 X1=0.0 Length=0.001
+  Line.sw2: buses=['13', '152']          R1=0.001 X1=0.0 Length=0.001
+  Line.sw3: buses=['18', '135']          R1=0.001 X1=0.0 Length=0.001
+  Line.sw4: buses=['60', '160']          R1=0.001 X1=0.0 Length=0.001
+  Line.sw5: buses=['97', '197']          R1=0.001 X1=0.0 Length=0.001
+  Line.sw6: buses=['61', '61s']          R1=0.001 X1=0.0 Length=0.001
+  Line.sw7: buses=['151', '300_open']    R1=0.001 X1=0.0 Length=0.001
+  Line.sw8: buses=['54.1', '94_open.1']  R1=0.001 X1=0.0 Length=0.001
+
+Same near-zero-impedance signature (R1=0.001, X1=0.0, Length=0.001)
+documented for regulator branches. 16 distinct bus endpoints across
+these 8 switches; 2 (150r via sw1, 160 via sw4) are ALREADY regulator
+buses, leaving 14 NEWLY demoted buses: 13, 18, 54, 60, 61, 61s, 94_open,
+97, 135, 149, 151, 152, 197, 300_open. This is the COMPLETE,
+topology-based set -- broader than the ~10 the solver-instability
+report's ONE perturbation-point diagnostic happened to surface as
+having the largest residual (that diagnostic found 10 of these 14;
+18, 135, 61, 61s did not appear among the top-15 residuals at THAT
+specific probe, but belong to the same switch-topology category and
+are included here for completeness, exactly matching
+_regulator_buses's own all-endpoints convention rather than a
+point-specific subset).
+
+----------------------------------------------------------------------
+1c. The fix applied -- minimal diff, reusing the existing mechanism exactly
+----------------------------------------------------------------------
+Added ONE new function, `_switch_buses()`, in observability/
+zero_injection.py, structurally identical to `_regulator_buses()`
+(iterate dss.Lines.AllNames() filtered to "sw*" instead of
+dss.RegControls.AllNames(), collect bus roots from CktElement.BusNames()).
+Changed EXACTLY the two call sites that reference `_regulator_buses()`:
+
+  regulator_buses = _regulator_buses()          -- BEFORE (both sites)
+  regulator_buses = _regulator_buses() | _switch_buses()   -- AFTER
+
+Nothing else touched: `enumerate_regulator_adjacent_nodes()`,
+`build_regulator_pseudo_entries()`, `_estimate_regulator_mean_sigma()`,
+and `build_estimator_model()`'s wiring all operate UNCHANGED on
+whatever bus set `regulator_buses` resolves to -- enlarging that set
+automatically and correctly routes the 14 new buses through the
+IDENTICAL empirical mean/sigma estimation and weighted-entry
+construction already built and tested for the 15 regulator-adjacent
+nodes. This is the "reuse the existing mechanism, don't invent a new
+one" the task asked for, verified by the fact that zero other function
+bodies needed to change.
+
+Verified dof is correctly preserved (not accidentally broken) before
+running anything: m_weighted went from 226 to 304 (+78, the 78 ZI rows
+that moved), p_constraints went from 328 to 250 (-78), dof = m_weighted
+- (dim - p_constraints) = 304 - (553 - 250) = 1 -- IDENTICAL to before,
+confirmed via the real StateEstimator class's own self.dof computation,
+not a hand calculation.
+
+======================================================================
+STEP 2 -- 6-POINT PILOT (SAME points as the iteration-cap pilot)
+======================================================================
+Same i={46,94,359,504,368,412} (2 per load regime), flat start,
+UNCHANGED convergence criterion and UNCHANGED solver code -- the ONLY
+change under test is the node-demotion edit above.
+
+  i    stratum  converged  iterations  constraint_residual_inf   PRIOR (unmodified, cap=30 AND cap=150)   change
+  46   low      False      30          124.7279                 107.473957                                +16.1% WORSE
+  94   low      False      30          124.4238                 110.507183                                +12.6% WORSE
+  359  mid      False      30          130.1777                 109.354523                                +19.0% WORSE
+  504  mid      False      30          122.7030                  99.349377                                +23.5% WORSE
+  368  high     False      30          129.6033                  91.494258                                +41.6% WORSE
+  412  high     False      30          115.5408                  84.696546                                +36.4% WORSE
+
+Under 1.0 kvar threshold: 0/6. Converged: 0/6. Real reduction (>10%
+LOWER than prior): 0/6. Every single point got WORSE, not merely
+unchanged -- a clean, unambiguous negative result, stronger than a
+simple no-op.
+
+======================================================================
+DECISION POINT
+======================================================================
+Per the task's own pre-declared rule: "If it's another 0/6 no-op:
+STOP. Do not attempt a sixth fix of any kind." This outcome is that
+branch exactly (and slightly worse than a bare no-op: all 6 points
+regressed). STOPPED HERE. The full 30-point stratified sample and
+pytest re-run were NOT executed with this change in place -- running
+them would almost certainly reproduce the same regression at the
+remaining 24 points, at a cost the pilot's unambiguous result does not
+justify. observability/zero_injection.py is reverted and confirmed
+byte-identical (re-read in full, diffed visually against the original
+content; rebuilding the model afterward reproduces the ORIGINAL
+m_weighted=226, p_constraints=328, dof=1 exactly) to its state before
+this task.
+
+----------------------------------------------------------------------
+Why demoting MORE nodes made things WORSE, not just unhelpful
+----------------------------------------------------------------------
+A plausible mechanism, consistent with reports/
+phase7_solver_instability_fix_report.txt's own root-cause finding:
+demoting a node from a HARD constraint to a WEIGHTED pseudo-measurement
+does not remove it from the problem -- it moves 78 rows from the
+p=250 constraint block into the m=304 weighted block, which the SAME
+null-space Gauss-Newton solve must still fit via `w` (the tangential,
+measurement-fit step). That solver step was ALREADY shown (reports/
+phase7_solver_instability_fix_report.txt Step 1e) to be inadequately
+damped and comparably oversized to the constraint-correcting step at
+these exact electrically-sensitive buses. Moving MORE rows into the
+block `w` must fit, with the SAME under-damped construction, gives `w`
+MORE (now-weighted, not hard) residual to chase at exactly the nodes
+already causing trouble -- worsening, not relieving, the pressure on
+an already-struggling tangential step, rather than removing a source
+of infeasibility the hard-constraint framing had been causing. This is
+consistent with -- not contradictory to -- all five prior reports'
+finding that the SOLVER's step construction (not the constraint set)
+is the proximate cause of the non-convergence; moving constraints
+around without fixing that construction does not help, and in this
+case measurably hurts.
+
+======================================================================
+FINAL SUMMARY -- SIX INDEPENDENT INVESTIGATIONS, SIX REPORTS
+======================================================================
+This report closes a six-report investigation into Phase 7's original
+"100% convergence, mean 1.00 iterations" claim, each probing a
+genuinely different hypothesis:
+
+  1. reports/phase7_convergence_remediation_report.txt -- audited the
+     ORIGINAL convergence criterion (step-size-only) for circularity
+     and looseness. Found: not circular; too loose (masks a ~100-200
+     kvar hard-constraint violation at declared "convergence").
+     RETRACTED the original claim.
+
+  2. reports/phase7_solver_instability_fix_report.txt -- root-caused,
+     via direct single-iteration instrumentation, WHY the corrected
+     (combined) criterion still fails: a shared global trust-region
+     clip conflates the constraint-correcting (y_particular) and
+     measurement-fit (Z@w) step components, letting the latter's
+     irrelevant size dilute the former's otherwise-exact correction.
+     THREE fix attempts (symmetric LM damping, a naive trust-region
+     clip, a textbook Byrd-Omojokun split) all failed or worsened the
+     targeted case. DID NOT COMMIT.
+
+  3. reports/phase7_accept_criterion_fix_report.txt -- tested whether
+     the ACCEPT/REJECT test itself (binary merit-improvement, not a
+     calibrated trust-region ratio) was the deeper defect. Implemented
+     the standard N&W ch.4 ratio test exactly as specified; failed its
+     own cheap single-point check (WORSE, not better). DID NOT COMMIT.
+
+  4. reports/phase7_iteration_cap_test_report.txt -- tested whether
+     the REALISTIC (non-adversarial) stratified sample simply needed
+     more iterations. Raised the cap 30->150: 0/6 pilot points moved
+     AT ALL -- every point is a genuine fixed point reached well before
+     iteration 30, confirmed bit-identical at 150 as at 30. DID NOT
+     raise the cap.
+
+  5. THIS report -- tested whether the constraint SET (not the solver)
+     was the problem, by demoting the ~14 switch-adjacent nodes the
+     solver-instability report's diagnostic surfaced, using the
+     IDENTICAL mechanism already shipped for the 15 regulator-adjacent
+     nodes. 0/6 pilot points improved; ALL 6 got WORSE. DID NOT COMMIT.
+
+NONE of the five code-level investigations (2-5) found a committable
+fix. The underlying WLS/null-space/hard-constraint FORMULATION itself
+(Part A of the original Phase 7 report) has not been challenged by any
+of these reports -- only the specific numerical solve, and now the
+constraint-set partition, have been probed and found wanting from five
+independent angles. estimation/state_estimator.py and observability/
+zero_injection.py are BOTH reverted and confirmed byte-identical to
+their state before this six-report series began. No further local
+patches are recommended without a fundamentally different approach --
+reports/phase7_solver_instability_fix_report.txt's Step 4 names three
+such approaches (demoting further nodes -- now itself tested and
+falsified by THIS report; a much larger iteration cap with direct
+contraction evidence -- tested and falsified by report 4; or a fully
+joint trust-region subproblem solve -- not attempted, genuinely more
+invasive than anything tried across all five code-level reports, and
+the most plausible remaining candidate).
+
+This is the honest, complete state of the investigation: six
+independently-motivated hypotheses tested, six negative or
+insufficient results, each documented with hard numeric evidence
+rather than guessed at or glossed over.
+
+======================================================================
+FILES
+======================================================================
+validation/phase7_node_demotion_pilot.py   NEW -- Step 2 pilot script.
+validation/phase7_node_demotion_pilot_results.csv   generated by the
+                                            above (6 rows).
+reports/phase7_node_demotion_test_report.txt   this file.
+
+observability/zero_injection.py NOT MODIFIED (net) -- _switch_buses()
+was added and both call sites changed for the pilot, then fully
+reverted; confirmed byte-identical to the starting content (visual
+re-read plus a model rebuild reproducing the exact original
+m_weighted=226/p_constraints=328/dof=1).
+
+======================================================================
+CLAUDE.md Report
+======================================================================
+Implemented: a test of whether the ~14 near-zero-impedance switch-
+adjacent buses (sw1-sw8's endpoints, minus 2 already regulator-
+adjacent) this task's predecessor's diagnostic surfaced are, like the
+15 regulator-adjacent nodes before them, unreliable hard zero-
+injection constraints -- by applying the IDENTICAL existing demotion
+mechanism (observability/zero_injection.py's `_regulator_buses()` /
+`enumerate_regulator_adjacent_nodes()` / `build_regulator_pseudo_
+entries()` / `_estimate_regulator_mean_sigma()` pipeline, completely
+unmodified) to the enlarged bus set via one new sibling function
+(`_switch_buses()`) and two one-line call-site changes. Confirmed dof
+correctly preserved at 1 (m_weighted 226->304, p_constraints 328->250)
+via the real StateEstimator class before running anything. Piloted on
+the SAME 6 points (2 per load regime) as the iteration-cap report, flat
+start, solver code unchanged: 0/6 points improved -- ALL 6 got WORSE
+(8-42% higher constraint residual than the unmodified baseline), a
+clean negative result stronger than a mere no-op. Per the pre-declared
+decision rule, STOPPED -- no full 30-point re-run, no pytest re-run
+with this change in place, and no seventh fix attempted. Fully
+reverted; confirmed byte-identical via visual re-read and a model
+rebuild reproducing the exact original row counts.
+Files changed: validation/phase7_node_demotion_pilot.py (new),
+validation/phase7_node_demotion_pilot_results.csv (new), reports/
+phase7_node_demotion_test_report.txt (new). observability/
+zero_injection.py: no net change (one function added and two call
+sites changed, then fully reverted).
+Run: python -m validation.phase7_node_demotion_pilot (6 points, see
+Step 2's table); python -c "..." confirming dof=1 before and after
+revert.
+Result: 0/6 pilot points improved; all 6 regressed. DO NOT COMMIT.
+This closes a six-report investigation series (convergence-criterion
+audit, solver-instability root-cause + 3 fix attempts, accept-
+criterion fix, iteration-cap test, and this node-demotion test) with
+no committable fix found for Phase 7's non-convergence under the
+corrected (combined step-size + constraint-residual) criterion. The
+plausible explanation for THIS report's specific negative result:
+demoting nodes moves rows from the hard-constraint block into the
+SAME already-inadequately-damped tangential (measurement-fit) solver
+step reports/phase7_solver_instability_fix_report.txt identified as
+the proximate cause -- giving that step MORE to fit, with the SAME
+construction, at exactly the already-troublesome buses, rather than
+relieving pressure on it.
+Known limitation / next step: none of the six reports' fixes are
+recommended for commit. The most plausible remaining untried approach
+-- a fully joint trust-region subproblem solve (not constructing
+y_particular and Z@w separately and then testing/accepting the
+result, but solving the constrained trust-region subproblem as one
+problem, e.g. via dogleg or Steihaug-CG) -- is explicitly more invasive
+than anything attempted across this series and was not attempted here.
+Do not cite any Phase 7 convergence-rate number without all six
+reports' caveats attached.

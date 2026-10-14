@@ -249,8 +249,26 @@ LM_LAMBDA_INIT = 1.0
 LM_LAMBDA_MIN = 1e-6
 LM_LAMBDA_MAX = 1e18
 LM_INCREASE_FACTOR = 10.0
-LM_DECREASE_FACTOR = 3.0
+LM_DECREASE_FACTOR = 10.0
 LM_MAX_TRIES = 15
+
+# RES.md D10 Phase 7 fix-jacobian-bugs branch -- TRUNCATED-SVD STEP,
+# now the DEFAULT solve path (legacy_solver=True reproduces the exact
+# LM-damped behaviour above for comparison/rollback). Validated first
+# as an experiment (estimation/experimental_tsvd_solver.py) against
+# the real Q-angle-sign-bug-fixed Jacobian: LM damping alone left the
+# solver creeping along near-null, poorly-determined directions for
+# 100-300 iterations with NON-MONOTONIC accuracy (voltage error
+# improved to iter~100 then got WORSE through iter 300, while LM
+# lambda sat at its floor the whole time -- a conditioning problem,
+# not a damping problem: cond(A_reduced)~3.6e16, 198 of its singular
+# values below 1e-6 of the largest at one tested iterate). Truncated
+# SVD drops those same near-null directions directly instead of
+# creeping along them, converging in ~5 iterations instead of 30+.
+TSVD_RCOND = 1e-8
+TSVD_MAX_ITER = 40
+TSVD_REL_COST_TOL = 1e-4
+TSVD_PATIENCE = 3
 
 # Fractional multiplier tried on the FULL step (y_particular + damped
 # Z@w together) at each lambda level -- see the "SECOND BUG" note at
@@ -312,15 +330,32 @@ class StateEstimator:
         return model.meas_entries + model.reg_pseudo_entries + pseudo_entries
 
     def estimate(self, z_real, real_timestamp,
-                 max_iter=DEFAULT_MAX_ITER,
+                 max_iter=None,
                  tol_v_pu=DEFAULT_TOL_V_PU,
                  tol_delta_rad=DEFAULT_TOL_DELTA_RAD,
-                 tol_constraint_kw=DEFAULT_TOL_CONSTRAINT_KW):
+                 tol_constraint_kw=DEFAULT_TOL_CONSTRAINT_KW,
+                 legacy_solver=False):
         """z_real: {registry_id: value} for the real (meter+head)
         entries -- e.g. one row of Phase 6's {split}_telemetry.csv.
         real_timestamp: 'YYYY-MM-DD HH:MM:SS' -- selects which static
         hour-of-day pseudo-measurement bucket to use (Phase 5's design;
-        see observability/pseudo_measurements.py)."""
+        see observability/pseudo_measurements.py).
+
+        legacy_solver: False (default, as of the fix-jacobian-bugs
+        branch) solves each reduced step via TRUNCATED SVD of
+        A_reduced (rcond=TSVD_RCOND) instead of Levenberg-Marquardt
+        damping, and stops when the relative cost decrease stays below
+        TSVD_REL_COST_TOL for TSVD_PATIENCE consecutive iterations (up
+        to TSVD_MAX_ITER) -- converged additionally requires
+        constraint_residual_iter < tol_constraint_kw at that point.
+        True reproduces the original LM-damped behaviour (max_iter
+        defaults to DEFAULT_MAX_ITER, step-size-based convergence)
+        exactly, kept reachable for comparison/rollback.
+        max_iter=None picks DEFAULT_MAX_ITER or TSVD_MAX_ITER to match
+        legacy_solver; pass an explicit value to override either way."""
+
+        if max_iter is None:
+            max_iter = DEFAULT_MAX_ITER if legacy_solver else TSVD_MAX_ITER
 
         state = self.model.state
         hour = int(real_timestamp[11:13])
@@ -358,6 +393,7 @@ class StateEstimator:
         max_dx_v_pu = float("nan")
         max_dx_delta_rad = float("nan")
         lm_lambda = LM_LAMBDA_INIT
+        stall_count = 0
 
         current_merit, H_all, h0_all = _merit(x_v, x_delta)
 
@@ -443,10 +479,56 @@ class StateEstimator:
             # the one lever that can shrink y_particular's own
             # contribution, which pure LM damping cannot reach.
             improved = False
-            for _ in range(LM_MAX_TRIES):
-                A_aug = np.vstack([A_reduced, np.sqrt(lm_lambda) * np.eye(n_w)])
-                b_aug = np.concatenate([b_reduced, np.zeros(n_w)])
-                w, *_ = np.linalg.lstsq(A_aug, b_aug, rcond=None)
+            if legacy_solver:
+                for _ in range(LM_MAX_TRIES):
+                    A_aug = np.vstack([A_reduced, np.sqrt(lm_lambda) * np.eye(n_w)])
+                    b_aug = np.concatenate([b_reduced, np.zeros(n_w)])
+                    w, *_ = np.linalg.lstsq(A_aug, b_aug, rcond=None)
+                    y_full = y_particular + Z @ w
+
+                    for frac in STEP_FRACTIONS:
+                        y = frac * y_full
+                        dx = s * y
+                        dx_v0, dx_delta0 = dx[:state.n_phase_nodes], dx[state.n_phase_nodes:]
+
+                        # Trust-region step cap -- final safeguard (see
+                        # module docstring), kept even with LM damping +
+                        # fractional search since it guards against a single
+                        # iteration's linearisation being locally poor in a
+                        # DIFFERENT direction than the one this remediation
+                        # found and fixed.
+                        step_ratio = max(
+                            np.max(np.abs(dx_v0) / v_base) / MAX_STEP_V_PU,
+                            np.max(np.abs(dx_delta0)) / MAX_STEP_DELTA_RAD,
+                            1.0,
+                        )
+                        cand_dx_v, cand_dx_delta = dx_v0 / step_ratio, dx_delta0 / step_ratio
+
+                        cand_v = x_v + cand_dx_v
+                        cand_delta = x_delta + cand_dx_delta
+                        cand_merit, cand_H, cand_h0 = _merit(cand_v, cand_delta)
+
+                        if cand_merit < current_merit:
+                            best = (cand_merit, cand_v, cand_delta, cand_dx_v, cand_dx_delta, cand_H, cand_h0)
+                            lm_lambda = max(lm_lambda / LM_DECREASE_FACTOR, LM_LAMBDA_MIN)
+                            improved = True
+                            break
+
+                    if improved:
+                        break
+
+                    lm_lambda = min(lm_lambda * LM_INCREASE_FACTOR, LM_LAMBDA_MAX)
+            else:
+                # TRUNCATED-SVD step, now the default (see TSVD_* constants'
+                # docstring above): drops singular values below
+                # TSVD_RCOND*largest directly, instead of LM's iterative
+                # damp-and-retry. One SVD, no retry loop -- the truncation
+                # itself is what regularises an ill-conditioned A_reduced.
+                U, sv, Vt2 = np.linalg.svd(A_reduced, full_matrices=False)
+                keep = sv > TSVD_RCOND * sv[0]
+                sv_inv = np.zeros_like(sv)
+                sv_inv[keep] = 1.0 / sv[keep]
+                w = (Vt2.T * sv_inv) @ (U.T @ b_reduced)
                 y_full = y_particular + Z @ w
 
                 for frac in STEP_FRACTIONS:
@@ -454,12 +536,6 @@ class StateEstimator:
                     dx = s * y
                     dx_v0, dx_delta0 = dx[:state.n_phase_nodes], dx[state.n_phase_nodes:]
 
-                    # Trust-region step cap -- final safeguard (see
-                    # module docstring), kept even with LM damping +
-                    # fractional search since it guards against a single
-                    # iteration's linearisation being locally poor in a
-                    # DIFFERENT direction than the one this remediation
-                    # found and fixed.
                     step_ratio = max(
                         np.max(np.abs(dx_v0) / v_base) / MAX_STEP_V_PU,
                         np.max(np.abs(dx_delta0)) / MAX_STEP_DELTA_RAD,
@@ -473,14 +549,10 @@ class StateEstimator:
 
                     if cand_merit < current_merit:
                         best = (cand_merit, cand_v, cand_delta, cand_dx_v, cand_dx_delta, cand_H, cand_h0)
-                        lm_lambda = max(lm_lambda / LM_DECREASE_FACTOR, LM_LAMBDA_MIN)
                         improved = True
                         break
 
-                if improved:
-                    break
-
-                lm_lambda = min(lm_lambda * LM_INCREASE_FACTOR, LM_LAMBDA_MAX)
+            prev_merit = current_merit  # captured BEFORE this iteration's update, for the TSVD cost-decrease rule below
 
             if not improved:
                 # no damping level found an improving step -- take NO
@@ -498,10 +570,25 @@ class StateEstimator:
             max_dx_delta_rad = float(np.max(np.abs(dx_delta)))
             constraint_residual_iter = float(np.max(np.abs(h0_all[m:]))) if p else 0.0
 
-            if (max_dx_v_pu < tol_v_pu and max_dx_delta_rad < tol_delta_rad
-                    and constraint_residual_iter < tol_constraint_kw):
-                converged = True
-                break
+            if legacy_solver:
+                if (max_dx_v_pu < tol_v_pu and max_dx_delta_rad < tol_delta_rad
+                        and constraint_residual_iter < tol_constraint_kw):
+                    converged = True
+                    break
+            else:
+                # TSVD stopping rule: relative cost decrease < TSVD_REL_COST_TOL
+                # for TSVD_PATIENCE consecutive iterations (a null step, where
+                # prev_merit==current_merit, counts as a 0% decrease -- always
+                # ticks the counter), or max_iter. "Converged" additionally
+                # requires the constraint to actually be satisfied at that point.
+                rel_decrease = (prev_merit - current_merit) / max(abs(prev_merit), 1e-12)
+                if 0 <= rel_decrease < TSVD_REL_COST_TOL:
+                    stall_count += 1
+                else:
+                    stall_count = 0
+                if stall_count >= TSVD_PATIENCE:
+                    converged = constraint_residual_iter < tol_constraint_kw
+                    break
 
         h0_meas_final, h0_zi_final = h0_all[:m], h0_all[m:]
         residual = z - h0_meas_final

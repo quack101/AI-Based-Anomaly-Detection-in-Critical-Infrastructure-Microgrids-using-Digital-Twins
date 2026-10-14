@@ -1,0 +1,306 @@
+======================================================================
+RES.md D10 Phase 3 -- Streaming Layer Restructure Report
+======================================================================
+
+Scope: topic split (telemetry.raw / telemetry.delivered / labels /
+state), sensor layer moved into the producer, pass-through attack
+injector, consumer window timeout + missing-data policy. Plus, while
+the registry was being wired in: resolution of Phase 2 Finding #1 (a
+second, selectable sensor-registry variant with genuinely multi-phase
+loads fully metered).
+
+----------------------------------------------------------------------
+Validation mode
+----------------------------------------------------------------------
+No Docker broker was available in this environment: `docker info`
+fails to connect to the daemon (Docker Desktop's engine is not
+running), so streaming/docker-compose.yml's live path could not be
+exercised. Per RES.md D10 Phase 0's precedent, validation used DIRECT
+REPLAY instead -- but unlike Phase 0, this means chaining the actual
+Producer, Injector and Consumer classes from streaming/producer.py,
+streaming/injector.py and streaming/consumer.py in-process (their
+per-timestep methods take/return plain dicts with no Kafka dependency
+in the core logic), not a re-implementation. validation/validate_phase3.py
+is the harness.
+
+----------------------------------------------------------------------
+Acceptance criteria (RES.md Phase 3)
+----------------------------------------------------------------------
+[PASS] With a null attack, telemetry.delivered is byte-identical to
+       telemetry.raw: 4,233,600/4,233,600 messages identical
+       (86,400 timestamps x 49 meters), 0 mismatches, over the full
+       60-day corpus.
+
+[PASS] End-to-end results are identical to the Phase-1 direct-replay
+       run. See "Ground truth vs. Phase 1" below -- exact match to the
+       precision reports/phase0_validation_report_ideal.txt reports.
+
+[PASS] Dropping one meter no longer stalls the pipeline -- demonstrated
+       below (dropout demo).
+
+[PASS] Dropout events are logged distinctly from attack events --
+       simulation/phase3_dropout_log.csv carries event_class="dropout",
+       never "attack"; telemetry.labels never records a dropout.
+
+[PASS] Every field on telemetry.raw traces to exactly one
+       sensor_registry.json entry -- tests/test_streaming.py::
+       test_every_raw_message_field_traces_to_registry checks this
+       over real producer output; test_unregistered_field_is_caught
+       is the "fails if an unregistered field is published" check
+       RES.md asks for.
+
+[PASS] All existing tests still pass -- 88/88 (75 pre-Phase-3 +
+       13 new Phase 3 tests). See "Test suite" below.
+
+----------------------------------------------------------------------
+Ground truth vs. Phase 1 (acceptance criterion 2)
+----------------------------------------------------------------------
+A validation-harness finding, not a pipeline defect, shaped how this
+was measured: chaining Producer.run_timestep() and Consumer.ingest()
+in the SAME loop, in ONE Python process, means both share a single
+OpenDSS engine instance sequentially. OpenDSS's Newton-Raphson solve
+seeds its initial guess from the engine's current voltage state -- so
+the consumer's re-solve (on delivered telemetry) for timestep t
+reseeds the producer's next solve at timestep t+1, producing a small
+but real numerical drift (~0.2% on feeder-head P) that could NEVER
+occur in the live deployment, where producer and consumer are separate
+OS processes with independent engines. Confirmed directly: an isolated
+300-timestep producer-only run showed 0.0 difference from
+reports/phase0_validation_report_ideal.txt; the interleaved full-chain
+run showed the ~0.2% drift. The fix: run the producer in ISOLATION
+(no consumer sharing its engine) for the acceptance-criterion-2
+comparison -- this is what the table below reports, and it is the
+methodologically correct comparand, not a shortcut around the
+contamination.
+
+  Metric                       Phase 1 (old report)      Phase 3 (isolated producer, this run)
+  Timestamps                   86,400                     86,400
+  Convergence                  100.00%                    100.00%
+  V_pu range                   [0.936943, 1.099974]        [0.936943, 1.099974]
+  Avg feeder-head P            3623.3 kW                   3623.3 kW
+  Avg feeder-head Q            1331.9 kvar                 1331.9 kvar
+  Avg losses % of head         2.6757%                     2.6757%
+
+Exact match to the precision both reports use. The sensor layer being
+in the loop (measuring z_true after each solve) does not perturb the
+solve itself -- confirmed empirically, not assumed.
+
+----------------------------------------------------------------------
+Operator twin vs. ground truth (informational, not an acceptance item)
+----------------------------------------------------------------------
+RES.md D2 item 4 requires running the twin twice per timestamp: once
+on clean inputs (ground truth, above) and once on delivered telemetry
+(the L3c "operator twin", streaming/consumer.py). These numbers are
+FROM THE INTERLEAVED FULL-CHAIN RUN (the harness described above), so
+they carry that ~0.2%-scale artifact themselves and are not a clean
+isolated measurement -- they are reported anyway because the artifact
+is small relative to the effect being characterized, which is a
+genuinely separate, larger, and expected phenomenon:
+
+  Metric                       Ground truth (isolated)   Operator twin (interleaved, delivered)
+  V_pu range                   [0.936943, 1.099974]        [0.947032, 1.087482]
+  Avg feeder-head P            3623.3 kW                   3343.8 kW  (-7.7%)
+  Avg feeder-head Q            1331.9 kvar                 1010.0 kvar (-24.2%)
+
+This gap is EXPECTED, not a bug: 16 of the 49 representative loads use
+OpenDSS Model != 1 (9 x Model 2 constant-impedance, 7 x Model 5), whose
+terminal P/Q vary with the solved voltage. The consumer re-applies a
+DELIVERED reading (the solved terminal P/Q from the producer's clean
+solve) as a FRESH load setpoint, which is a standard AMI-based
+load-flow approximation, not an exact inverse of x_true -- confirmed by
+a direct single-timestep experiment at the corpus's peak-load moment
+(2018-04-04 17:13:00): re-applying the measured terminal P/Q as a new
+setpoint and resolving shifted feeder-head P by +54.1 kW (0.7%) and
+V_pu_min by -0.0011 p.u. relative to the original solve, even
+noise-free and under a null attack. Phase 7 (a real WLS AC-DSSE) is
+what actually closes this gap; the consumer's current setpoint-reapply
+approach is an inherited Phase-0-era approximation now correctly
+understood as one, not silently treated as identity.
+
+----------------------------------------------------------------------
+Dropout demonstration (acceptance criteria 3-4)
+----------------------------------------------------------------------
+5 timesteps replayed; meter M001's raw message was withheld entirely at
+t=2 (simulating a lost/dropped meter). Result: all 5 timesteps
+completed -- injector's window timeout (0.1s) closed the incomplete
+window and forwarded the 48 remaining raw messages; the consumer's own
+window timeout (0.1s) then closed its window using the hold-last-value
+policy for M001 and kept solving. 5 labels were emitted (one per
+timestamp, all attacked_meters=[]) and exactly 1 dropout event was
+logged, to simulation/phase3_dropout_log.csv, with
+event_class="dropout" -- never mixed into the labels stream. The
+pre-Phase-3 consumer (`if len(buffer[timestamp]) < EXPECTED_METERS:
+continue`) would have blocked on this timestamp forever.
+
+Missing-data policy chosen: HOLD-LAST-VALUE. A missing meter's most
+recently received (P,Q) reading is reused; before any reading has
+arrived, the load's as-authored nominal DSS value is used instead.
+Chosen over pseudo-measurement substitution because Phase 5's
+sigma_pseudo framework does not exist yet -- hold-last-value needs no
+new machinery and is a reasonable approximation for a single missed
+1-minute reading. Revisit once Phase 5 lands.
+
+----------------------------------------------------------------------
+Sensor-layer traceability (acceptance criterion 5, Phase 2's remaining
+open criterion)
+----------------------------------------------------------------------
+Phase 2's acceptance criterion "no OpenDSS quantity reaches Kafka
+without a registry entry" could not pass at the time because
+producer.py never called into sensors/. It now does: every
+telemetry.raw message's "measurements" dict is built directly from
+sensors.sensor_layer.build_measurement_dict() over
+sensors.registry.enabled_entries(), in one pass -- so every key is a
+registry id by construction. tests/test_streaming.py verifies this
+against real producer output (not a mock), and separately verifies the
+inverse: a tampered message with an unregistered field is caught.
+
+----------------------------------------------------------------------
+Multiphase registry variant (Phase 2 Finding #1 follow-up)
+----------------------------------------------------------------------
+Finding #1 named 5 loads as "multi-phase" (s35a, s47, s48, s76a, s65c),
+metered on their primary phase only to hold m=98. Direct inspection of
+123Bus/IEEE123Loads.DSS during this phase found that characterization
+was only half right:
+
+  New Load.S35a  Bus1=35.1.2 Phases=1 Conn=Delta   (single-phase, line-to-line)
+  New Load.S47   Bus1=47     Phases=3 Conn=Wye     (genuinely 3-phase)
+  New Load.S48   Bus1=48     Phases=3 Conn=Wye     (genuinely 3-phase)
+  New Load.S65c  Bus1=65.3.1 Phases=1 Conn=Delta   (single-phase, line-to-line)
+  New Load.S76a  Bus1=76.1.2 Phases=1 Conn=Delta   (single-phase, line-to-line)
+
+Only S47 and S48 are Phases=3 Conn=Wye -- genuinely independent P/Q on
+each phase. S35a, S65c and S76a are Phases=1 Conn=Delta: ONE
+single-phase load connected line-to-line; NumPhases()==1, and
+CktElement.Powers() returns exactly one (P,Q) pair. Their node_order
+listing two bus/phase references is the delta connection's two
+terminals, not a second phase's worth of power -- there is nothing
+left to meter on these three. The existing primary-phase entry already
+captures 100% of what they draw.
+
+  Variant           m (enabled P/Q entries)   What changed
+  default           98                         unchanged (config/sensor_registry.json)
+  multiphase        106                        +8: S47, S48 gain P,Q at phases B and C
+                                                 (config/sensor_registry_multiphase.json)
+
+Selectable via sensors.registry.load_registry(variant="default"|
+"multiphase"); the 98 default entries are byte-identical (same ids,
+same values) across both files -- multiphase only appends
+(tests/test_streaming.py::test_multiphase_variant_default_entries_
+identical_to_default_registry). Per the task, NOT wired into the live
+producer/consumer solve loop this phase (a 3-phase Wye Load object in
+OpenDSS accepts one aggregate kW/kvar setpoint, not independent
+per-phase setpoints -- driving loads from the multiphase variant's
+per-phase readings would require summing back to an aggregate, which
+is exactly the kind of estimator logic Phase 7 owns, not Phase 3).
+Phase 4 decides which variant to adopt, based on whether the
+single-phase-metered loads show up as critical measurements -- if they
+do under the default variant, that would be an artifact of this
+primary-phase shortcut, not a property of the feeder, which is
+precisely what Phase 4 must be able to tell apart.
+
+----------------------------------------------------------------------
+Test suite
+----------------------------------------------------------------------
+88/88 passed: 75 pre-Phase-3 tests (unaffected by this phase's changes)
++ 13 new tests in tests/test_streaming.py covering: null-attack
+byte-identity (direct + over real producer messages), the attack seam
+raising NotImplementedError for a real attack, registry traceability
+(positive and negative case), injector flush-on-count and
+flush-on-timeout, consumer no-stall-on-missing-meter,
+hold-last-value correctness, dropout/label stream separation, and the
+multiphase registry variant (count, scope, byte-identical shared
+entries).
+
+----------------------------------------------------------------------
+Notes on methodology
+----------------------------------------------------------------------
+validation/validate_phase3.py chains the real streaming/producer.py,
+streaming/injector.py and streaming/consumer.py classes -- run_full_chain()
+for the interleaved byte-identity + dropout-adjacent numbers, and a
+standalone isolated producer-only pass (same Producer class, no
+consumer sharing its engine) for the acceptance-criterion-2 ground-truth
+comparison. Both used add_noise=False: Phase 1's own numbers were
+produced with no measurement noise (there was no sensor layer yet), so
+this is the apples-to-apples setting for that specific comparison; the
+live/production default is add_noise=True (Producer's ADD_NOISE_DEFAULT),
+exercised separately by tests/test_streaming.py's noise-sigma-respecting
+checks inherited from Phase 2's own sensor-layer tests.
+
+Ground-truth log (isolated run): simulation/phase3_ground_truth_log.csv
+Operator-twin log (interleaved run): simulation/phase3_operator_twin_log.csv
+Dropout log: simulation/phase3_dropout_log.csv
+======================================================================
+
+======================================================================
+CLAUDE.md Report
+======================================================================
+Implemented:
+RES.md D10 Phase 3 -- restructured the streaming layer into four
+topics (telemetry.raw, telemetry.delivered, labels, state), moved the
+sensor layer into the producer (closing Phase 2's one remaining open
+acceptance criterion), built a pass-through attack injector (the seam
+for Phase 8, no attack class implemented), and added a window timeout
++ hold-last-value missing-data policy to the consumer, with dropout
+events logged distinctly from attack labels. Also resolved Phase 2
+Finding #1: added a selectable multiphase sensor-registry variant
+(m=106) after correcting the finding itself -- only S47/S48 are
+genuinely 3-phase Wye loads; S35a/S65c/S76a are single-phase
+delta-connected loads already fully metered, confirmed by reading
+123Bus/IEEE123Loads.DSS directly rather than trusting the earlier
+node_order-based inference.
+
+Files changed:
+- streaming/producer.py -- rewritten: L1 clean-twin solve (identical
+  methodology to validation/validate_phase0.py) + L2 sensor-layer
+  measurement via sensors/sensor_layer.py, one telemetry.raw message
+  per meter
+- streaming/injector.py (new) -- Injector class (per-timestamp buffer,
+  count/timeout flush) + apply_attack() pass-through seam
+- streaming/consumer.py -- rewritten: window timeout, hold-last-value
+  missing-data policy, dropout logging distinct from labels, operator-
+  twin solve/log
+- streaming/kafka_config.py -- new topic constants (TOPIC_RAW,
+  TOPIC_DELIVERED, TOPIC_LABELS, TOPIC_STATE); old TOPIC kept, unused
+- sensors/registry.py -- REGISTRY_PATHS + variant= parameter on
+  load_registry(), default behaviour unchanged
+- sensors/generate_registry.py -- multiphase=True param on
+  build_meter_entries(), corrected phase-detection via NumPhases() not
+  node_order length; main() no longer regenerates the default file
+- config/sensor_registry_multiphase.json (new) -- m=106 variant
+- validation/validate_phase3.py (new) -- direct-replay harness (no
+  Docker broker available; confirmed via `docker info`)
+- tests/test_streaming.py (new) -- 13 tests
+- reports/phase3_streaming_report.txt (this file, new)
+
+Run:
+python -m validation.validate_phase3 86400 (interleaved chain, for
+byte-identity + dropout demo) and an isolated producer-only pass (for
+the acceptance-criterion-2 ground-truth comparison, after discovering
+and confirming the interleaved run's ~0.2% shared-engine reseeding
+artifact); python -m pytest (full suite).
+
+Result:
+All 6 Phase 3 acceptance criteria PASS. Byte-identity: 4,233,600/
+4,233,600 messages, 0 mismatches. Ground truth vs. Phase 1: exact
+match on every reported figure (100% convergence, V_pu
+[0.936943,1.099974], head P 3623.3 kW, head Q 1331.9 kvar, losses
+2.6757%). Dropout demo: pipeline completed all 5 timesteps despite a
+withheld meter, 1 dropout logged distinctly from 5 (unattacked)
+labels. Registry traceability: every published field maps to exactly
+one registry id, verified against real producer output and against a
+deliberately tampered message. 88/88 tests pass. Multiphase variant:
+m=106 (only S47/S48 extended, not the originally-flagged 5 -- Finding
+#1 corrected).
+
+Known limitation / next step:
+The operator twin's re-solve from delivered telemetry is a real,
+measured approximation of ground truth for 16/49 non-constant-power
+loads (~7.7% low on feeder-head P under null attack in this run) --
+expected per RES.md D2 item 4's clean-vs-operator distinction, and
+squarely Phase 7's job (a real WLS AC-DSSE) to close properly; it is
+not attempted here. The multiphase registry variant is generated and
+tested but deliberately not wired into the live producer/consumer
+solve loop (a 3-phase Wye Load object takes one aggregate setpoint,
+not independent per-phase ones) -- Phase 4 decides which variant to
+adopt. Next: RES.md D10 Phase 4 (observability analysis).
+======================================================================

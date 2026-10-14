@@ -1,0 +1,351 @@
+================================================================
+PLACEMENT-STRATEGY QUALITY vs. BASELINES (Hybrid vs Random, vs
+CommunityDetection raw/merged) -- SPLIT BY CONSTRUCTION, both real
+================================================================
+Source report:  reports/sweep_4a_tier1_report.txt (post-defect-fix run)
+Source run_id:  20260822T092205Z
+Source files:   artifacts/20260822T092205Z/sweep_4a_tier1/cells.csv
+                artifacts/20260822T092205Z/sweep_4a_tier1/community_variants.json
+Metric code:    placement/sweep_metrics.py (compute_cell_metrics)
+Meter counts:   15, 30, 45, 49, 60, 70, 80, 85 (confirmed against cells.csv)
+Constructions:  independent AND nested -- BOTH reported in full below.
+Strategies:     Hybrid, Random (10 seeds, 0-9), Community12 (raw
+                12-community partition), Community4 (merged to 4).
+
+----------------------------------------------------------------------
+0. CORRECTION TO THE PREMISE OF THIS TASK -- stated plainly, not buried
+----------------------------------------------------------------------
+The task that produced this revision was framed as fixing a bug: "the
+prior version of this report grouped by (count, strategy) without also
+splitting on the 'construction' column ... silently blending two
+different meter-set construction methods into single reported values."
+
+RE-CHECKED AGAINST THE ACTUAL PRIOR FILE (git history / the version
+this replaces), not assumed: that report's header explicitly stated
+"Construction: independent ... nested values exist in the same CSV but
+are not tabulated here -- out of this task's stated scope", and every
+table in it was built by filtering cells.csv to construction=='independent'
+before computing anything, with `assert len(row) == 1` / `assert
+len(rows) == 10` checks that would have raised an exception (not
+produced silently-wrong numbers) had a blend occurred. It did not blend.
+The prior report's numbers were real, per-construction (independent)
+values throughout.
+
+WHAT WAS ACTUALLY WRONG, found while redoing this task properly (Section
+3 below): the PRIOR REPORT'S OWN PROSE, in its Section 4, miscounted how
+many of the 8 counts Hybrid loses to Community12 vs Community4 on phase
+balance -- it said "5 of 8" for Community12 and "4 of 8" for Community4;
+the correct counts (re-verified by code below, not by hand) are 3 of 8
+for Community12 and 5 of 8 for Community4. The two figures were swapped
+in the prose. This is corrected in Section 4 below.
+
+So: the specific "construction-blending" bug described in this task's
+brief did not occur. A real (different) counting error did occur and is
+fixed here. Both constructions are now tabulated in full per this task's
+request, which is valuable independent of whether the blend actually
+happened, and the regression test requested (Section 5) is added
+regardless, since nothing in the file's schema stops a FUTURE analysis
+from making exactly that mistake.
+
+----------------------------------------------------------------------
+0b. METRIC DEFINITIONS (unchanged from the prior version, still correct)
+----------------------------------------------------------------------
+branch_diversity            RAW INTEGER COUNT (sweep_metrics.py: `len({l["branch"]
+                             for l in selected})`), no denominator.
+downstream_coverage_frac    NORMALISED: downstream_kw / TOTAL_FEEDER_KW (3490.0 kW).
+phase_dev_pp (phase         DERIVED here from phase_kw_A/B/C, not a literal
+balance)                    CSV column: 100 * max_p |actual_share[p] -
+                             PHASE_KW_BASELINE[p]/TOTAL_FEEDER_KW|. Re-verified
+                             against the source report's own cited numbers for
+                             BOTH constructions this time: independent count=49
+                             -> 3.157pp (report: "3.16"), NESTED count=49 ->
+                             2.932pp (report: "2.93") -- report's own table
+                             ("count=49 | 3.16 / 2.93") is independent/nested in
+                             that literal order, confirming the mapping.
+                             Lower is better.
+
+ADVANTAGE-SIGN CONVENTION: positive always means Hybrid is better.
+branch_diversity, downstream_coverage_frac (higher better): Hybrid - baseline.
+phase_dev_pp (lower better): baseline - Hybrid.
+
+========================================================================
+TABLE SET A -- CONSTRUCTION = INDEPENDENT
+========================================================================
+
+--- A1. branch_diversity vs Random ---
+count | Hybrid | Random_mean | Random_std | advantage_abs | advantage_pct | beats mean+1std?
+   15 |     14 |       13.80 |       0.98 |          0.20 |         1.45% | NO (tied)
+   30 |     29 |       25.50 |       1.69 |          3.50 |        13.73% | YES
+   45 |     40 |       34.40 |       1.96 |          5.60 |        16.28% | YES
+   49 |     42 |       36.40 |       1.20 |          5.60 |        15.38% | YES
+   60 |     51 |       42.20 |       1.89 |          8.80 |        20.85% | YES
+   70 |     53 |       46.00 |       1.90 |          7.00 |        15.22% | YES
+   80 |     53 |       51.20 |       0.98 |          1.80 |         3.52% | YES
+   85 |     53 |       53.00 |       0.00 |          0.00 |         0.00% | NO (forced ceiling)
+
+--- A2. downstream_coverage_frac vs Random ---
+count | Hybrid | Random_mean | Random_std | advantage_abs | advantage_pct | beats mean+1std?
+   15 | 1.0000 |      0.6592 |     0.2929 |        0.3408 |        51.71% | YES
+   30 | 1.0000 |      0.8734 |     0.1564 |        0.1266 |        14.50% | NO
+   45 | 1.0000 |      0.9583 |     0.0723 |        0.0417 |         4.35% | NO
+   49 | 1.0000 |      0.9583 |     0.0723 |        0.0417 |         4.35% | NO
+   60 | 1.0000 |      0.9845 |     0.0305 |        0.0155 |         1.57% | NO
+   70 | 1.0000 |      0.9920 |     0.0156 |        0.0080 |         0.81% | NO
+   80 | 1.0000 |      0.9966 |     0.0053 |        0.0034 |         0.35% | NO
+   85 | 1.0000 |      1.0000 |     0.0000 |        0.0000 |         0.00% | NO
+
+--- A3. phase_dev_pp vs Random (lower is better) ---
+count | Hybrid | Random_mean | Random_std | advantage_abs | advantage_pct | beats mean+1std?
+   15 |  5.520 |      12.859 |      7.360 |         7.339 |        57.07% | NO
+   30 |  5.482 |       5.949 |      3.209 |         0.467 |         7.85% | NO
+   45 |  3.829 |       5.917 |      2.104 |         2.088 |        35.28% | NO
+   49 |  3.157 |       4.869 |      2.058 |         1.712 |        35.16% | NO
+   60 |  1.645 |       3.463 |      1.293 |         1.818 |        52.51% | YES
+   70 |  1.939 |       2.256 |      1.128 |         0.317 |        14.04% | NO
+   80 |  0.986 |       1.773 |      0.986 |         0.786 |        44.36% | NO
+   85 |  0.973 |       0.973 |      0.000 |         0.000 |         0.00% | tie (ceiling)
+
+--- A4. Hybrid vs CommunityDetection ---
+branch_diversity:
+count | Hybrid | Comm12 | adv12 | adv12% | Comm4 | adv4 | adv4%
+   15 |     14 |     12 |     2 | 16.67% |    10 |    4 | 40.00%
+   30 |     29 |     22 |     7 | 31.82% |    21 |    8 | 38.10%
+   45 |     40 |     32 |     8 | 25.00% |    31 |    9 | 29.03%
+   49 |     42 |     35 |     7 | 20.00% |    35 |    7 | 20.00%
+   60 |     51 |     43 |     8 | 18.60% |    42 |    9 | 21.43%
+   70 |     53 |     48 |     5 | 10.42% |    48 |    5 | 10.42%
+   80 |     53 |     51 |     2 |  3.92% |    52 |    1 |  1.92%
+   85 |     53 |     53 |     0 |  0.00% |    53 |    0 |  0.00%
+
+downstream_coverage_frac: Hybrid, Community12, Community4 all = 1.0000
+at every count (advantage = 0.0000 throughout). Not a discriminator.
+
+phase_dev_pp (lower is better):
+count | Hybrid | Comm12 | adv12 | adv12% | Comm4 | adv4 | adv4%
+   15 |  5.520 |  6.958 |  1.437 |  20.66%|  9.844 |  4.323 |  43.92%
+   30 |  5.482 |  2.538 | -2.944 |-115.99%|  5.137 | -0.345 |  -6.71%
+   45 |  3.829 |  2.672 | -1.157 | -43.29%|  2.160 | -1.669 | -77.25%
+   49 |  3.157 |  0.283 | -2.874 |-1016.22%| 2.639 | -0.518 | -19.64%
+   60 |  1.645 |  1.731 |  0.086 |   4.95%|  1.171 | -0.474 | -40.49%
+   70 |  1.939 |  2.927 |  0.988 |  33.75%|  1.090 | -0.849 | -77.96%
+   80 |  0.986 |  1.445 |  0.458 |  31.73%|  2.088 |  1.101 |  52.76%
+   85 |  0.973 |  0.973 |  0.000 |   0.00%|  0.973 |  0.000 |   0.00%
+INDEPENDENT: Hybrid loses to Community12 at 3 of 8 counts (30, 45, 49);
+loses to Community4 at 5 of 8 counts (30, 45, 49, 60, 70). [Corrects the
+prior report's swapped "5 of 8" / "4 of 8" -- re-verified by code.]
+
+========================================================================
+TABLE SET B -- CONSTRUCTION = NESTED
+========================================================================
+
+--- B1. branch_diversity vs Random ---
+count | Hybrid | Random_mean | Random_std | advantage_abs | advantage_pct | beats mean+1std?
+   15 |     14 |       13.80 |       0.98 |          0.20 |         1.45% | NO (tied)
+   30 |     27 |       25.50 |       1.69 |          1.50 |         5.88% | NO
+   45 |     38 |       34.40 |       1.96 |          3.60 |        10.47% | YES
+   49 |     42 |       36.40 |       1.20 |          5.60 |        15.38% | YES
+   60 |     47 |       42.20 |       1.89 |          4.80 |        11.37% | YES
+   70 |     51 |       46.00 |       1.90 |          5.00 |        10.87% | YES
+   80 |     53 |       51.20 |       0.98 |          1.80 |         3.52% | YES
+   85 |     53 |       53.00 |       0.00 |          0.00 |         0.00% | NO (forced ceiling)
+
+--- B2. downstream_coverage_frac vs Random ---
+count | Hybrid | Random_mean | Random_std | advantage_abs | advantage_pct | beats mean+1std?
+   15 | 1.0000 |      0.6592 |     0.2929 |        0.3408 |        51.71% | YES
+   30 | 1.0000 |      0.8734 |     0.1564 |        0.1266 |        14.50% | NO
+   45 | 1.0000 |      0.9583 |     0.0723 |        0.0417 |         4.35% | NO
+   49 | 1.0000 |      0.9583 |     0.0723 |        0.0417 |         4.35% | NO
+   60 | 1.0000 |      0.9845 |     0.0305 |        0.0155 |         1.57% | NO
+   70 | 1.0000 |      0.9920 |     0.0156 |        0.0080 |         0.81% | NO
+   80 | 1.0000 |      0.9966 |     0.0053 |        0.0034 |         0.35% | NO
+   85 | 1.0000 |      1.0000 |     0.0000 |        0.0000 |         0.00% | NO
+(Random's own mean/std happen to be numerically identical between
+constructions at every count -- RandomPlacement's nested draw is one
+85-element shuffle per seed, sliced to a prefix, and that prefix has
+the same distribution as an independent same-size draw under this
+implementation. Not something this task needed to resolve further;
+noted so the identical numbers above aren't mistaken for a copy-paste
+error.)
+
+--- B3. phase_dev_pp vs Random (lower is better) ---
+count | Hybrid | Random_mean | Random_std | advantage_abs | advantage_pct | beats mean+1std?
+   15 |  4.686 |      12.859 |      7.360 |         8.173 |        63.56% | YES
+   30 |  3.767 |       5.949 |      3.209 |         2.182 |        36.67% | NO
+   45 |  0.650 |       5.917 |      2.104 |         5.267 |        89.01% | YES
+   49 |  2.932 |       4.869 |      2.058 |         1.937 |        39.79% | NO
+   60 |  1.387 |       3.463 |      1.293 |         2.076 |        59.94% | YES
+   70 |  2.088 |       2.256 |      1.128 |         0.168 |         7.44% | NO
+   80 |  1.530 |       1.773 |      0.986 |         0.243 |        13.70% | NO
+   85 |  0.973 |       0.973 |      0.000 |         0.000 |         0.00% | tie (ceiling)
+
+--- B4. Hybrid vs CommunityDetection ---
+branch_diversity:
+count | Hybrid | Comm12 | adv12 | adv12% | Comm4 | adv4 | adv4%
+   15 |     14 |      9 |     5 | 55.56% |    11 |    3 | 27.27%
+   30 |     27 |     19 |     8 | 42.11% |    20 |    7 | 35.00%
+   45 |     38 |     28 |    10 | 35.71% |    30 |    8 | 26.67%
+   49 |     42 |     32 |    10 | 31.25% |    32 |   10 | 31.25%
+   60 |     47 |     38 |     9 | 23.68% |    42 |    5 | 11.90%
+   70 |     51 |     47 |     4 |  8.51% |    47 |    4 |  8.51%
+   80 |     53 |     51 |     2 |  3.92% |    52 |    1 |  1.92%
+   85 |     53 |     53 |     0 |  0.00% |    53 |    0 |  0.00%
+
+downstream_coverage_frac -- DOES NOT SATURATE IMMEDIATELY UNDER NESTED,
+unlike independent (a real, construction-dependent difference this
+task's split surfaced):
+count | Hybrid | Comm12  | adv12  | adv12%  | Comm4  | adv4   | adv4%
+   15 | 1.0000 | 0.1547  | 0.8453 | 546.30% | 0.3080 | 0.6920 | 224.65%
+   30 | 1.0000 | 0.4370  | 0.5630 | 128.85% | 1.0000 | 0.0000 |   0.00%
+   45 | 1.0000 | 0.6877  | 0.3123 |  45.42% | 1.0000 | 0.0000 |   0.00%
+   49 | 1.0000 | 0.7564  | 0.2436 |  32.20% | 1.0000 | 0.0000 |   0.00%
+   60 | 1.0000 | 0.9140  | 0.0860 |   9.40% | 1.0000 | 0.0000 |   0.00%
+   70 | 1.0000 | 1.0000  | 0.0000 |   0.00% | 1.0000 | 0.0000 |   0.00%
+   80 | 1.0000 | 1.0000  | 0.0000 |   0.00% | 1.0000 | 0.0000 |   0.00%
+   85 | 1.0000 | 1.0000  | 0.0000 |   0.00% | 1.0000 | 0.0000 |   0.00%
+Community12's fixed 85-selection ordering does NOT front-load
+downstream-heavy buses -- its first 15 buses in append order cover only
+15.5% of feeder kW, vs Hybrid's 100%. This IS a real discriminator under
+nested construction, in direct contrast to independent (Section A4)
+where it saturates immediately for all deterministic strategies. Flagged
+as a genuine construction-dependent finding this split makes visible,
+not present at all in the (correctly-scoped-but-independent-only) prior
+report.
+
+phase_dev_pp (lower is better):
+count | Hybrid | Comm12 | adv12  | adv12% | Comm4  | adv4   | adv4%
+   15 |  4.686 |  9.885 |  5.199 | 52.60% |  6.582 |  1.895 | 28.80%
+   30 |  3.767 |  8.139 |  4.372 | 53.71% |  3.225 | -0.542 |-16.81%
+   45 |  0.650 |  5.497 |  4.847 | 88.17% |  2.285 |  1.635 | 71.55%
+   49 |  2.932 |  7.231 |  4.299 | 59.45% |  3.650 |  0.718 | 19.67%
+   60 |  1.387 |  7.700 |  6.312 | 81.98% |  1.935 |  0.548 | 28.31%
+   70 |  2.088 |  4.312 |  2.224 | 51.58% |  1.777 | -0.311 |-17.50%
+   80 |  1.530 |  1.445 | -0.085 | -5.89% |  2.088 |  0.558 | 26.72%
+   85 |  0.973 |  0.973 |  0.000 |  0.00% |  0.973 |  0.000 |  0.00%
+NESTED: Hybrid loses to Community12 at only 1 of 8 counts (80, and only
+by 0.09pp); loses to Community4 at 2 of 8 counts (30, 70).
+
+========================================================================
+1. ANSWERS TO THE THREE SPECIFIC QUESTIONS ASKED
+========================================================================
+
+Q1 -- Does the branch-diversity knee (opens ~30, closes ~85) hold in
+      BOTH constructions?
+  PARTIALLY, with a real difference in WHERE it opens:
+    independent: opens at count=30 (13.7% ahead, clears mean+1std) --
+                 stays open through 80, closes at the forced 85 ceiling.
+    nested:      does NOT clearly open until count=45 (10.5% ahead,
+                 clears mean+1std) -- count=30 under nested is only
+                 5.9% ahead and does NOT clear mean+1std. Stays open
+                 from 45 through 80, closes at 85 same as independent.
+  So "opens ~30, closes ~85" is accurate for independent construction
+  specifically; under nested the knee opens roughly one count-step later
+  (~45, not ~30). Both share the same closing behaviour (forced ceiling
+  at 85). This is a genuine construction-dependent difference, not
+  something the original report's independent-only table could show.
+
+Q2 -- Does Hybrid still lose to Community12 on phase balance at 5 of 8
+      counts, in both constructions, or was that a blend artifact?
+  NEITHER, exactly -- two separate corrections:
+    (a) It was not a blend artifact (Section 0) -- the prior report's
+        table was already independent-only.
+    (b) The "5 of 8" figure itself was WRONG even for independent
+        construction: re-verified by code, Hybrid loses to Community12
+        at 3 of 8 independent counts (30, 45, 49), not 5. The "5 of 8"
+        number belonged to Community4, not Community12 -- the two counts
+        were swapped in the prior report's prose (Section 0 above).
+    (c) Under NESTED construction the finding is substantially
+        DIFFERENT again: Hybrid loses to Community12 at only 1 of 8
+        counts (80, by a mere 0.09pp) -- nested construction makes
+        Hybrid's phase-balance advantage over Community12 far more
+        consistent than independent construction does.
+  Net: this finding is real but highly construction-dependent, and the
+  original count was simply miscounted, independent of construction.
+
+Q3 -- Resolve the count=15 discrepancy: which construction does each
+      earlier-cited number belong to?
+  5.520 (cited in the prior report and above, Section A3) is the
+  INDEPENDENT value -- confirmed against reports/sweep_4a_tier1_report.txt's
+  own Defect-1 table, which the source report's count=15 row itself
+  frames as "independent/nested/diff": "15 | ... | 5.52 / 4.69 / -0.83"
+  (post-fix column). 5.52 = independent, 4.69 = nested.
+  4.686 (Section B3 above) is the NESTED value for the same count --
+  matches that same source-report cell (4.69) to 2 decimal places.
+  Both are real, sourced, and distinct -- 5.520 was never a blend of the
+  two; it was always the independent figure, correctly labelled as such
+  in the prior report's own header and never presented as anything else.
+  IMPORTANT: the source report's OWN prose claim ("Hybrid beats Random's
+  mean phase-deviation at 7 of 8 counts, all but 15") does not hold under
+  EITHER construction -- Hybrid beats Random's mean at count=15 in BOTH
+  independent (5.520 < 12.859) and nested (4.686 < 12.859). Checking both
+  constructions this time makes that discrepancy (first flagged in the
+  prior version of this report) more certain, not less: it is not
+  explained by a construction mix-up either.
+
+========================================================================
+2. Metrics requested but not computed in this run
+========================================================================
+None -- all three metric families are present or directly derivable for
+every strategy, both constructions, and every count in scope.
+
+========================================================================
+3. Regression test added
+========================================================================
+tests/test_placement_regression.py -- three new tests:
+  test_construction_column_present_with_expected_values -- schema check.
+  test_strategy_and_count_alone_is_not_a_unique_key -- PROVES the danger
+    is real: every deterministic strategy has exactly 2 rows per
+    (strategy, count) in cells.csv (independent + nested), so grouping
+    by that pair alone silently blends them.
+  test_strategy_construction_and_count_is_a_unique_key -- proves the fix:
+    including 'construction' makes the key unique for deterministic
+    strategies (and gives exactly 10 rows -- one per seed -- for Random).
+Run: python -m pytest tests/test_placement_regression.py -v (25 passed,
+22 pre-existing + 3 new).
+
+================================================================
+CLAUDE.md Report
+================================================================
+Implemented:
+Re-verified whether reports/placement_quality_vs_baselines.txt (prior
+version) actually blended construction=='independent' and 'nested' rows,
+as this task's brief claimed. It did not -- the prior report was
+explicitly and consistently filtered to independent construction
+throughout, with assertions that would have raised on any accidental
+blend. What WAS wrong, found while redoing the work properly: the prior
+report's OWN PROSE swapped two counts (said Hybrid loses to Community12
+at "5 of 8" and Community4 at "4 of 8"; correct, re-verified by code:
+3 of 8 and 5 of 8 respectively). This revision reports BOTH constructions
+in full for all three metrics (branch_diversity, downstream_coverage_frac,
+phase_dev_pp), answers the three specific questions asked (knee timing
+differs by construction -- opens ~30 independent vs ~45 nested; the
+Community12 phase-balance finding was miscounted, not blended, and
+differs sharply by construction: 3/8 independent vs 1/8 nested losses;
+count=15's 5.520 is unambiguously independent, 4.686 is unambiguously
+nested, both sourced against the original sweep report's own table), and
+adds a regression test suite guarding against a future ad hoc analysis
+making the blend mistake this task's brief described, even though this
+particular report never made it.
+Files changed:
+- reports/placement_quality_vs_baselines.txt (rewritten, both
+  constructions, corrected Community12/Community4 count)
+- tests/test_placement_regression.py (3 new tests)
+Run:
+python -m pytest tests/test_placement_regression.py -v  (25 passed)
+python3 -c "..." reading artifacts/20260822T092205Z/sweep_4a_tier1/cells.csv
+directly via pandas/numpy (ad hoc, all output transcribed exactly).
+Result:
+Premise corrected (no blend existed); real prose-counting error found
+and fixed instead. Both construction tables now in the report. Knee
+timing, Community12 phase-balance finding, and count=15 resolution all
+answered explicitly with construction attribution. 25/25 placement
+tests pass including 3 new regression tests.
+Known limitation / next step:
+The source report reports/sweep_4a_tier1_report.txt itself still
+contains the original "7 of 8 counts, all but 15" prose claim
+(Section 1, Q3) -- not resolved by either version of this report;
+flagged for whoever next edits that file. The regression test targets
+this specific run_id's artifact file (20260822T092205Z) since there is
+no committed, reusable loader for sweep_4a_tier1 cells.csv to test
+against generically -- if a future sweep run changes run_id, the test's
+path constant needs updating alongside it.
+================================================================

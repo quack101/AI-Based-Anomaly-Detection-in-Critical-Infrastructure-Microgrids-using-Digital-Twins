@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.venv/Scripts/python.exe -m py_compile placement/*.py)",
+      "Bash(.venv/Scripts/python.exe -c ' *)",
+      "Bash(.venv/Scripts/python.exe -m validation.sweep_4a_tier1)",
+      "Bash(.venv/Scripts/python.exe -m py_compile placement/*.py validation/*.py)",
+      "Bash(python3 -)",
+      "Bash(.venv/Scripts/python.exe -m sensors.generate_registry)",
+      "Bash(.venv/Scripts/python.exe -m py_compile sensors/*.py)",
+      "Bash(find /d/capstone_dss -iname \"node_*.csv\" 2>&1 | head -5 *)",
+      "Read(//d//**)",
+      "Read(//c/Users/Sriharshita/**)",
+      "Read(//c/Users/Sriharshita/Downloads/**)",
+      "Bash(find \"/c/Users/Sriharshita/Downloads\" -maxdepth 3 -iname \"*.csv\" 2>&1 | head -20 *)",
+      "Read(//c/Users/Sriharshita/Downloads/node_loads_91/**)",
+      "Bash(grep -v \"^node_.*\\\\.csv$\")",
+      "Bash(du -sh \"/c/Users/Sriharshita/Downloads/node_loads_91\" 2>&1 *)",
+      "Bash(mkdir -p /d/capstone_dss/dataset/node_loads_91)",
+      "Bash(cp \"/c/Users/Sriharshita/Downloads/node_loads_91/\"node_*.csv /d/capstone_dss/dataset/node_loads_91/)",
+      "Bash(sed 's/NUM_TIMESTAMPS = 86400/NUM_TIMESTAMPS = 300/' validate_phase0.py)",
+      "Bash(python3 -c ' *)",
+      "Bash(python -c ' *)",
+      "Bash(rm -f validation/_smoke_validate_phase0.py)",
+      "Bash(.venv/Scripts/python.exe -m validation._smoke_validate_phase0)",
+      "Bash(docker info *)",
+      "Bash(echo \"exit:$?\")",
+      "Read(//tmp/**)",
+      "Bash(python -c \"import json; d=json.load\\(open\\('d:/capstone_dss/simulation/representative_meters.json'\\)\\); print\\(len\\(d\\)\\); print\\(d[0]\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('estimation/state_estimator_scipy.py'\\).read\\(\\)\\)\")",
+      "Bash(powershell -NoProfile -Command \"Get-Content -Path 'D:\\\\capstone_dss\\\\validation\\\\_tmp_feas\\\\step4_pilot.log' -Wait -Tail 0\")"
+    ]
+  }
+}

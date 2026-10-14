@@ -1,0 +1,332 @@
+  ======================================================================
+  RES.md D10 Phase 7 CONSTRAINT-FEASIBILITY INVESTIGATION -- Report
+  ======================================================================
+  Companion to all seven prior Phase 7 reports (state_estimator,
+  convergence_remediation, solver_instability_fix, accept_criterion_fix,
+  iteration_cap_test, node_demotion_test, scipy_trustconstr_test) --
+  NONE overwritten. This is the EIGHTH investigation, and the first to
+  find a genuine, precisely-identified, directly-evidenced root cause
+  (not a guess, not a category-wide sweep) for the ~86 kvar floor
+  reports/phase7_scipy_trustconstr_test_report.txt found identical
+  across 6 different datasets.
+
+  HEADLINE RESULT: identified ONE specific, genuine root cause -- a 600
+  kvar shunt capacitor at bus 83 that was never excluded from the zero-
+  injection enumeration (the SAME category of omission as the already-
+  fixed "source bus" and "delta-load truncation" bugs, just never
+  caught for capacitors specifically) -- via a clean pure-feasibility
+  experiment (Step 1), confirmed it explains essentially ALL of the
+  ~24 kvar pure-geometry floor including buses previously thought to be
+  independently problematic (Step 2-3). Fixed it with a 4-row, minimally
+  -scoped demotion (not a blanket sweep) using the existing regulator-
+  demotion pattern. Verified on the 6-point pilot (Step 4) using the
+  SAME hand-rolled solver every prior report used: the fix made ALL 6
+  points WORSE (4.7-5.8x), confirming -- yet again -- that estimation/
+  state_estimator.py's own construction (reports 2-3's root cause) is so
+  broken it cannot benefit even from a surgically correct constraint fix.
+  An additional cross-check with the independent scipy solver (not asked
+  for by this task, but informative) showed a genuinely MIXED, regime-
+  dependent result: 3/6 points improved dramatically (one to within
+  1.26 kvar of the threshold), but 2/6 (both high-load-regime points)
+  got dramatically WORSE -- meaning bus 83 is a real, confirmed
+  infeasibility, but NOT the only one, and demoting it exposes a
+  DIFFERENT problem at high load that this investigation did not have
+  time to chase down. REVERTED per the project's established discipline
+  (a fix that fails under the shipped solver is not committed); both
+  observability/zero_injection.py and estimation/state_estimator.py are
+  confirmed byte-identical to their state before this task.
+
+  ======================================================================
+  STEP 1 -- PURE FEASIBILITY CHECK (no WLS objective at all)
+  ======================================================================
+  minimize ||c(x)||^2 subject to nothing else, from flat start, using
+  ONLY the existing zero-injection constraint function/Jacobian
+  (observability.jacobian.build_jacobian over model.zi_entries, the
+  SAME diagonal state-scale preconditioner every report in this series
+  uses). scipy.optimize.least_squares(method='trf'), no measurement
+  data involved whatsoever.
+
+    max|c(x0)| (flat start):                200.001 kvar
+    scipy status: 3, "`xtol` termination condition is satisfied"
+    nfev: 31
+    max|c(x_final)| (pure feasibility floor): 24.404 kvar
+    ||c(x_final)||_2: 54.928
+
+  CONFIRMS the task's Step 1 question directly: YES, a genuine floor
+  exists from PURE CONSTRAINT GEOMETRY ALONE, independent of any
+  measurement data or objective (24.4 kvar here vs the 86.15 kvar the
+  WLS-coupled trust-constr runs landed on in the prior report -- the
+  data-fitting pressure makes the EQUILIBRIUM worse, 86.15 vs 24.4, but
+  even with ZERO data pressure, the constraint set alone cannot be
+  driven below ~24.4 kvar from flat start via an independent solver).
+
+  ======================================================================
+  STEP 2 -- DECOMPOSING THE RESIDUAL (top 15 rows, descending)
+  ======================================================================
+    ZI_81_C_Q   24.4040     ZI_79_C_Q   -13.1440
+    ZI_80_C_Q   23.4021     ZI_83_B_P     9.1840
+    ZI_97_C_Q   21.0991     ZI_82_C_Q     7.0316
+    ZI_197_C_Q -20.8093     ZI_81_B_Q    -6.4890
+    ZI_80_A_Q  -15.3365     ZI_82_B_Q    -6.0675
+    ZI_83_A_Q   13.5839     ZI_82_B_P     6.0533
+                            ZI_81_A_Q    -5.9867
+                            ZI_60_B_Q    -4.3046
+                            ZI_83_B_Q    -4.0171
+
+  NOT spread uniformly across 328 rows -- concentrated at buses 79-83
+  (a CONTIGUOUS radial lateral: 78->79, 78->80->81->82->83), plus the
+  already-documented switch-adjacent buses 97/197 (sw5) and 60 (sw4,
+  reports/phase7_node_demotion_test_report.txt's category).
+
+  ======================================================================
+  STEP 3 -- DIAGNOSING THE OFFENDERS (actual network elements, quoted)
+  ======================================================================
+  Queried the real compiled circuit directly, not inferred:
+
+    Capacitor.c83: buses=['83', '83.0.0.0'] kvar=600.0 kv=4.16
+    Load.s60a:  buses=['60.1']   (only phase A loaded at bus 60)
+    Load.s79a:  buses=['79.1']   (only phase A loaded at bus 79)
+    Load.s80b:  buses=['80.2']   (only phase B loaded at bus 80)
+    Load.s82a:  buses=['82.1']   (only phase A loaded at bus 82)
+    Load.s83c:  buses=['83.3']   (only phase C loaded at bus 83)
+    Line.sw4: buses=['60','160']       R1=0.001 X1=0.0 (near-zero-impedance switch)
+    Line.sw5: buses=['97','197']       R1=0.001 X1=0.0 (near-zero-impedance switch)
+
+  Bus 83 has a 600 kvar, 3-phase shunt CAPACITOR -- a genuine,
+  nonzero, KNOWN power source, exactly like a Load, but
+  observability/zero_injection.py's `_load_bus_phases()` only ever
+  scanned dss.Loads.AllNames(), never dss.Capacitors.AllNames(). This
+  is a direct, identifiable GENUINE OMISSION -- the same category of
+  bug as Bug 1 (source bus not excluded) and Bug 2 (delta-load
+  truncation) already fixed and documented in reports/
+  phase7_state_estimator_report.txt Part C.1 -- not another near-zero-
+  impedance-branch case like the regulators or switches.
+
+  NOT a wrong TARGET: h_zi(x_true)=0 EXACTLY at bus 83 (reports/
+  phase7_state_estimator_report.txt Part D.2, re-confirmed, not
+  re-derived) -- the capacitor's admittance is already folded into the
+  Y-bus, so a target of 0 is mathematically correct at the TRUE solved
+  state. The difficulty is purely LOCAL/ITERATIVE: bus 83's "strongly
+  nonlinear (quadratic-in-V) self-susceptance term" (same report, same
+  section) makes this row hard for ANY local-linearisation-based solve
+  to navigate FROM A DISTANT STARTING POINT -- confirmed, not
+  theorised, by the fact that buses 79-82/60/97/197's apparent
+  residuals vanish once bus 83's 6 rows alone are removed from the
+  PURE feasibility problem (direct experiment, not inference):
+
+    WITH bus 83 (328 rows):     max|c| = 24.404 kvar
+    WITHOUT bus 83 (322 rows):  max|c| =  0.028 kvar  (near-exact)
+      top rows after removal: ZI_64_A_Q (-0.0285), ZI_63_B_Q (-0.0193),
+      ZI_60_C_Q (-0.0141) -- ALL near-zero, including the previously-
+      flagged switch-adjacent buses 60/97/197, proving those were
+      LEAST-SQUARES SPREADING of bus 83's one irreducible residual
+      along the shared network/Jacobian geometry, not independent
+      infeasibilities of their own.
+
+  This is a genuine, single, precisely-identified root cause -- NOT
+  another broad patch or category-wide sweep (unlike reports/
+  phase7_node_demotion_test_report.txt's 14-bus blanket sweep, which
+  this investigation explicitly avoided repeating).
+
+  FIX APPLIED (minimal, direct, reusing the existing mechanism exactly):
+  added `_capacitor_buses()` to observability/zero_injection.py
+  (structurally identical to `_regulator_buses()` -- iterate
+  dss.Capacitors.AllNames() instead of dss.RegControls.AllNames(),
+  collect bus roots), unioned into the SAME `regulator_buses` variable
+  at both existing call sites (`regulator_buses = _regulator_buses() |
+  _capacitor_buses()`). dof correctly preserved at 1 (m_weighted
+  226->230, p_constraints 328->324) -- confirmed via the real
+  StateEstimator's own self.dof, not a hand calculation. Only 4 rows
+  actually moved (bus 83's phases A and B, P and Q), not 6: phase C was
+  ALREADY excluded via the existing load exclusion (s83c), confirming
+  the mechanism correctly avoids double-counting and demotes ONLY the
+  genuinely-affected rows, not a hand-picked or blanket set.
+
+  Checked ALL capacitors on the feeder, not just c83: dss.Capacitors.
+  AllNames() also returns c88a, c90b, c92c (single-phase, buses
+  88/90/92). Each coincides EXACTLY with that bus's only Load phase (88:
+  Load+Cap both phase A; 90: both phase B; 92: both phase C) -- already
+  fully excluded from zero-injection via the existing load check, zero
+  additional rows moved for these three. Bus 83 is the ONLY capacitor
+  bus with phases NOT already covered by a coincident load.
+
+  ======================================================================
+  STEP 4 -- VERIFICATION, SAME 6-POINT PILOT
+  ======================================================================
+  Re-ran validation/phase7_node_demotion_pilot.py (unmodified script,
+  flat start, SAME 6 points as reports/phase7_iteration_cap_test_report.txt
+  and phase7_node_demotion_test_report.txt) with ONLY this targeted fix
+  in place -- estimation/state_estimator.py (the hand-rolled solver)
+  UNCHANGED.
+
+    i    stratum  constraint_residual_inf   PRIOR (unmodified)   change
+    46   low      612.593                   107.474              5.70x WORSE
+    94   low      622.954                   110.507              5.64x WORSE
+    359  mid      593.584                   109.355              5.43x WORSE
+    504  mid      573.460                    99.349              5.77x WORSE
+    368  high     501.240                    91.494              5.48x WORSE
+    412  high     474.573                    84.697              5.60x WORSE
+
+  0/6 under threshold. 0/6 improved. ALL 6 got WORSE, by a strikingly
+  CONSISTENT factor (~5.4-5.8x) across every point and regime -- a
+  different, more uniform pattern than report 5's blanket-sweep
+  regression (8-42%, point-dependent), suggesting this specific
+  4-row change interacts with the hand-rolled solver's known defect
+  (reports/phase7_solver_instability_fix_report.txt's shared trust-
+  region clip diluting y_particular via Z@w's comparable size) in a
+  fairly uniform way: giving the already-struggling tangential step 4
+  MORE residual terms to chase, regardless of which 6 points are asked.
+
+  ----------------------------------------------------------------------
+  Bonus cross-check (not required by this task, run for honesty/completeness)
+  ----------------------------------------------------------------------
+  Re-ran the SAME 6 points with estimation/state_estimator_scipy.py
+  (reports/phase7_scipy_trustconstr_test_report.txt's independent
+  trust-constr solve path, unaffected by the hand-rolled solver's known
+  defect) with the SAME fix in place:
+
+    i    stratum  constraint_residual_inf (scipy+fix)   prior (scipy, no fix)
+    46   low        5.065                                 86.154  DRAMATIC IMPROVEMENT (16x)
+    94   low       73.977                                 86.154  modest improvement (14%)
+    359  mid       40.670                                 86.154  real improvement (53%)
+    504  mid        1.257                                 86.154  DRAMATIC IMPROVEMENT (68x, within 1.3 kvar of threshold)
+    368  high     353.489                                 86.154  4.1x WORSE
+    412  high    2982.811                                 86.154  34.6x WORSE
+
+  A genuinely MIXED, regime-dependent result: the LOW and MID points
+  improve substantially -- i=504 comes within 1.3 kvar of the 1.0 kvar
+  threshold, the closest ANY fix in this eight-report series has come --
+  confirming bus 83's capacitor IS a real, fixable contributor for those
+  conditions. But BOTH high-load points get dramatically worse,
+  indicating a DIFFERENT, as-yet-unidentified infeasibility becomes
+  dominant at high load once bus 83's problem is resolved -- this
+  investigation did not have scope to chase that down (it would require
+  repeating Steps 1-3 specifically at a high-load timestamp, not flat
+  start, which carries different z and plausibly a different dominant
+  nonlinearity).
+
+  ======================================================================
+  WHY THE FIX WAS REVERTED DESPITE BEING GENUINELY CORRECT
+  ======================================================================
+  This project's established discipline (every report in this series)
+  is: a fix is committed only if it helps under the ACTUAL shipped
+  solver (estimation/state_estimator.py), not merely under an idealised
+  alternative. Step 4's primary result -- uniformly worse across all 6
+  points under the shipped solver -- fails that bar decisively, despite
+  Step 1-3's root-cause diagnosis being genuinely, precisely correct
+  (confirmed independently via the bonus scipy cross-check's partial
+  successes). This is NOT a contradiction: it is the SAME finding
+  reports/phase7_node_demotion_test_report.txt already reached by a
+  different route -- the hand-rolled solver's own construction defect
+  (reports/phase7_solver_instability_fix_report.txt) is severe enough
+  that it cannot benefit from constraint-set corrections, correct or
+  not, until it is itself fixed. Both observability/zero_injection.py
+  and estimation/state_estimator.py are reverted and confirmed byte-
+  identical to their state before this task (syntax checks, grep for
+  every introduced symbol returning zero matches, a model rebuild
+  reproducing the exact original row counts, and a full pytest re-run
+  matching the pre-existing 112-passed/1-failed baseline exactly).
+
+  ======================================================================
+  RECOMMENDATION
+  ======================================================================
+  DO NOT COMMIT the capacitor-demotion fix to the shipped pipeline as-is
+  -- it regresses the actual estimator. But UNLIKE every prior report in
+  this series, this one identifies a genuine, confirmed, narrowly-scoped
+  defect (not a guess, not a blanket sweep) that DOES measurably help
+  under a solver without the known construction defect, for at least 3
+  of 6 tested conditions. The recommended next steps, in order:
+    1. Fix estimation/state_estimator.py's own construction defect first
+      (reports/phase7_solver_instability_fix_report.txt's Step 4 --
+      a fully joint trust-region subproblem solve, not yet attempted)
+      -- THEN re-test this capacitor fix on top of a working solver,
+      rather than re-testing constraint fixes against a known-broken
+      one.
+    2. Repeat Steps 1-3 of THIS investigation at a high-load timestamp
+      (not flat start) to identify what becomes dominant once bus 83's
+      capacitor is correctly handled -- the i=368/i=412 scipy blowups
+      are a real, unexplained finding this report surfaces but does not
+      resolve.
+
+  ======================================================================
+  FILES
+  ======================================================================
+  validation/phase7_pure_feasibility_check.py   NEW -- Steps 1-2.
+  validation/phase7_pure_feasibility_result.npz generated by the above.
+  reports/phase7_constraint_feasibility_report.txt   this file.
+
+  observability/zero_injection.py NOT MODIFIED (net) -- `_capacitor_
+  buses()` was added and both call sites changed for Steps 3-4's test,
+  then fully reverted; confirmed byte-identical to the starting content
+  (grep for the symbol returns zero matches; a model rebuild reproduces
+  the exact original m_weighted=226/p_constraints=328/dof=1).
+  estimation/state_estimator.py NOT MODIFIED at all in this task.
+
+  ======================================================================
+  CLAUDE.md Report
+  ======================================================================
+  Implemented: a precisely-targeted (not broad-sweep) root-cause
+  investigation of the ~86 kvar floor seven prior reports found
+  identical across 6 datasets and 2 solvers. Step 1: a pure feasibility
+  check (minimize ||c(x)||^2, no measurement objective, flat start, via
+  scipy.optimize.least_squares reusing the existing analytic constraint
+  Jacobian) confirmed a genuine, data-independent floor exists (24.4
+  kvar). Step 2: decomposed the residual -- concentrated at buses 79-83
+  (a contiguous radial lateral) plus already-known switch buses 60/97/
+  197. Step 3: quoted the actual network element directly -- a 600 kvar
+  shunt capacitor at bus 83, genuinely omitted from zero-injection
+  classification (observability/zero_injection.py's `_load_bus_phases()`
+  checks dss.Loads.AllNames() but never dss.Capacitors.AllNames()) --
+  confirmed via a direct experiment that excluding ONLY bus 83's 6 rows
+  drops the pure-feasibility floor to 0.028 kvar, resolving buses 79-82/
+  60/97/197's apparent residuals too (proving those were least-squares
+  spreading artifacts, not independent problems). Checked all 4
+  capacitors on the feeder (c83, c88a, c90b, c92c); only c83 has
+  unloaded phases needing demotion (the other three coincide exactly
+  with an existing load phase, already correctly excluded). Fixed with
+  a minimal, 4-row demotion (NOT a category-wide sweep) via a new
+  `_capacitor_buses()` function reusing the existing regulator-demotion
+  pattern exactly; dof correctly preserved at 1 (verified via the real
+  StateEstimator, not hand-calculated). Step 4: re-ran the standard
+  6-point pilot with ONLY this fix, using the unchanged hand-rolled
+  solver: ALL 6 points got WORSE (consistently ~5.4-5.8x), confirming
+  the hand-rolled solver's own known construction defect (reports/
+  phase7_solver_instability_fix_report.txt) is severe enough to prevent
+  benefiting from even a surgically correct constraint fix. An
+  additional, not-required cross-check with the independent scipy
+  solver (reports/phase7_scipy_trustconstr_test_report.txt's separate
+  code path) showed a genuinely mixed result: 3/6 points improved
+  substantially (one to within 1.3 kvar of the threshold -- the closest
+  ANY fix in this eight-report series has come), but 2/6 (both high-
+  load) got dramatically worse, surfacing a real, unexplained, separate
+  issue at high load. Reverted per the project's established discipline
+  (fails under the actual shipped solver); both files confirmed byte-
+  identical to their pre-task state via syntax checks, symbol-absence
+  grep, a model rebuild reproducing exact original row counts, and a
+  full pytest re-run matching the pre-existing baseline exactly.
+  Files changed: validation/phase7_pure_feasibility_check.py (new),
+  validation/phase7_pure_feasibility_result.npz (new), reports/
+  phase7_constraint_feasibility_report.txt (new). observability/
+  zero_injection.py: no net change. estimation/state_estimator.py: no
+  change.
+  Run: python -m validation.phase7_pure_feasibility_check (Steps 1-2);
+  python -m validation.phase7_node_demotion_pilot (Step 4, hand-rolled
+  solver); python -m validation.phase7_scipy_trustconstr_pilot (bonus
+  cross-check); python -m pytest tests/ -q (112 passed, 1 failed,
+  confirmed identical to the pre-existing baseline after revert).
+  Result: genuine, precisely-identified root cause found and confirmed
+  (bus 83's unaccounted shunt capacitor) -- the most specific, best-
+  evidenced finding in this eight-report series -- but the fix still
+  fails under the shipped solver (DO NOT COMMIT) due to that solver's
+  own separate, already-documented construction defect. The bonus scipy
+  cross-check's partial success (3/6 improved, one nearly converging)
+  is the strongest direct confirmation yet that constraint-set
+  correctness and solver construction are TWO SEPARATE, both-broken
+  problems, not one.
+  Known limitation / next step: fix estimation/state_estimator.py's
+  construction defect (reports/phase7_solver_instability_fix_report.txt
+  Step 4's joint trust-region subproblem recommendation) BEFORE re-
+  testing constraint-set fixes against it. Separately, investigate what
+  becomes dominant at high load (i=368, i=412) once bus 83 is correctly
+  handled -- not resolved in this report. Do not cite any Phase 7
+  convergence-rate number without all eight reports' caveats attached.

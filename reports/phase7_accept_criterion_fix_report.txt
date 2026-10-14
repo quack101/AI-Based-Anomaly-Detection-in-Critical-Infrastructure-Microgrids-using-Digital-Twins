@@ -1,0 +1,313 @@
+======================================================================
+RES.md D10 Phase 7 ACCEPT-CRITERION FIX -- Attempt Report
+======================================================================
+Companion to reports/phase7_state_estimator_report.txt, reports/
+phase7_convergence_remediation_report.txt, and reports/
+phase7_solver_instability_fix_report.txt (NONE overwritten -- all four
+exist for the full before/after/after-fix/after-this-fix comparison).
+
+This report implements and tests the NEW target the prior report's
+Step 2d identified: estimation/state_estimator.py's accept/reject test
+is a binary "did the merit improve at all" check, not a calibrated
+trust-region ratio test. The prior report showed THREE step-
+construction fixes (targeting y_particular/Z@w directly) all failed or
+worsened the instability; this report deliberately does NOT re-attempt
+step-construction changes, per that report's own recommendation.
+
+HEADLINE RESULT: the ratio-test replacement was implemented exactly as
+specified (Nocedal & Wright ch.4, Algorithm 4.1 form), tested at the
+single cheap-check repro point FIRST per the mandated discipline, and
+FAILED that check -- the fixed code gave constraint_residual_inf=
+879,564 kvar vs baseline 560,763 kvar at the SAME point (i=46,
+delta_frac=0.001) -- WORSE, not "dramatically better", triggering the
+explicit stop condition immediately. No further verification steps
+(pytest, delta-sweep, stratified sample) were run, per that same
+pre-declared stop rule. estimation/state_estimator.py is reverted and
+confirmed byte-identical to its state at the start of this task.
+RECOMMENDATION: DO NOT COMMIT.
+
+======================================================================
+STEP 1 -- THE ACCEPT/REJECT LOGIC, VERBATIM, FILE:LINE
+======================================================================
+estimation/state_estimator.py (unmodified/current code, before this
+task's edit):
+
+  445   improved = False
+  446   for _ in range(LM_MAX_TRIES):
+  447       A_aug = np.vstack([A_reduced, np.sqrt(lm_lambda) * np.eye(n_w)])
+  448       b_aug = np.concatenate([b_reduced, np.zeros(n_w)])
+  449       w, *_ = np.linalg.lstsq(A_aug, b_aug, rcond=None)
+  450       y_full = y_particular + Z @ w
+  451
+  452       for frac in STEP_FRACTIONS:
+  453           y = frac * y_full
+  454           dx = s * y
+  455           dx_v0, dx_delta0 = dx[:state.n_phase_nodes], dx[state.n_phase_nodes:]
+  456           step_ratio = max(
+  457               np.max(np.abs(dx_v0) / v_base) / MAX_STEP_V_PU,
+  458               np.max(np.abs(dx_delta0)) / MAX_STEP_DELTA_RAD,
+  459               1.0,
+  460           )
+  461           cand_dx_v, cand_dx_delta = dx_v0 / step_ratio, dx_delta0 / step_ratio
+  462
+  463           cand_v = x_v + cand_dx_v
+  464           cand_delta = x_delta + cand_dx_delta
+  465           cand_merit, cand_H, cand_h0 = _merit(cand_v, cand_delta)
+  466
+  467           if cand_merit < current_merit:                       <-- THE ACCEPT TEST
+  468               best = (cand_merit, cand_v, cand_delta, cand_dx_v, cand_dx_delta, cand_H, cand_h0)
+  469               lm_lambda = max(lm_lambda / LM_DECREASE_FACTOR, LM_LAMBDA_MIN)
+  470               improved = True
+  471               break
+  472
+  473       if improved:
+  474           break
+  475
+  476       lm_lambda = min(lm_lambda * LM_INCREASE_FACTOR, LM_LAMBDA_MAX)
+  478
+  479   if not improved:
+  480       dx_v = np.zeros(state.n_phase_nodes)
+  481       dx_delta = np.zeros(state.dim - state.n_phase_nodes)
+  482   else:
+  483       current_merit, x_v, x_delta, dx_v, dx_delta, H_all, h0_all = best
+
+(Line numbers approximate to the pre-this-task baseline; exact offsets
+shift slightly across the three prior reports' now-reverted edits, but
+the CONTENT quoted above is byte-identical to the shipped code this
+task started from and ended on.)
+
+Retry/outer-loop structure, confirmed: the OUTER "for _ in range(
+LM_MAX_TRIES)" loop (line 446) retries the SAME outer Newton iteration
+(same y_particular, Z, A_reduced, b_reduced -- all computed ONCE per
+OUTER iteration, above this loop) at increasing lm_lambda (line 476) on
+rejection; the INNER "for frac in STEP_FRACTIONS" loop (line 452)
+shrinks the step magnitude at a FIXED lambda before giving up and
+escalating lambda. The accept test (line 467) is the ONLY thing being
+replaced; the surrounding retry/shrink structure is otherwise exactly
+what Step 2's "on reject, shrink and retry" requirement already does
+structurally -- confirmed by reading it, not assumed, before writing
+the fix.
+
+======================================================================
+STEP 2 -- THE FIX ATTEMPTED (now reverted)
+======================================================================
+Implemented exactly as specified: replaced line 467's binary test with
+
+  ratio = (current_merit - cand_merit) / (current_merit - predicted_merit)
+
+where predicted_merit is computed from the SAME linear model the
+Newton step itself was built from (H_meas, C at the CURRENT x_v/
+x_delta, evaluated at the EXACT dx_applied this candidate uses) --
+reusing the identical "LINEAR-PREDICTED" construction reports/
+phase7_solver_instability_fix_report.txt's trace script already
+validated:
+
+  dx_applied = concat(cand_dx_v, cand_dx_delta)
+  dz_pred = dz - H_meas @ dx_applied
+  dc_pred = dc - C @ dx_applied
+  predicted_merit = sum(W * dz_pred^2) + LINESEARCH_CONSTRAINT_PENALTY * sum(dc_pred^2)
+
+Accept only if ratio > ETA_ACCEPT=0.1 (Nocedal & Wright's own worked
+example for Algorithm 4.1 uses eta=1/8=0.125; 0.1 was chosen as the
+same order, slightly more permissive given this feeder's already-
+difficult conditioning -- a stricter 0.25 risked rejecting every
+available step on a problem already struggling to find ANY improving
+step at several timestamps per the original report). On a strong
+accept (ratio > ETA_GROW=0.75, N&W's own standard threshold),
+additionally decrease lm_lambda by an extra factor (grow trust back
+faster). On reject (ratio <= 0.1, including the degenerate case where
+even the LINEAR model predicts no improvement -- handled explicitly,
+ratio forced to -1 rather than divide-by-non-positive), fall through
+to the EXISTING frac/lambda retry loop completely unchanged -- per the
+task's explicit instruction, y_particular/Z@w construction was not
+touched at all. Diff size: ~25 lines (2 new module constants, ~20
+lines replacing the single-line accept test with the ratio
+computation and its two outcomes).
+
+======================================================================
+STEP 3 -- VERIFICATION (stopped at 3a, per the pre-declared rule)
+======================================================================
+----------------------------------------------------------------------
+3a. Single repro point (i=46, delta_frac=0.001, REAL estimate() call)
+----------------------------------------------------------------------
+  baseline (unfixed, confirmed in the prior report):  cres=560,763.053 kvar
+  this fix:                                           cres=879,563.666 kvar
+  converged: False (both)   iterations: 30 (both, hit the cap)
+  max_v_err_pu: 0.936 (fixed) vs 0.974 (baseline) -- marginally lower,
+    but the constraint residual -- the quantity the task's acceptance
+    bar is about -- is WORSE, not dramatically better.
+
+STOP CONDITION MET IMMEDIATELY, as pre-declared: "If constraint
+residual isn't dramatically better (not 0-9% -- needs to approach the
+~1 kvar threshold or at minimum converge within the iteration cap),
+STOP. Do not proceed to the full sweep." 879,564 is 57% WORSE than
+baseline, the opposite of "dramatically better". Stopped here.
+
+----------------------------------------------------------------------
+3b, 3c -- NOT RUN
+----------------------------------------------------------------------
+Explicitly skipped per the stop condition triggered at 3a. No pytest
+re-run with this fix in place (it was reverted before any further
+check), no delta-sweep, no stratified sample. This is the correct,
+pre-agreed response to a clear 3a failure, not an omission.
+
+----------------------------------------------------------------------
+Time used
+----------------------------------------------------------------------
+Well under the 2-hour implement-and-get-a-real-result checkpoint --
+the fix was implemented, tested at the single point, found wanting,
+and reverted in a single focused pass. No iteration past the time box
+was needed because the negative result was clear and fast.
+
+======================================================================
+WHY A THEORETICALLY SOUND FIX STILL FAILED -- ANALYSIS
+======================================================================
+This is now the FOURTH independently-motivated, textbook-correct fix
+(three step-construction attempts in the prior report, this accept-
+criterion attempt) to fail to resolve, or to actively worsen, the
+targeted instability. A pattern this consistent is itself informative.
+
+Mechanically: at the FIRST outer iteration of the traced repro point,
+the prior report's instrumentation already showed the LINEAR
+prediction and the ACTUAL nonlinear outcome AGREE closely (~3.4%
+apart, Step 1d of that report) -- meaning for at least that first
+step, ratio should come out close to 1.0 (numerator and denominator
+both reflecting the same ~12% real reduction), comfortably above
+ETA_ACCEPT=0.1, and ALSO above ETA_GROW=0.75 -- triggering the "strong
+accept, shrink lambda further/faster" branch. That extra lambda
+decrease is the most likely source of the regression: it makes `w`
+LESS damped, SOONER, across the 30-iteration trajectory than the
+original code's single-factor decrease would have -- and reports/
+phase7_solver_instability_fix_report.txt Step 1e already found `w`
+itself (even at the ORIGINAL, single-factor-decreasing lambda
+schedule) was producing a tangential step (~1,481 V) comparably large
+to y_particular's own (~2,725 V) at lambda=1.0 -- i.e. `w` is ALREADY
+inadequately damped at the ORIGINAL schedule's slowest decrease rate;
+decreasing lambda FASTER on strong accepts (this fix's own "optional"
+feature) plausibly makes that pre-existing problem worse, sooner, on a
+DIFFERENT subset of the 30 iterations than the baseline trajectory
+hits it -- consistent with the determinism check in the prior report
+(identical code, identical inputs, identical output every time) that
+established these differences are genuine, reproducible consequences
+of each fix's changed trajectory, not noise.
+
+The honest conclusion: FOUR theoretically well-motivated interventions
+-- symmetric LM damping, two different trust-region-clip restructurings,
+and now a calibrated ratio-based accept test -- have each targeted a
+real, confirmed defect in isolation (Step 1 of the prior report's
+diagnosis is not in question; this report's own Step 1 citation of the
+binary accept test is also not in question) and each has failed to
+improve, or has worsened, the actual 30-ITERATION OUTCOME at the
+specific repro point tested. This is no longer well-explained by any
+ONE single mechanism; it indicates the full dynamical system (30
+chained Gauss-Newton iterations, each with its own nested LM/frac
+retry loop, interacting with a genuinely multi-modal near-zero-
+impedance-branch topology -- Part B of the original report already
+found AT LEAST 15 regulator-adjacent nodes behaving unreliably, and
+this task's Step 1 found at least as many additional tie-switch nodes,
+e.g. ZI_300_open_*, ZI_149_*, ZI_151_*, with similarly extreme
+sensitivity) is too sensitive to single-mechanism patches for further
+blind iteration to be a responsible use of additional attempts. Each
+of the four fixes was well-reasoned, each was tested honestly, and
+each failed -- that is itself the finding this report delivers,
+not a gap in effort.
+
+======================================================================
+STEP 4 -- RECOMMENDATION
+======================================================================
+DO NOT COMMIT. estimation/state_estimator.py is reverted and confirmed
+byte-identical (via syntax check, grep for every introduced symbol
+ETA_ACCEPT/ETA_GROW/predicted_merit/dx_applied returning zero matches,
+and a full pytest re-run reproducing the EXACT pre-existing 112-passed/
+1-failed baseline) to its state at the start of this task.
+
+This report's finding REINFORCES reports/
+phase7_convergence_remediation_report.txt's RETRACT verdict and
+reports/phase7_solver_instability_fix_report.txt's DO-NOT-COMMIT
+verdict. FOUR candidate mechanisms (one convergence-criterion fix
+already audited as pre-existing in the first report; three step-
+construction fixes and one accept-criterion fix in the latter two
+reports) have now been tried against this instability. None resolved
+it. A responsible next step is NOT a fifth local patch, but one of:
+
+  (a) a genuinely different class of fix -- e.g. demoting the
+      additional near-zero-impedance tie-switch nodes this task's Step
+      1 identified (ZI_300_open_*, ZI_149_*, ZI_151_*, ZI_60_*,
+      ZI_197_*, ZI_97_*, ZI_54_*, ZI_94_open_*, ZI_13_*, ZI_152_*) to
+      weighted pseudo-measurements, the SAME treatment Part B of the
+      original report already gave the 15 regulator-adjacent nodes,
+      for the SAME underlying reason (a hard EXACT-zero constraint is
+      only as good as the frozen-topology snapshot it assumes, and a
+      near-zero-impedance tie switch is exactly as fragile to this as
+      a regulator tap) -- this is a bigger, model-level change outside
+      this task's "minimal diff to the solver" mandate, flagged here
+      rather than attempted;
+  (b) accepting a MUCH larger iteration cap with direct evidence of
+      eventual contraction (not assumed) -- none of the four fix
+      attempts tested whether 100 or 300 iterations, not 30, would
+      eventually escape the slow geometric decay Step 1 of the prior
+      report quantified; or
+  (c) a full trust-region re-derivation (not an accept-test bolt-on)
+      that solves the CONSTRAINED trust-region subproblem exactly
+      (e.g. a dogleg or Steihaug-CG method over the COMBINED
+      y_particular+Z@w space jointly, rather than constructing each
+      separately and then testing/accepting the result), which is
+      more invasive than any of this session's four attempts and
+      explicitly out of scope for a "minimal diff" mandate.
+
+======================================================================
+FILES
+======================================================================
+reports/phase7_accept_criterion_fix_report.txt   this file.
+
+estimation/state_estimator.py NOT MODIFIED (net) -- the accept-
+criterion edit was implemented, tested, found insufficient, and fully
+reverted; confirmed byte-identical to this task's starting content.
+
+======================================================================
+CLAUDE.md Report
+======================================================================
+Implemented: a calibrated trust-region ratio test (Nocedal & Wright
+ch.4, Algorithm 4.1 form) to replace estimation/state_estimator.py's
+binary "merit improves at all" accept test -- the deeper mechanism the
+prior report's Step 2d identified as the likely reason three
+mechanism-correct step-construction fixes all failed to resolve the
+solver instability. Implemented exactly as specified: ratio =
+actual-reduction / linear-model-predicted-reduction, ETA_ACCEPT=0.1,
+ETA_GROW=0.75 (both N&W-standard), reject falls through to the
+existing frac/lambda retry structure unchanged, y_particular/Z@w
+construction untouched. Tested at the single cheap-check repro point
+(i=46, delta_frac=0.001) BEFORE any full-scale verification, per the
+mandated discipline: constraint_residual_inf went from 560,763 kvar
+(baseline) to 879,564 kvar (this fix) -- WORSE, not dramatically
+better, triggering the pre-declared stop condition immediately. No
+pytest re-run, delta-sweep, or stratified sample was run past this
+point, per that same rule. Fully reverted; confirmed byte-identical to
+the starting code via syntax check, symbol-absence grep, and an
+exact-match pytest re-run (112 passed, 1 failed, identical to the
+pre-existing baseline).
+Files changed: reports/phase7_accept_criterion_fix_report.txt (new).
+estimation/state_estimator.py: no net change (one edit made and fully
+reverted).
+Run: python -m pytest tests/ -q (112 passed, 1 failed --
+test_recovers_x_true_on_normal_timestamp, pre-existing, confirmed
+unchanged); single-point cheap check via direct StateEstimator.estimate()
+call (see Step 3a).
+Result: fix implemented and tested exactly as specified; FAILED its
+own stop-rule check at the first (cheapest) verification step. DO NOT
+COMMIT. This is the fourth independently-motivated fix attempt across
+three reports to fail against this instability -- itself now the
+finding, not a gap in effort (Step 3 of this report's analysis).
+Known limitation / next step: further single-mechanism local patches
+to this solver are not recommended without first determining WHY four
+theoretically sound, independently-targeted fixes all fail or worsen
+outcomes on the SAME repro point -- most likely explained by this
+system's extreme, confirmed-deterministic-but-chaotic sensitivity to
+exactly the kind of schedule/structural changes each fix made. Three
+genuinely different classes of next step are named in Step 4 above
+(demote additional near-zero-impedance tie-switch nodes to weighted
+pseudo-measurements; test a much larger iteration cap with direct
+contraction evidence; or a full joint trust-region subproblem solve)
+-- none attempted here, all explicitly out of this task's minimal-diff
+mandate. Do not cite any Phase 7 convergence-rate number without all
+four reports' caveats attached.

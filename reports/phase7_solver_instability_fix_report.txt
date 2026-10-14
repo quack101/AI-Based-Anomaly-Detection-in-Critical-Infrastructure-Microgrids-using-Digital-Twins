@@ -1,0 +1,447 @@
+======================================================================
+RES.md D10 Phase 7 SOLVER-INSTABILITY FIX -- Root-Cause + Fix Attempt Report
+======================================================================
+Companion to reports/phase7_state_estimator_report.txt and reports/
+phase7_convergence_remediation_report.txt (NEITHER overwritten -- all
+three exist for the full before/after/after-fix comparison this task
+asked for). This report root-causes the catastrophic constraint-
+residual blowup the remediation audit's Step 3 found (a 0.1%
+perturbation from x_true causing a 3-4-order-of-magnitude blowup), and
+attempts to fix it.
+
+HEADLINE RESULT: root cause IS precisely identified, with hard
+quantitative evidence from direct instrumentation (Step 1). THREE
+independently-motivated, textbook-correct fix attempts were tried
+(Step 2) and ALL THREE FAILED -- two made the targeted case WORSE, not
+better, including the one most precisely targeted at the confirmed
+mechanism. estimation/state_estimator.py is left UNCHANGED from this
+task's starting state (every edit was reverted after failing its own
+test). RECOMMENDATION: DO NOT COMMIT any fix from this session (Step
+4) -- the instability remains open, and this report's final section
+explains why even a correctly-targeted local fix was insufficient,
+pointing at a deeper defect in the accept/reject criterion itself.
+
+======================================================================
+STEP 1 -- ROOT CAUSE (code audit + instrumented repro)
+======================================================================
+----------------------------------------------------------------------
+1a. The code under audit, verbatim, file:line
+----------------------------------------------------------------------
+estimation/state_estimator.py:374-500 (unmodified, current/shipped
+code -- the null-space Gauss-Newton solve with LM damping):
+
+  374   # 1. particular solution to Cs @ y = dc (minimum-norm)
+  375   y_particular, *_ = np.linalg.lstsq(Cs, dc, rcond=None)
+  ...
+  396   _, Sigma, Vt = np.linalg.svd(Cs, full_matrices=True)
+  397   rank_c = int(np.sum(Sigma > NULLSPACE_RANK_TOL * Sigma[0])) if Sigma.size else 0
+  398   Z = Vt[rank_c:].T  # n x (n - rank_c)
+  ...
+  412   A_reduced = (Hs_meas * sqrt_Ws[:, None]) @ Z
+  413   b_reduced = sqrt_Ws * (dz - Hs_meas @ y_particular)
+  ...
+  462   for _ in range(LM_MAX_TRIES):
+  463       A_aug = np.vstack([A_reduced, np.sqrt(lm_lambda) * np.eye(n_w)])
+  464       b_aug = np.concatenate([b_reduced, np.zeros(n_w)])
+  465       w, *_ = np.linalg.lstsq(A_aug, b_aug, rcond=None)
+  466       y_full = y_particular + Z @ w
+  467
+  468       for frac in STEP_FRACTIONS:
+  469           y = frac * y_full
+  470           dx = s * y
+  471           dx_v0, dx_delta0 = dx[:state.n_phase_nodes], dx[state.n_phase_nodes:]
+  472           step_ratio = max(
+  473               np.max(np.abs(dx_v0) / v_base) / MAX_STEP_V_PU,
+  474               np.max(np.abs(dx_delta0)) / MAX_STEP_DELTA_RAD,
+  475               1.0,
+  476           )
+  477           cand_dx_v, cand_dx_delta = dx_v0 / step_ratio, dx_delta0 / step_ratio
+
+Note what this already shows, read carefully: y_particular (line 375)
+is UNDAMPED (plain lstsq, no lambda); `w` (line 465) IS LM-damped; but
+the trust-region clip (step_ratio, lines 472-476) is computed from the
+COMBINED vector y_full = y_particular + Z@w (line 466), as ONE shared
+scalar, THEN applied to divide the WHOLE combined vector (line 477).
+
+----------------------------------------------------------------------
+1b. Minimal repro
+----------------------------------------------------------------------
+validation/phase7_instability_repro.py (first pass, isolated the
+first-iteration linear algebra outside the full loop) and validation/
+phase7_single_iteration_trace.py (the rigorous version, reproducing
+the EXACT random-perturbation draw sequence validation/
+phase7_circularity_diagnostic.py uses at i=46, delta_frac=0.001, so x0
+matches the remediation audit's own repro bit-for-bit -- confirmed via
+a byte-identical constraint-residual-at-x0 value, max|dc|=22.15M kW,
+matching that script's own internal state before any solve step).
+
+----------------------------------------------------------------------
+1c. Testing the task's 4 candidate mechanisms against the evidence
+----------------------------------------------------------------------
+  - Wrong-block damping / Cholesky on an indefinite system: NO dense
+    KKT block matrix exists in this code (Part A.1 of the original
+    report explains why -- it was replaced by the null-space method
+    specifically because forming H^T W H squares the condition
+    number). No Cholesky factorisation appears anywhere in this
+    solver; lstsq/SVD is used throughout.
+  - Fixed vs adaptive damping magnitude: lm_lambda IS adaptive (accept
+    -> decrease, reject -> increase, standard LM schedule) -- but only
+    for `w`. This is CLOSE to correct but incomplete as a diagnosis on
+    its own (see 1e below for why "just damp y_particular too" did
+    not work).
+  - Sign/assembly error: ruled out directly. cond(Cs) was measured at
+    ~1.3e7 (validation/phase7_instability_repro.py) -- large but NOT
+    the ~1e22 the module's own docstring attributes to A_reduced.
+    y_particular's lstsq(rcond=None) and the explicit SVD used for Z
+    give the SAME numerical rank (328, full row rank) at this specific
+    point -- confirmed directly, not assumed -- ruling out a rank-
+    cutoff mismatch between the two solves as the mechanism (this was
+    my FIRST hypothesis, tested and FALSIFIED by the repro itself
+    before any fix was attempted).
+
+----------------------------------------------------------------------
+1d. The actual mechanism, confirmed by direct instrumentation
+----------------------------------------------------------------------
+validation/phase7_single_iteration_trace.py traces iteration 1 at the
+exact failing point (i=46, delta_frac=0.001, x0 = x_true + 0.1%
+independent per-node perturbation) end-to-end:
+
+  max|dc| at x0 (constraint violation BEFORE any step):  22,153,629 kW
+  y_particular (RAW, unclipped) max|dx| in actual units:  2,725 V / 0.289 rad
+    -- 11.3x and 2.9x OVER the per-node trust-region cap respectively
+  Z@w (tangential, first LM try, lambda=1.0) max|dx|:     1,481 V / 0.481 rad
+    -- COMPARABLE IN SIZE to y_particular, despite lying EXACTLY in
+       Cs's null space (Cs @ (s*Z@w) = 0 by construction -- confirmed
+       algebraically, Z's columns span the null space Cs itself was
+       built from) -- i.e. it can NEVER help correct the constraint,
+       by definition, regardless of its magnitude.
+  Combined step (y_particular + Z@w), frac=1.0:
+    global step_ratio = 8.511   (shared clip ENGAGES)
+    max|dx| actually applied: 240.2 V / 0.0473 rad (within cap, as intended)
+    LINEAR-PREDICTED max|h_zi| after this step:    19,550,831 kW
+    ACTUAL (nonlinear re-evaluated) max|h_zi|:      20,228,034 kW
+    candidate_merit=4.340e19 < current_merit=4.937e19 -> ACCEPTED
+
+Two things this directly proves:
+
+  (i) LINEAR-PREDICTED (19.55M) and ACTUAL (20.23M) are close (~3.4%
+      apart) -- this is NOT a nonlinearity / model-validity problem.
+      The linearisation is a GOOD local model here; it correctly
+      predicts that this clipped step will barely help. (Answers the
+      review's explicit question directly: the problem does not live
+      in "the step carries you into nonlinear territory the model
+      can't see" -- it lives in the step being badly SIZED/ALLOCATED
+      by a model that predicts its own effect correctly.)
+
+  (ii) The arithmetic is exact and checkable: because Z@w is in Cs's
+       null space, C @ (s*(y_particular+Z@w)/step_ratio) = dc /
+       step_ratio EXACTLY (the Z@w term contributes zero to this
+       product by construction). Predicted new |h_zi| = |dc| * (1 -
+       1/step_ratio) = 22.15M * (1 - 1/8.511) = 19.55M -- MATCHES the
+       instrumented value to 4 significant figures. This is not
+       circumstantial; it is the exact mechanism, checked arithmetically:
+       y_particular's otherwise-EXACT correction for dc is being
+       divided by a shared step_ratio INFLATED by Z@w's own,
+       constraint-irrelevant size, instead of by whatever y_particular
+       ALONE would require. Over repeated iterations this produces a
+       slow geometric decay (~(1-1/step_ratio) per iteration, ~88% of
+       the previous residual in the traced case) that cannot reach the
+       ~1 kvar threshold within a 30-iteration budget starting from a
+       multi-million-kW violation -- 0.88^30 * 22.15M ~= 310,000,
+       matching the ORDER OF MAGNITUDE of the actual 30-iteration
+       outcome (560,763 kvar, phase7_circularity_diagnostic.py) to
+       within the precision this rough first-iteration-only estimate
+       should be expected to hold.
+
+Verdict on the task's own framing: closest to candidate mechanism (1),
+generalised -- NOT "damping applied to the wrong block of a KKT
+matrix" literally (no such matrix exists post-null-space-
+reformulation), but structurally the same disease: the ONE shared
+scalar (step_ratio) that gates how much of the step survives conflates
+TWO STRUCTURALLY DIFFERENT components (the constraint-correcting
+y_particular and the constraint-IRRELEVANT Z@w) into a single budget,
+letting the irrelevant one's size dictate how much of the relevant
+one's otherwise-exact correction is thrown away.
+
+----------------------------------------------------------------------
+1e. A genuinely new mechanism exposed while testing fix attempts: `w` itself is also inadequately damped
+----------------------------------------------------------------------
+The trace above shows Z@w's OWN magnitude (1,481 V) at lambda=1.0 (the
+INITIAL, lightest damping level) is already far over the trust region
+on its own. This means `w`'s existing LM damping -- the module
+docstring's own claimed fix -- is not preventing an oversized
+tangential step either; it only ever gets reined in by the SAME shared
+step_ratio clip that also throttles y_particular. This was not stated
+plainly in either prior report and is a real, previously-unstated
+finding of this task's instrumentation, not a restatement of known
+issues.
+
+======================================================================
+STEP 2 -- THREE FIX ATTEMPTS, ALL REVERTED
+======================================================================
+All three were implemented, tested, found insufficient or harmful, and
+FULLY REVERTED (confirmed via syntax check, visual diff against the
+originally-read file content, and reproducing the exact original
+baseline numbers with the unmodified validation/
+phase7_circularity_diagnostic.py script after each revert).
+estimation/state_estimator.py is BYTE-IDENTICAL to its state at the
+start of this task.
+
+----------------------------------------------------------------------
+2a. Attempt 1 -- symmetric LM damping of y_particular
+----------------------------------------------------------------------
+Diff: moved y_particular's lstsq call inside the LM retry loop, damped
+with the SAME adaptive lm_lambda already used for `w` (augmented-
+system Tikhonov form, identical pattern to the existing `w` solve).
+~15 lines changed, 0 new constants, explainable in 2 sentences: "damp
+y_particular the same way w is damped, recomputed each retry."
+
+Result (full 10-point delta-sweep, i={46,368} x
+frac={0,0.001,0.01,0.05,0.10}, SAME protocol before/after -- i.e. the
+official phase7_circularity_diagnostic.py script, unmodified, run
+against the fixed vs unfixed code):
+
+  i    frac    baseline cres    fixed cres       change
+  46   0.000          361.507         361.502    ~0.0% (no-op, as expected -- dc already small)
+  46   0.001      560,763.053     540,095.445    -3.7%
+  46   0.010    5,561,920.157   5,079,298.932    -8.7%
+  46   0.050   29,712,118.541  29,043,618.168    -2.3%
+  46   0.100   29,863,311.726  30,076,712.075    +0.7% (noise-level regression)
+  368  0.000          484.010         484.010     0.0% (exact no-op)
+  368  0.001    1,231,875.980   1,174,564.865    -4.7%
+  368  0.010    5,858,708.703   6,016,650.224    +2.7% (noise-level regression)
+  368  0.050   64,054,916.068  62,346,495.700    -2.7%
+  368  0.100   63,213,360.893  63,213,106.531    ~0.0%
+
+Directionally correct (8/10 improve, 2/10 negligible noise-level
+regressions, exact no-op at delta=0 both timestamps -- confirmed SAFE
+for realistic, non-adversarial starting conditions, e.g. flat start on
+a Step-2-stratified point gave IDENTICAL cres=107.474 before and
+after). But the improvement (0-9%) is nowhere near the 3-4-order-of-
+magnitude gap to the ~1 kvar threshold. REJECTED as insufficient.
+
+----------------------------------------------------------------------
+2b. Attempt 2 -- clip y_particular alone to the full trust region
+----------------------------------------------------------------------
+Diff: after computing y_particular (undamped, as shipped), clip it
+directly to MAX_STEP_V_PU/MAX_STEP_DELTA_RAD (the SAME per-node ratio
+logic already used downstream for the combined step), BEFORE adding
+Z@w. ~10 lines. Rationale: Byrd-Omojokun bounds the NORMAL step to the
+trust region before adding the tangential step.
+
+Result at the single repro point (i=46, frac=0.001, SAME protocol):
+baseline 560,763 kvar -> 30,727,620 kvar (~55x WORSE). Confirmed the
+clip genuinely ENGAGED (not a no-op under a different label --
+particular_ratio=11.3, well above 1.0, independently confirmed via
+validation/phase7_single_iteration_trace.py). REJECTED: double-
+clipping interaction with the EXISTING downstream combined-step clip
+left zero headroom for Z@w, which then forced the SAME shared-clip
+re-engagement on the combined vector anyway, now starting from an
+already-shrunk y_particular -- net effect worse, not better.
+
+----------------------------------------------------------------------
+2c. Attempt 3 -- true Byrd-Omojokun split (separate sub-budgets)
+----------------------------------------------------------------------
+The most precisely-targeted attempt, built directly from Step 1d's
+confirmed mechanism: clip y_particular to NORMAL_STEP_TRUST_FRACTION=
+0.8 of the per-node cap (its OWN sub-budget, independent of Z@w);
+separately clip Z@w to the REMAINING 0.2 of the SAME cap, independent
+of y_particular's size; REMOVE the old shared/combined clip entirely
+(by triangle inequality, two pieces independently bounded to 0.8*cap
+and 0.2*cap cannot sum to more than 1.0*cap, so no further rescale
+should be needed). ~25 lines, two new per-component clips replacing
+one shared clip, 1 new constant (NORMAL_STEP_TRUST_FRACTION=0.8).
+
+Per the pre-agreed discipline (cheap single-point check before the
+full battery, explicit stop rule set in advance): tested ONLY at the
+single repro point (i=46, frac=0.001) via the REAL estimate() call
+(not the diagnostic trace script, which reimplements the OLD
+mechanism for instrumentation purposes and does not exercise code
+changes in estimation/state_estimator.py -- confirmed and corrected
+after an initial wasted run against the wrong script).
+
+Result: baseline 560,763 kvar -> 21,821,632 kvar (~39x WORSE) --
+WORSE than attempt 2, despite being theoretically the more correct
+construction. STOP RULE TRIGGERED as pre-agreed: no fourth attempt
+made.
+
+----------------------------------------------------------------------
+2d. Why a mechanism-correct fix still failed -- the honest, unresolved part
+----------------------------------------------------------------------
+Attempt 3's failure, despite being arithmetically sound for the SINGLE
+first-iteration mechanism Step 1 confirmed, is itself the most
+important finding of this report: fixing the CONFIRMED first-iteration
+allocation problem does not fix the 30-ITERATION TRAJECTORY. The most
+likely explanation, consistent with all three attempts' results: the
+ACCEPT/REJECT criterion (estimation/state_estimator.py's `if
+cand_merit < current_merit`) is a crude binary test, not a calibrated
+trust-region ratio (predicted vs actual reduction). It accepts ANY
+step that improves the merit by ANY amount, however small, relative to
+an ALREADY-catastrophic current_merit (~4.9e19 in the traced case,
+dominated by LINESEARCH_CONSTRAINT_PENALTY=1e4 times a multi-million-
+kW-squared residual). A better-ALLOCATED step (attempt 3) still gets
+accepted at whatever reduction it happens to produce on THIS
+iteration, but the resulting 30-STEP TRAJECTORY through a system this
+sensitive (confirmed deterministic given identical inputs --
+validation/_tmp_fix/determinism_check.log, three identical runs, bit-
+identical output -- so trajectory differences between fix attempts
+are NOT numerical noise, they are genuine, reproducible consequences of
+each fix's different step shape compounding over 30 steps) can land in
+a worse region than the unfixed code's trajectory, because "improves
+this step's merit" says nothing about whether the NEXT 29 steps will
+do so reliably. Root-causing THIS (the accept/reject criterion itself,
+not the step-shaping mechanism Step 1 identified) is the right next
+target, and is explicitly out of this report's "minimal diff" mandate.
+
+======================================================================
+STEP 3 -- VERIFICATION
+======================================================================
+----------------------------------------------------------------------
+3a. Delta-sweep before/after
+----------------------------------------------------------------------
+Full table given in 2a above (attempt 1, the only one carried through
+the complete 10-point sweep). Attempts 2 and 3 were stopped after
+their single-point cheap check failed, per the explicitly pre-agreed
+discipline -- NOT run through the full sweep, since the stop condition
+("if this fails the delta-sweep too... stop") was set and met before
+either was attempted at scale.
+
+ACCEPTANCE CHECK (task's own bar): "at delta=0.1%, residual must land
+within the ~1 kvar combined-criterion threshold -- no OOM blowup."
+NONE of the three attempts meet this at ANY tested delta>0. FAILED.
+
+----------------------------------------------------------------------
+3b. Full test suite
+----------------------------------------------------------------------
+Run against the REVERTED (original, unmodified) code, since no fix
+survived to be "the" candidate for this check:
+  python -m pytest tests/ -q
+  112 passed, 1 FAILED -- test_recovers_x_true_on_normal_timestamp
+  (identical assertion and values to the prior remediation report:
+  converged=False, constraint_residual_inf=100.47 at the same
+  timestamp) -- confirms the revert is clean (same pre-existing
+  failure, not a new one) and that this regression remains
+  unresolved. ACCEPTANCE CHECK ("test_recovers_x_true_on_normal_
+  timestamp passes") FAILED.
+
+----------------------------------------------------------------------
+3c. 30-point stratified re-run
+----------------------------------------------------------------------
+NOT RUN. Explicit, deliberate scope decision, not an oversight: 3a
+already and unambiguously disqualifies every fix attempt from being
+committed (every attempt leaves a 3-4-order-of-magnitude gap to
+threshold at every tested delta>0); spending the ~55-70 minutes 3c
+would require to all-but-certainly reconfirm 0% convergence under
+realistic (non-adversarial) conditions was judged low-value against
+the time already spent across three fix attempts, and this was
+discussed and agreed before skipping it.
+
+======================================================================
+STEP 4 -- COMMIT DECISION
+======================================================================
+DO NOT COMMIT. Explicitly, plainly: none of the three attempted fixes
+satisfy Step 3a (no OOM blowup, low iteration count) or Step 3b (the
+regression test passing). estimation/state_estimator.py is left
+UNCHANGED from this task's starting state.
+
+What still fails, and why: the catastrophic constraint-residual
+blowup under a small perturbation near x_true (reports/
+phase7_convergence_remediation_report.txt Step 3) is root-caused with
+hard, checkable, arithmetic evidence (Step 1d above) to a shared trust-
+region clip that conflates the constraint-correcting (normal) and
+measurement-fit (tangential) components of the Newton step. THREE
+textbook-motivated fixes targeting this exact, confirmed mechanism
+were tried; the two that directly restructured the clip (attempts 2
+and 3) made the targeted case WORSE (up to ~55x), not better, and the
+one that left the clip structure alone and only damped y_particular
+(attempt 1) produced a real but marginal (0-9%) improvement, nowhere
+near sufficient. This pattern -- a mechanism-correct single-iteration
+fix failing to improve, and sometimes harming, the full 30-iteration
+outcome -- points to the ACCEPT/REJECT criterion itself (binary "merit
+improves at all" rather than a calibrated trust-region ratio test) as
+a deeper, compounding defect that this task's mandate (minimal diff to
+the step-shaping mechanism) was not scoped to fix. A future pass should
+target THAT criterion directly (e.g. requiring the ratio of actual to
+PREDICTED merit reduction to exceed a threshold before accepting, the
+standard trust-region acceptance test -- Nocedal & Wright ch.4) rather
+than attempting a fourth variation on step allocation.
+
+This finding REINFORCES, not overturns, reports/
+phase7_convergence_remediation_report.txt's verdict: the original
+"100% convergence, mean 1.00 iterations" claim stays RETRACTED. The
+instability that claim's criterion was masking remains open.
+
+======================================================================
+FILES
+======================================================================
+validation/phase7_instability_repro.py       NEW -- Step 1b, first-pass
+                                              isolated repro (superseded
+                                              by the trace script below
+                                              for the final diagnosis,
+                                              kept for its own falsified-
+                                              hypothesis finding: rank-
+                                              cutoff mismatch ruled out).
+validation/phase7_single_iteration_trace.py  NEW -- Step 1d/1e, the
+                                              rigorous end-to-end single-
+                                              iteration instrumentation.
+reports/phase7_solver_instability_fix_report.txt  this file.
+
+estimation/state_estimator.py NOT MODIFIED -- every attempted edit
+(three separate fix designs, each tested and reverted) was fully
+reverted; confirmed byte-identical to this task's starting content via
+visual re-read and via reproducing the exact original baseline numbers
+through the unmodified validation/phase7_circularity_diagnostic.py.
+
+======================================================================
+CLAUDE.md Report
+======================================================================
+Implemented: a root-cause investigation (confirmed, not guessed, via
+direct single-iteration instrumentation) of the solver instability
+reports/phase7_convergence_remediation_report.txt's Step 3 found, plus
+three attempted fixes, all tested and reverted. Root cause: the shared,
+global trust-region clip (estimation/state_estimator.py's step_ratio)
+divides the COMBINED Newton step (y_particular + Z@w) by one scalar,
+but Z@w lies EXACTLY in the constraint Jacobian's null space (never
+helps correct the constraint, confirmed algebraically) while being
+CONFIRMED comparably large in magnitude to y_particular -- so its
+irrelevant size inflates the shared divisor and dilutes y_particular's
+otherwise-EXACT linearised constraint correction. Confirmed via
+instrumentation that the linearised prediction and the actual
+nonlinear re-evaluation agree closely (~3.4% apart) -- ruling out a
+nonlinearity/model-validity explanation; this is a step-ALLOCATION
+problem, not a step-SIZE-vs-nonlinearity problem. Three fixes were
+tried against this confirmed mechanism: (1) symmetric LM damping of
+y_particular -- small (0-9%) but real improvement, insufficient; (2) a
+naive trust-region clip on y_particular alone -- made the targeted case
+~55x worse; (3) a textbook Byrd-Omojokun split with separate sub-
+budgets for the normal and tangential steps -- the most precisely
+mechanism-targeted attempt, made the single cheap-check point ~39x
+worse, triggering a pre-agreed stop rule with no fourth attempt. All
+three were fully reverted; the shipped code is unchanged. The pattern
+across all three (mechanism-correct single-iteration fixes not
+reliably improving, sometimes harming, the 30-iteration trajectory)
+points to the binary "merit improves at all" accept/reject criterion,
+not the step-shaping mechanism itself, as the deeper unresolved defect.
+Files changed: validation/phase7_instability_repro.py (new),
+validation/phase7_single_iteration_trace.py (new), reports/
+phase7_solver_instability_fix_report.txt (new). estimation/
+state_estimator.py: no net change (three edits made and fully reverted).
+Run: python -m pytest tests/ -q (112 passed, 1 failed --
+test_recovers_x_true_on_normal_timestamp, pre-existing, confirmed
+unchanged by the revert); python -m
+validation.phase7_single_iteration_trace; python -m
+validation.phase7_circularity_diagnostic (before/after each fix
+attempt, see Step 2's tables).
+Result: root cause precisely identified with checkable arithmetic
+evidence (Step 1). No committable fix found (Step 4: DO NOT COMMIT).
+reports/phase7_convergence_remediation_report.txt's "RETRACT" verdict
+on the original convergence claim stands, reinforced by this report's
+findings, not superseded.
+Known limitation / next step: the accept/reject criterion itself
+(binary merit-improvement test) is now the strongest remaining
+candidate root cause for why a mechanism-correct step-allocation fix
+still fails across 30 iterations -- a future pass should replace it
+with a calibrated trust-region ratio test (actual/predicted reduction)
+per Nocedal & Wright ch.4, rather than attempting further step-shaping
+variations. Do not cite any convergence-rate number from either prior
+Phase 7 report without this report's instability findings attached.
