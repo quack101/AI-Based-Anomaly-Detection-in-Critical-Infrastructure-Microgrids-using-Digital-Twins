@@ -48,7 +48,8 @@ def score(registry, corpus, rows):
     cols = [c for c in pd.read_csv(corpus / "test_telemetry.csv", nrows=0).columns
             if c not in ("timestamp", "real_timestamp")]
     df = pd.read_csv(corpus / "test_telemetry.csv", nrows=SCORECARD_ROWS + 1)
-    x_v = np.load(corpus / "test_x_true.npz", allow_pickle=True)["x_v"]
+    npz = np.load(corpus / "test_x_true.npz", allow_pickle=True)
+    x_v, x_d = npz["x_v"], npz["x_delta"]
     model = build_estimator_model("multiphase", registry_path=registry, corpus_dir=corpus)
     st, est = model.state, StateEstimator(model)
     v_base = np.array([st.v_base[n] for n in st.all_node_names])
@@ -58,12 +59,14 @@ def score(registry, corpus, rows):
         st.x0_v, st.x0_delta = list(flat_v), list(flat_d)
         r_a = est.estimate({c: float(df.iloc[i][c]) for c in cols}, str(df.iloc[i]["real_timestamp"]))
         e_a = np.abs(r_a.x_v - x_v[i]) / v_base
+        d_a = np.abs(np.asarray(r_a.x_delta) - x_d[i])
         st.x0_v, st.x0_delta = list(r_a.x_v), list(r_a.x_delta)
         r_b = est.estimate({c: float(df.iloc[i + 1][c]) for c in cols}, str(df.iloc[i + 1]["real_timestamp"]))
         e_b = np.abs(r_b.x_v - x_v[i + 1]) / v_base
-        res.append((e_a, r_a.converged))
-        res.append((e_b, r_b.converged))
-    return res
+        d_b = np.abs(np.asarray(r_b.x_delta) - x_d[i + 1])
+        res.append((e_a, r_a.converged, d_a))
+        res.append((e_b, r_b.converged, d_b))
+    return res, st
 
 
 def main(a_reg, a_corpus, b_reg, b_corpus):
@@ -72,7 +75,7 @@ def main(a_reg, a_corpus, b_reg, b_corpus):
     if not np.array_equal(xa, xb):
         raise ValueError("A and B corpora do not share the same physics; a paired comparison is meaningless")
     rows = neutral_picks(a_corpus)
-    A, B = score(a_reg, a_corpus, rows), score(b_reg, b_corpus, rows)
+    (A, st), (B, _) = score(a_reg, a_corpus, rows), score(b_reg, b_corpus, rows)
     ea, eb = np.array([x[0] for x in A]), np.array([x[0] for x in B])
     med_a, med_b = np.median(ea, axis=1), np.median(eb, axis=1)  # per-point median over nodes
     d = med_b - med_a  # > 0 means B worse
@@ -91,6 +94,12 @@ def main(a_reg, a_corpus, b_reg, b_corpus):
         "worst_node_median_err": {"A": float(np.median(ea, axis=0).max()), "B": float(np.median(eb, axis=0).max())},
     }
     OUT.write_text(json.dumps(out, indent=2))
+    # per-point, per-node arrays for literature-style metrics (validation/literature_metrics.py)
+    np.savez_compressed(OUT.with_suffix(".npz"),
+                        v_err_A=ea, v_err_B=eb,
+                        ang_err_A=np.array([x[2] for x in A]), ang_err_B=np.array([x[2] for x in B]),
+                        v_nodes=np.array(st.all_node_names),
+                        delta_nodes=np.array([n for n, _ in sorted(st.delta_index.items(), key=lambda kv: kv[1])]))
     print(json.dumps({k: v for k, v in out.items() if k != "rows"}, indent=2))
 
 
