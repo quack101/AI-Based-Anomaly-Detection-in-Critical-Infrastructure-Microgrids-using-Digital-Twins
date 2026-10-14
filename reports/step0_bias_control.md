@@ -1,5 +1,7 @@
 # Step 0: what limits estimation accuracy (bias-control experiment)
 
+> **Result files are not committed.** `reports/measurements/`, `reports/literature_metrics/` and the generated registries (`config/sensor_registry*_{Arebuilt,Aall91,Ball91}*.json`) are regenerable output; rerun the scripts named next to each number to recreate them.
+
 **Answer: regulator tap ratios that the estimator does not model.** The estimator's network model
 treats every voltage regulator as ratio 1.000, while the simulated regulators run at 1.019–1.050 (tap
 steps of 0.625%). Every node downstream of a regulator is estimated too low by about that boost. This

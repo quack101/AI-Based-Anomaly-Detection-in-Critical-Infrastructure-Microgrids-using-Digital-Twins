@@ -1,5 +1,7 @@
 # Placement metrics from the literature
 
+> **Result files are not committed.** `reports/measurements/`, `reports/literature_metrics/` and the generated registries (`config/sensor_registry*_{Arebuilt,Aall91,Ball91}*.json`) are regenerable output; rerun the scripts named next to each number to recreate them.
+
 The A-vs-B comparison (`reports/placement_A_vs_B_measured.md`) used estimation accuracy, convergence,
 null-space dimension and weakest-node error. This report adds the metrics that published
 meter/PMU-placement papers use and that had not been computed yet. Every number comes from

@@ -1,5 +1,7 @@
 # Placement A vs B, measured with the frozen estimator
 
+> **Result files are not committed.** `reports/measurements/`, `reports/literature_metrics/` and the generated registries (`config/sensor_registry*_{Arebuilt,Aall91,Ball91}*.json`) are regenerable output; rerun the scripts named next to each number to recreate them.
+
 **Verdict: do not merge.** Set B (HybridV2, `simulation/representative_meters_B.json`) gives no
 measurable improvement over set A on any main metric. On the same physics and the same 60 test
 points, the two sets' accuracy differs by 0.02% (B better on 34 points, A on 26; sign test p = 0.37),
