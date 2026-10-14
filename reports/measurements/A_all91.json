@@ -1,0 +1,125 @@
+{
+  "label": "A_all91",
+  "registry": "C:\\Users\\HP\\OneDrive\\Desktop\\capstone\\New folder\\placement-v2\\config\\sensor_registry_multiphase_Aall91.json",
+  "corpus": "C:\\Users\\HP\\OneDrive\\Desktop\\capstone\\New folder\\placement-v2\\simulation\\phase6_corpus_Aall91",
+  "n_meter_channels": 168,
+  "scorecard": {
+    "source": "validation/measure_meter_set.py (protocol of validation/phase7_scorecard_tsvd_default.py)",
+    "n_points": 60,
+    "v_err_pu_median": 0.0214870992473866,
+    "v_err_pu_p95": 0.041724126434557265,
+    "v_err_pu_max": 0.07513826350335355,
+    "v_err_pu_mean": 0.021224283890056175,
+    "converged": 60,
+    "mean_iterations": 4.5,
+    "J_mean": 27705.50222069205,
+    "J_over_ref_dof57": 486.0614424682816,
+    "dof_measured_median": 55.0,
+    "mean_time_s": 20.777977593739827
+  },
+  "weakest_nodes": {
+    "source": "validation/measure_meter_set.py (per-node median |V| error over the 60 scorecard points)",
+    "worst_node_median_err_pu": 0.04300993891331166,
+    "median_over_nodes_of_median_err_pu": 0.020817117810549384,
+    "top10": [
+      {
+        "node": "83.1",
+        "median_err_pu": 0.04300993891331166,
+        "p95_err_pu": 0.04974802084499295
+      },
+      {
+        "node": "83.2",
+        "median_err_pu": 0.04262823798721555,
+        "p95_err_pu": 0.04840999342015298
+      },
+      {
+        "node": "82.1",
+        "median_err_pu": 0.041774768150949576,
+        "p95_err_pu": 0.048434198476570475
+      },
+      {
+        "node": "82.2",
+        "median_err_pu": 0.04152798592828645,
+        "p95_err_pu": 0.04730073077906934
+      },
+      {
+        "node": "81.1",
+        "median_err_pu": 0.04090845959647196,
+        "p95_err_pu": 0.04764306504900926
+      },
+      {
+        "node": "81.2",
+        "median_err_pu": 0.04030736917943102,
+        "p95_err_pu": 0.0460608102218118
+      },
+      {
+        "node": "80.1",
+        "median_err_pu": 0.04010125462503454,
+        "p95_err_pu": 0.04686111351848913
+      },
+      {
+        "node": "80.2",
+        "median_err_pu": 0.03947233634636993,
+        "p95_err_pu": 0.045234424272335746
+      },
+      {
+        "node": "78.1",
+        "median_err_pu": 0.03796275086285318,
+        "p95_err_pu": 0.044798200979227744
+      },
+      {
+        "node": "79.2",
+        "median_err_pu": 0.037724426849594386,
+        "p95_err_pu": 0.04378709106320268
+      }
+    ]
+  },
+  "bdd_clean": {
+    "source": "validation/measure_meter_set.py (protocol of validation/phase8_bdd_baseline.py)",
+    "n_points": 90,
+    "converged": 90,
+    "J99": 85208.02766985491,
+    "LNR99": 177.21595562329665
+  },
+  "nullspace": {
+    "source": "estimation.bad_data_detection.unattackable_nullspace_dimension",
+    "points": [
+      {
+        "i": 46,
+        "n_unattackable_rows": 442,
+        "n_state_vars": 553,
+        "rank_H_unattackable": 440,
+        "nullity": 113,
+        "max_singular_value": 11553361787.242271,
+        "min_singular_value": 1.6667082266485035e-05
+      },
+      {
+        "i": 752,
+        "n_unattackable_rows": 442,
+        "n_state_vars": 553,
+        "rank_H_unattackable": 440,
+        "nullity": 113,
+        "max_singular_value": 11543454890.265959,
+        "min_singular_value": 1.6666932486607874e-05
+      },
+      {
+        "i": 1416,
+        "n_unattackable_rows": 442,
+        "n_state_vars": 553,
+        "rank_H_unattackable": 440,
+        "nullity": 113,
+        "max_singular_value": 11543361501.987974,
+        "min_singular_value": 1.6667377465498848e-05
+      }
+    ]
+  },
+  "head_p": {
+    "source": "validation/measure_meter_set.py head_p_stats (n=90 clean BDD points)",
+    "HEAD_P_A_mean_signed_nr": 95.35965361308838,
+    "HEAD_P_B_mean_signed_nr": 95.8232960742411,
+    "HEAD_P_C_mean_signed_nr": 93.76533456916546,
+    "J_share_head_p_mean": 0.9447182097401348,
+    "J_share_head_p_median": 0.9583626759592719
+  },
+  "runtime_s": 2387.399908065796
+}

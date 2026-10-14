@@ -1,0 +1,18 @@
+{
+  "label": "A_rule_ii_demo10",
+  "registry": "C:\\Users\\HP\\OneDrive\\Desktop\\capstone\\New folder\\placement-v2\\config\\sensor_registry_multiphase_Arebuiltii.json",
+  "corpus": "C:\\Users\\HP\\OneDrive\\Desktop\\capstone\\New folder\\placement-v2\\simulation\\phase6_corpus_Arebuilt",
+  "demo_max_points": 10,
+  "scorecard": {
+    "source": "validation/measure_meter_set.py --max-points (subset of the phase7 protocol)",
+    "n_points": 10,
+    "v_err_pu_median": 0.021783675206576585,
+    "v_err_pu_p95": 0.04123154545326949,
+    "v_err_pu_max": 0.05699134766679144,
+    "converged": 1,
+    "mean_iterations": 38.6,
+    "J_mean": 31127.591006520997,
+    "mean_time_s": 177.08205070495606
+  },
+  "runtime_s": 1792.3467464447021
+}
