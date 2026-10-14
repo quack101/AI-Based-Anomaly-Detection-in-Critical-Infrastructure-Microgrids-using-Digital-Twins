@@ -82,6 +82,14 @@ class EstimatorModel:
     Y: object
     node_index: dict
     meas_entries: list        # 112: 106 meter P,Q + 6 head P,Q (multiphase variant)
+    weighted_meas_entries: list  # branch headp-excluded: meas_entries minus P_head when
+                                 # exclude_dead_head_p=True (the default on this branch) --
+                                 # this is what estimation.state_estimator._weighted_entries_
+                                 # for_hour actually feeds to the WLS solve/J/LNR/dof. NOT a
+                                 # registry change: meas_entries (above) still carries all
+                                 # 168 entries unchanged, including P_head, for telemetry/
+                                 # attack-surface/registry purposes. See build_estimator_
+                                 # model's exclude_dead_head_p docstring for why.
     zi_entries: list          # HARD zero-injection constraint entries (exact, Lagrangian)
     reg_pseudo_entries: list  # WEIGHTED regulator-adjacent pseudo-entries (target 0, empirical sigma)
     bus_phase_by_load: dict   # unmetered load_name -> (bus, phase)
@@ -205,9 +213,28 @@ def _amplify_bus83_regzi_sigma(reg_pseudo_entries, Y, node_index, state):
                      f"formula as the registry's M042_Q fix).")
 
 
-def build_estimator_model(registry_variant="multiphase"):
+def build_estimator_model(registry_variant="multiphase", exclude_dead_head_p=True):
     """Compiles the feeder ONCE and builds everything a StateEstimator
-    needs -- none of which depends on the timestamp being estimated."""
+    needs -- none of which depends on the timestamp being estimated.
+
+    exclude_dead_head_p (branch headp-excluded, default True on this
+    branch): P_head's measurement row (observability/jacobian.py's
+    build_head_p_row, branch fix-head-p-model) is correct at the TRUE
+    state (reports/model_consistency_at_truth.md: |h-z0| < 1e-4 sigma
+    at all 120 checked points) but its Jacobian entries are driven by
+    Line.sw1's extreme admittance (G=1,000,000 S, confirmed via
+    opendssdirect's CktElement.YPrim()), which measurably degrades
+    solver convergence/feasibility once it is part of the weighted
+    WLS fit (reports/... headpfix re-measurement: scorecard
+    convergence 60/60 -> 57/60, mean iterations 4.60 -> 17.55,
+    baseline 90/90 -> 75/90). This flag removes ONLY P_head from the
+    WEIGHTED set the solver/J/LNR/dof actually use
+    (weighted_meas_entries below) -- NOT from the registry: meas_entries
+    (the full 168-entry registry-derived list, including P_head) is
+    unchanged, so P_head stays in telemetry and remains available to
+    an attacker exactly as before. Set to False to restore the OLD
+    behaviour (P_head weighted, as in branch fix-head-p-model) --
+    weighted_meas_entries then equals meas_entries exactly."""
 
     compile_feeder()
     state = build_state_vector()
@@ -215,6 +242,11 @@ def build_estimator_model(registry_variant="multiphase"):
 
     registry = load_registry(variant=registry_variant)
     meas_entries = enabled_entries(registry)
+
+    if exclude_dead_head_p:
+        weighted_meas_entries = [e for e in meas_entries if e["quantity"] != "P_head"]
+    else:
+        weighted_meas_entries = meas_entries
 
     zi_entries = build_zero_injection_entries(state.all_node_names)
 
@@ -229,7 +261,7 @@ def build_estimator_model(registry_variant="multiphase"):
 
     return EstimatorModel(
         state=state, Y=Y, node_index=node_index,
-        meas_entries=meas_entries, zi_entries=zi_entries,
-        reg_pseudo_entries=reg_pseudo_entries,
+        meas_entries=meas_entries, weighted_meas_entries=weighted_meas_entries,
+        zi_entries=zi_entries, reg_pseudo_entries=reg_pseudo_entries,
         bus_phase_by_load=bus_phase_by_load, per_hour_by_load=per_hour_by_load,
     )

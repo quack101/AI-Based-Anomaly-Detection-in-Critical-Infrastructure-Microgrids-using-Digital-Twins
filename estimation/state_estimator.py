@@ -312,7 +312,7 @@ class StateEstimator:
         state = model.state
 
         self.m_weighted = (
-            len(model.meas_entries)
+            len(model.weighted_meas_entries)
             + len(model.reg_pseudo_entries)
             + 2 * len(model.bus_phase_by_load)
         )
@@ -327,7 +327,12 @@ class StateEstimator:
         pseudo_entries = build_pseudo_entries_for_hour(
             model.bus_phase_by_load, model.per_hour_by_load, hour,
         )
-        return model.meas_entries + model.reg_pseudo_entries + pseudo_entries
+        # branch headp-excluded: model.weighted_meas_entries (default:
+        # model.meas_entries minus P_head) feeds the WLS fit, J, LNR and
+        # dof -- see EstimatorModel.weighted_meas_entries's docstring.
+        # model.meas_entries itself (full 168-entry registry list) is
+        # untouched and still used by z-construction/telemetry/attacks.
+        return model.weighted_meas_entries + model.reg_pseudo_entries + pseudo_entries
 
     def estimate(self, z_real, real_timestamp,
                  max_iter=None,

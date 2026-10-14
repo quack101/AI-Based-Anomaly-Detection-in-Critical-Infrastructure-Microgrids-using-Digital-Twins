@@ -1,0 +1,7 @@
+{
+  "J99": 2154.2168938086315,
+  "LNR99": 11.12016285648246,
+  "n": 90,
+  "source_file": "validation/phase8_bdd_baseline_headpexcl_results.csv",
+  "note": "Same protocol as config/bdd_thresholds_frozen.json and bdd_thresholds_headpfix.json, re-measured on branch headp-excluded (P_head excluded from the weighted WLS set by default). The other two JSONs are left untouched."
+}

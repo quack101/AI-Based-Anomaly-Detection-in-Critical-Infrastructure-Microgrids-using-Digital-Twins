@@ -442,6 +442,47 @@ def build_head_p_row(entry, state, flat_v):
     return build_branch_or_head_row(synthetic, state, flat_v, want="P")
 
 
+def head_p_balance_residual(model, result, z):
+    """Branch headp-excluded -- a standalone head-balance CHECK, not
+    wired into the WLS fit, J, LNR or dof (P_head is excluded from
+    model.weighted_meas_entries by default on this branch; this
+    function is the only place its corrected value is still read).
+    Uses build_head_p_row (branch fix-head-p-model's corrected
+    formula) evaluated at the ESTIMATE x_hat (result.x_v/x_delta),
+    not the true state -- so a nonzero residual here reflects the
+    estimator's fit quality on this channel, not the measurement-
+    model gap that build_head_p_row itself fixed.
+
+    model: an observability.estimator_model.EstimatorModel.
+    result: an estimation.state_estimator.EstimationResult.
+    z: {registry_id: value} -- the real-channel measurement dict
+    (same shape passed to StateEstimator.estimate()); must contain
+    HEAD_P_A/B/C.
+
+    Returns {phase_letter: {'z_kw', 'h_kw', 'r_kw', 'sigma', 'r_sigma'}}
+    for every P_head entry in model.meas_entries (present regardless of
+    exclude_dead_head_p, since meas_entries is the full registry list)."""
+
+    from observability.state_vector import complex_v_from_state
+
+    state = model.state
+    at_v = complex_v_from_state(state, result.x_v, result.x_delta)
+
+    out = {}
+    for e in model.meas_entries:
+        if e["quantity"] != "P_head":
+            continue
+        _, h_kw = build_head_p_row(e, state, at_v)
+        z_kw = z[e["id"]]
+        r_kw = z_kw - h_kw
+        sigma = e["sigma"]
+        out[e["phase"]] = {
+            "z_kw": z_kw, "h_kw": h_kw, "r_kw": r_kw,
+            "sigma": sigma, "r_sigma": r_kw / sigma,
+        }
+    return out
+
+
 def build_jacobian(entries, Y, node_index, state, at_v=None):
     """H's row i corresponds to entries[i] -- built in ONE pass, same
     ordering invariant sensors/sensor_layer.py enforces for z. Returns
