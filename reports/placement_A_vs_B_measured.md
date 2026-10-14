@@ -134,5 +134,5 @@ region), not of set A's placement.
 3. `python -m validation.measure_meter_set --label <L> --registry <recal registry> --corpus <corpus>`.
 4. `python -m validation.paired_ab ...` and `python -m validation.ab_table`.
 
-Corpora and `dataset/node_loads_91/` are not committed (size); the registries and measurement
-summaries are.
+None of the inputs or outputs above are committed: corpora and `dataset/node_loads_91/` (size), and
+the generated registries and `reports/measurements/` (regenerable with the steps above).

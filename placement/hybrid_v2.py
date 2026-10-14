@@ -5,7 +5,8 @@ scoring weights, within-branch score order, incremental phase-aware
 pick, top-up) is inherited unchanged. HybridPlacement itself is not
 modified, so v1 and v2 can be compared side by side.
 
-Why (experiments/compare_placements.py): v1 visits each size class's
+Why (measured with experiments/compare_placements.py, which lives
+outside this repo): v1 visits each size class's
 branches in fixed bus-number order. At small budgets it exhausts its
 quota before reaching the high-numbered side of the feeder -- at 30
 meters every v1 meter sits on buses 1-53 and the 39 load buses on

@@ -136,7 +136,7 @@ def build_recal(set_name, corpus_dir):
     result = est.estimate({c: float(row[c]) for c in z_cols}, str(row["real_timestamp"]))
     at_v = complex_v_from_state(state, result.x_v.copy(), result.x_delta.copy())
 
-    reg_buses = {b.lower() for b in _regulator_buses() | _switch_buses()}  # rule (ii')
+    excluded_buses = {b.lower() for b in _regulator_buses() | _switch_buses()}  # rule (ii')
     computed, excluded = {}, []
     for entries in noise.values():
         for e in entries:
@@ -145,7 +145,7 @@ def build_recal(set_name, corpus_dir):
             q = e["quantity"]
             if q not in P_TYPES and q not in Q_TYPES:
                 continue
-            if str(e["node"]).lower() in reg_buses:
+            if str(e["node"]).lower() in excluded_buses:
                 excluded.append(e["id"])
                 continue
             node_key = f"{e['node']}.{PHASE_NUM[e['phase']]}"
