@@ -1,0 +1,11 @@
+{
+  "J99": 402.36488998337177,
+  "LNR99": 5.663743305509957,
+  "n": 11380,
+  "source": "99th percentile of J / max-LNR over clean val timesteps (attacked==0), dataset/fdia_v1/val_z.csv, estimator-v5-hfix defaults.",
+  "operating_point": "1% per-timestep FAR on clean val, each score at its 99th percentile",
+  "prev_v5": {
+    "J99": 376.1518740887702,
+    "LNR99": 5.268640823228124
+  }
+}

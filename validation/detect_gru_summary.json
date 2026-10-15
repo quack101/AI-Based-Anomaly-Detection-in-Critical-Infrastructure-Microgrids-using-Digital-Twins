@@ -1,0 +1,15 @@
+{
+  "name": "GRU",
+  "n_scored": 12950,
+  "clean_scored": 11370,
+  "att_scored": 1580,
+  "clean_test_FAR": 0.010378188214599824,
+  "attacked_timestep_detection": 0.024683544303797468,
+  "windows": 18,
+  "windows_detected": 8,
+  "window_detection_rate": 0.4444444444444444,
+  "median_delay": 14.0,
+  "clean_60block_FA": 61,
+  "clean_60block_total": 254,
+  "threshold": 7.507701491998419
+}
