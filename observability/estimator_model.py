@@ -216,7 +216,7 @@ def _amplify_bus83_regzi_sigma(reg_pseudo_entries, Y, node_index, state):
                      f"formula as the registry's M042_Q fix).")
 
 
-def build_estimator_model(registry_variant="multiphase", exclude_dead_head_p=True):
+def build_estimator_model(registry_variant="multiphase", exclude_dead_head_p=True, sigma_overrides=None):
     """Compiles the feeder ONCE and builds everything a StateEstimator
     needs -- none of which depends on the timestamp being estimated.
 
@@ -237,7 +237,12 @@ def build_estimator_model(registry_variant="multiphase", exclude_dead_head_p=Tru
     unchanged, so P_head stays in telemetry and remains available to
     an attacker exactly as before. Set to False to restore the OLD
     behaviour (P_head weighted, as in branch fix-head-p-model) --
-    weighted_meas_entries then equals meas_entries exactly."""
+    weighted_meas_entries then equals meas_entries exactly.
+
+    sigma_overrides (branch exp-sigma, experiment only): optional
+    {registry_id: sigma}. Applied to copies of the enabled registry
+    entries at build time; the registry file is not touched. None (the
+    default) leaves every sigma exactly as in the registry."""
 
     compile_feeder()
     state = build_state_vector()
@@ -245,6 +250,12 @@ def build_estimator_model(registry_variant="multiphase", exclude_dead_head_p=Tru
 
     registry = load_registry(variant=registry_variant)
     meas_entries = enabled_entries(registry)
+    if sigma_overrides:
+        unknown = set(sigma_overrides) - {e["id"] for e in meas_entries}
+        if unknown:
+            raise KeyError(f"sigma_overrides for ids not in the enabled registry: {sorted(unknown)}")
+        meas_entries = [dict(e, sigma=float(sigma_overrides[e["id"]])) if e["id"] in sigma_overrides else e
+                        for e in meas_entries]
 
     if exclude_dead_head_p:
         weighted_meas_entries = [e for e in meas_entries if e["quantity"] != "P_head"]
