@@ -84,6 +84,61 @@ def test_a3_total_load_and_head_balance(data):
         assert abs(a_head) <= abs(r["a3_dLoss_kw"]) + abs(r["a3_dP_consumed_kw"]) + 0.05
 
 
+@pytest.mark.parametrize("spec", [
+    AttackSpec("A1", 2, 6, "step", seed=21, k=20, channel_class="mixed", pq_rel=0.10, v_abs_pu=0.01),
+    AttackSpec("A1", 3, 8, "ramp", seed=22, k=5, channel_class="PQ", pq_rel=0.20),
+    AttackSpec("A1", 1, 5, "pulse", seed=23, k=5, channel_class="V", v_abs_pu=0.02),
+    AttackSpec("A2", 4, 6, "step", seed=24, pq_rel=0.05, v_abs_pu=0.005),
+])
+def test_level_mode_window_and_determinism(data, spec):
+    z, ts, ctx = data
+    za1, lb1 = attack(z, ts, spec, ctx)
+    za2, lb2 = attack(z, ts, spec, ctx)
+    pd.testing.assert_frame_equal(za1, za2)
+    f = profile_factors(spec.profile, spec.duration)
+    expected = [spec.start + w for w in range(spec.duration) if f[w] > 0]
+    assert _changed_rows(z, za1) == expected
+    outside = [p for p in range(len(z)) if p not in expected]
+    assert (za1.iloc[outside].values == z.iloc[outside].values).all()
+    # P/Q bias tracks |z_t|: at a step row, |a|/|z| ~ pq_rel for a P/Q channel (pre-cap)
+    if spec.pq_rel is not None and spec.profile == "step":
+        p = expected[0]
+        a = za1.iloc[p] - z.iloc[p]
+        pq = [c for c in z.columns[(a != 0).values] if not (c.endswith("_V") or "_V_" in c)]
+        if pq:
+            ratio = (a[pq].abs() / z.iloc[p][pq].abs()).median()
+            assert abs(ratio - spec.pq_rel) < 1e-6
+
+
+def test_a3_zone_balance_and_groups(data):
+    z, ts, ctx = data
+    for frac in (0.02, 0.05, 0.10):
+        za, lb = attack(z, ts, AttackSpec("A3", 7, 1, "step", magnitude=frac, seed=31, zone=True, group_size=4), ctx)
+        r = lb.iloc[7]
+        assert r["a3_pf_converged"]
+        assert abs(r["a3_dP_total_kw"]) < 1e-6          # net metered load change ~ 0
+        src = r["a3_source"].split(";")
+        snk = r["a3_sink"].split(";")
+        assert 3 <= len(src) <= 6 and 3 <= len(snk) <= 6
+        assert not (set(src) & set(snk))
+        phases = set()
+        for name in src + snk:
+            dss_ph = {e["phase"] for e in ctx.model.meas_entries if e.get("load_name") == name}
+            phases |= dss_ph
+        assert len(phases) == 1                          # same phase
+
+
+def test_a3_zone_partial_access(data):
+    z, ts, ctx = data
+    za, lb = attack(z, ts, AttackSpec("A3", 7, 1, "step", magnitude=0.05, seed=31, zone=True,
+                                      group_size=4, access="partial"), ctx)
+    r = lb.iloc[7]
+    members = set(r["a3_source"].split(";")) | set(r["a3_sink"].split(";"))
+    allowed = {e["id"] for e in ctx.model.meas_entries if e.get("load_name") in members}
+    changed = set(z.columns[(za.iloc[7] != z.iloc[7]).values])
+    assert changed and changed <= allowed
+
+
 def test_a3_partial_only_touches_the_two_meters(data):
     z, ts, ctx = data
     za, lb = attack(z, ts, AttackSpec("A3", 7, 1, "step", magnitude=0.5, seed=11, access="partial"), ctx)

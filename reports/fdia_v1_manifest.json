@@ -1,0 +1,418 @@
+{
+  "dataset": "fdia_v1",
+  "code_commit": "058a59958f8ef85ac0c3ad4f07e98904b1faa821",
+  "clean_source": "simulation/phase6_corpus",
+  "time_resolution": "1 minute",
+  "n_windows_per_split": 18,
+  "levels": {
+    "pq_rel": [
+      0.05,
+      0.1,
+      0.2
+    ],
+    "v_abs_pu": [
+      0.005,
+      0.01,
+      0.02
+    ],
+    "a3_dP_frac": [
+      0.02,
+      0.05,
+      0.1
+    ]
+  },
+  "splits": {
+    "val": {
+      "n_timesteps": 12960,
+      "n_attacked": 1580,
+      "attacked_fraction": 0.12191358024691358,
+      "seed": 20260101,
+      "a1_offset": 0,
+      "a3_offset": 0,
+      "n_windows": 18
+    },
+    "test": {
+      "n_timesteps": 12960,
+      "n_attacked": 1580,
+      "attacked_fraction": 0.12191358024691358,
+      "seed": 20260202,
+      "a1_offset": 9,
+      "a3_offset": 2,
+      "n_windows": 18
+    }
+  },
+  "windows": {
+    "val": [
+      {
+        "window_id": 0,
+        "start": 200,
+        "duration": 240,
+        "profile": "step",
+        "seed": 20260101,
+        "type": "A3",
+        "class": "zone",
+        "level": "2pct_full"
+      },
+      {
+        "window_id": 1,
+        "start": 1000,
+        "duration": 240,
+        "profile": "ramp",
+        "seed": 20260102,
+        "type": "A2",
+        "class": "meter",
+        "level": "L0(pq=0.05,v=0.005pu)"
+      },
+      {
+        "window_id": 2,
+        "start": 1931,
+        "duration": 15,
+        "profile": "step",
+        "seed": 20260103,
+        "type": "A1",
+        "class": "mixed_k5",
+        "level": "L0(pq=0.05,v=0.005pu)"
+      },
+      {
+        "window_id": 3,
+        "start": 2317,
+        "duration": 60,
+        "profile": "ramp",
+        "seed": 20260104,
+        "type": "A2",
+        "class": "meter",
+        "level": "L1(pq=0.1,v=0.01pu)"
+      },
+      {
+        "window_id": 4,
+        "start": 3351,
+        "duration": 15,
+        "profile": "ramp",
+        "seed": 20260105,
+        "type": "A3",
+        "class": "zone",
+        "level": "5pct_full"
+      },
+      {
+        "window_id": 5,
+        "start": 3880,
+        "duration": 15,
+        "profile": "ramp",
+        "seed": 20260106,
+        "type": "A1",
+        "class": "mixed_k5",
+        "level": "L1(pq=0.1,v=0.01pu)"
+      },
+      {
+        "window_id": 6,
+        "start": 4350,
+        "duration": 60,
+        "profile": "pulse",
+        "seed": 20260107,
+        "type": "A1",
+        "class": "mixed_k5",
+        "level": "L2(pq=0.2,v=0.02pu)"
+      },
+      {
+        "window_id": 7,
+        "start": 5110,
+        "duration": 240,
+        "profile": "ramp",
+        "seed": 20260108,
+        "type": "A1",
+        "class": "mixed_k20",
+        "level": "L0(pq=0.05,v=0.005pu)"
+      },
+      {
+        "window_id": 8,
+        "start": 5965,
+        "duration": 15,
+        "profile": "pulse",
+        "seed": 20260109,
+        "type": "A1",
+        "class": "mixed_k20",
+        "level": "L1(pq=0.1,v=0.01pu)"
+      },
+      {
+        "window_id": 9,
+        "start": 6591,
+        "duration": 60,
+        "profile": "step",
+        "seed": 20260110,
+        "type": "A1",
+        "class": "mixed_k20",
+        "level": "L2(pq=0.2,v=0.02pu)"
+      },
+      {
+        "window_id": 10,
+        "start": 7422,
+        "duration": 60,
+        "profile": "ramp",
+        "seed": 20260111,
+        "type": "A1",
+        "class": "V_k5",
+        "level": "L0(pq=0.05,v=0.005pu)"
+      },
+      {
+        "window_id": 11,
+        "start": 8538,
+        "duration": 15,
+        "profile": "pulse",
+        "seed": 20260112,
+        "type": "A2",
+        "class": "meter",
+        "level": "L2(pq=0.2,v=0.02pu)"
+      },
+      {
+        "window_id": 12,
+        "start": 8680,
+        "duration": 60,
+        "profile": "pulse",
+        "seed": 20260113,
+        "type": "A1",
+        "class": "V_k5",
+        "level": "L1(pq=0.1,v=0.01pu)"
+      },
+      {
+        "window_id": 13,
+        "start": 9719,
+        "duration": 240,
+        "profile": "pulse",
+        "seed": 20260114,
+        "type": "A1",
+        "class": "V_k5",
+        "level": "L2(pq=0.2,v=0.02pu)"
+      },
+      {
+        "window_id": 14,
+        "start": 10095,
+        "duration": 240,
+        "profile": "pulse",
+        "seed": 20260115,
+        "type": "A1",
+        "class": "V_k20",
+        "level": "L0(pq=0.05,v=0.005pu)"
+      },
+      {
+        "window_id": 15,
+        "start": 11407,
+        "duration": 15,
+        "profile": "step",
+        "seed": 20260116,
+        "type": "A1",
+        "class": "V_k20",
+        "level": "L1(pq=0.1,v=0.01pu)"
+      },
+      {
+        "window_id": 16,
+        "start": 11803,
+        "duration": 240,
+        "profile": "step",
+        "seed": 20260117,
+        "type": "A3",
+        "class": "zone",
+        "level": "10pct_full"
+      },
+      {
+        "window_id": 17,
+        "start": 12590,
+        "duration": 60,
+        "profile": "step",
+        "seed": 20260118,
+        "type": "A1",
+        "class": "V_k20",
+        "level": "L2(pq=0.2,v=0.02pu)"
+      }
+    ],
+    "test": [
+      {
+        "window_id": 0,
+        "start": 247,
+        "duration": 15,
+        "profile": "step",
+        "seed": 20260202,
+        "type": "A3",
+        "class": "zone",
+        "level": "10pct_full"
+      },
+      {
+        "window_id": 1,
+        "start": 1024,
+        "duration": 240,
+        "profile": "ramp",
+        "seed": 20260203,
+        "type": "A1",
+        "class": "V_k20",
+        "level": "L0(pq=0.05,v=0.005pu)"
+      },
+      {
+        "window_id": 2,
+        "start": 1965,
+        "duration": 15,
+        "profile": "ramp",
+        "seed": 20260204,
+        "type": "A1",
+        "class": "V_k20",
+        "level": "L1(pq=0.1,v=0.01pu)"
+      },
+      {
+        "window_id": 3,
+        "start": 2649,
+        "duration": 60,
+        "profile": "ramp",
+        "seed": 20260205,
+        "type": "A2",
+        "class": "meter",
+        "level": "L0(pq=0.05,v=0.005pu)"
+      },
+      {
+        "window_id": 4,
+        "start": 3450,
+        "duration": 60,
+        "profile": "ramp",
+        "seed": 20260206,
+        "type": "A1",
+        "class": "V_k20",
+        "level": "L2(pq=0.2,v=0.02pu)"
+      },
+      {
+        "window_id": 5,
+        "start": 3876,
+        "duration": 240,
+        "profile": "ramp",
+        "seed": 20260207,
+        "type": "A1",
+        "class": "PQ_k5",
+        "level": "L0(pq=0.05,v=0.005pu)"
+      },
+      {
+        "window_id": 6,
+        "start": 4373,
+        "duration": 15,
+        "profile": "step",
+        "seed": 20260208,
+        "type": "A2",
+        "class": "meter",
+        "level": "L1(pq=0.1,v=0.01pu)"
+      },
+      {
+        "window_id": 7,
+        "start": 5275,
+        "duration": 240,
+        "profile": "pulse",
+        "seed": 20260209,
+        "type": "A1",
+        "class": "PQ_k5",
+        "level": "L1(pq=0.1,v=0.01pu)"
+      },
+      {
+        "window_id": 8,
+        "start": 6054,
+        "duration": 240,
+        "profile": "step",
+        "seed": 20260210,
+        "type": "A1",
+        "class": "PQ_k5",
+        "level": "L2(pq=0.2,v=0.02pu)"
+      },
+      {
+        "window_id": 9,
+        "start": 6695,
+        "duration": 15,
+        "profile": "pulse",
+        "seed": 20260211,
+        "type": "A1",
+        "class": "PQ_k20",
+        "level": "L0(pq=0.05,v=0.005pu)"
+      },
+      {
+        "window_id": 10,
+        "start": 7385,
+        "duration": 60,
+        "profile": "step",
+        "seed": 20260212,
+        "type": "A1",
+        "class": "PQ_k20",
+        "level": "L1(pq=0.1,v=0.01pu)"
+      },
+      {
+        "window_id": 11,
+        "start": 7925,
+        "duration": 240,
+        "profile": "step",
+        "seed": 20260213,
+        "type": "A1",
+        "class": "PQ_k20",
+        "level": "L2(pq=0.2,v=0.02pu)"
+      },
+      {
+        "window_id": 12,
+        "start": 9206,
+        "duration": 60,
+        "profile": "step",
+        "seed": 20260214,
+        "type": "A3",
+        "class": "zone",
+        "level": "5pct_partial"
+      },
+      {
+        "window_id": 13,
+        "start": 9692,
+        "duration": 60,
+        "profile": "pulse",
+        "seed": 20260215,
+        "type": "A1",
+        "class": "mixed_k5",
+        "level": "L0(pq=0.05,v=0.005pu)"
+      },
+      {
+        "window_id": 14,
+        "start": 10216,
+        "duration": 60,
+        "profile": "pulse",
+        "seed": 20260216,
+        "type": "A1",
+        "class": "mixed_k5",
+        "level": "L1(pq=0.1,v=0.01pu)"
+      },
+      {
+        "window_id": 15,
+        "start": 10937,
+        "duration": 15,
+        "profile": "pulse",
+        "seed": 20260217,
+        "type": "A3",
+        "class": "zone",
+        "level": "2pct_full"
+      },
+      {
+        "window_id": 16,
+        "start": 11877,
+        "duration": 15,
+        "profile": "ramp",
+        "seed": 20260218,
+        "type": "A2",
+        "class": "meter",
+        "level": "L2(pq=0.2,v=0.02pu)"
+      },
+      {
+        "window_id": 17,
+        "start": 12436,
+        "duration": 240,
+        "profile": "pulse",
+        "seed": 20260219,
+        "type": "A1",
+        "class": "mixed_k5",
+        "level": "L2(pq=0.2,v=0.02pu)"
+      }
+    ]
+  },
+  "sha256": {
+    "train_z.csv": "E08805EB48E2C71980DEFCAF23FAC2EC5588E9ACEBD945B380C65CD2C8EBDFAF",
+    "train_labels.csv": "DC292E8F5DC6B409586D91FEB71F7488B925B077B84DAA84A6BA34EC535CD8E8",
+    "val_z.csv": "1DF7F3A39BB9E2DCBC3EEFD07AA29210B02D19D797AE9419F564C8E161C127D5",
+    "val_labels.csv": "79BD15F5C615E6D3F8393E8A6B4972DB18540447E0CF7329889CE86A32559BAB",
+    "test_z.csv": "2F6826149060094EEABC0F38A4B306075BD772FDBFB9DF50B5A8D08FDABB6E39",
+    "test_labels.csv": "A0DBBE05B72748BE37F19E266EE0CFBA406359B67D3C0BE4A574A5E7DC786910"
+  }
+}

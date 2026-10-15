@@ -81,7 +81,16 @@ class AttackSpec:
     quantities: tuple = ("P", "Q", "V")  # A2: which of the meter's channels
     access: str = "full"      # A3: "full" | "partial"
     cap_mode: str = "train_p95"  # A1/A2 cap: "train_p95" | "current" (50% of |z| this row)
-    channel_class: str = None    # A1: restrict the random pool to "V" or "PQ" (None = all real)
+    channel_class: str = None    # A1: restrict the random pool to "V" or "PQ" / "mixed" (None/"mixed" = all real)
+    # Physical-level sizing for A1/A2 (branch fix-jacobian-bugs, Part B): when either is set,
+    # a P/Q channel's bias = +/- pq_rel * |z_t| (relative to that timestep's reading) and a V
+    # channel's bias = +/- v_abs_pu (absolute per-unit). Overrides the m*sigma sizing.
+    pq_rel: float = None
+    v_abs_pu: float = None
+    # A3 zone version: move dP_total = magnitude * (total metered P this row) from a source GROUP
+    # to a sink GROUP of metered single-phase loads on the same phase, at distinct buses.
+    zone: bool = False
+    group_size: int = 4       # loads per group (clamped to 3..6)
 
 
 class AttackContext:
@@ -197,6 +206,55 @@ def _a2_raw(spec, ctx, rng):
     return {c: spec.magnitude * sig[c] * (1.0 if rng.random() < 0.5 else -1.0) for c in ids}
 
 
+def _is_v(cid):
+    return cid.endswith("_V") or "_V_" in cid
+
+
+def _a1_level(spec, ctx, rng):
+    """A1 physical level: fixed channel set + per-channel random sign, drawn
+    once. Returns (ids, {id: +/-1}). The bias magnitude is computed per row
+    in _level_bias (P/Q scales with |z_t|)."""
+    real = ctx.real_ids
+    if spec.channel_class == "V":
+        real = [c for c in real if _is_v(c)]
+    elif spec.channel_class == "PQ":
+        real = [c for c in real if not _is_v(c)]
+    elif spec.channel_class not in (None, "mixed"):
+        raise ValueError(f"unknown channel_class {spec.channel_class!r}")
+    if spec.targets:
+        ids = list(spec.targets)
+    else:
+        k = len(real) if spec.k is None else min(spec.k, len(real))
+        ids = sorted(rng.choice(real, size=k, replace=False).tolist(), key=real.index)
+    return ids, {c: (1.0 if rng.random() < 0.5 else -1.0) for c in ids}
+
+
+def _a2_level(spec, ctx, rng):
+    """A2 physical level: one meter's channels, ONE sign for the meter."""
+    groups = ctx.meter_groups
+    if spec.targets:
+        ids = list(spec.targets)
+    else:
+        meter = spec.meter or sorted(groups)[int(rng.integers(len(groups)))]
+        ids = [groups[meter][q] for q in spec.quantities if q in groups[meter]]
+    s = 1.0 if rng.random() < 0.5 else -1.0
+    return ids, {c: s for c in ids}
+
+
+def _level_bias(ids, signs, z_row, spec):
+    """Per-row uncapped bias for physical-level A1/A2: P/Q -> sign*pq_rel*|z_t|,
+    V -> sign*v_abs_pu."""
+    raw = {}
+    for c in ids:
+        if _is_v(c):
+            if spec.v_abs_pu is not None:
+                raw[c] = signs[c] * spec.v_abs_pu
+        else:
+            if spec.pq_rel is not None:
+                raw[c] = signs[c] * spec.pq_rel * abs(z_row[c])
+    return raw
+
+
 def _metered_loads(model):
     loads = {}
     for e in model.meas_entries:
@@ -219,6 +277,87 @@ def _pick_a3_loads(model, z_row, rng):
     phase = phases[int(rng.integers(len(phases)))]
     pair = rng.choice(sorted(by_phase[phase]), size=2, replace=False).tolist()
     return pair
+
+
+def _pick_a3_zone(model, z_row, group_size, rng):
+    """A source GROUP and a sink GROUP of metered single-phase loads on the
+    SAME phase, at DISTINCT buses (a proxy for "different laterals" -- exact
+    lateral membership is not resolved here). group_size clamped to 3..6."""
+    g = max(3, min(6, int(group_size)))
+    loads = _metered_loads(model)
+    by_phase = {}
+    for name, d in loads.items():
+        if len(d["phases"]) == 1 and len(d["P"]) == 1 and z_row[d["P"][0]] > 0:
+            by_phase.setdefault(next(iter(d["phases"])), []).append(name)
+    # need 2*g loads at distinct buses on one phase
+    cand = [p for p, names in by_phase.items()
+            if len({_load_bus(model, n) for n in names}) >= 2 * g]
+    if not cand:
+        raise ValueError(f"no phase has {2 * g} metered single-phase loads at distinct buses")
+    phase = cand[int(rng.integers(len(cand)))]
+    names = sorted(by_phase[phase])
+    # one load per distinct bus, then split into source/sink
+    by_bus = {}
+    for n in names:
+        by_bus.setdefault(_load_bus(model, n), n)
+    chosen = sorted(rng.choice(sorted(by_bus.values()), size=2 * g, replace=False).tolist())
+    rng.shuffle(chosen)
+    return chosen[:g], chosen[g:]
+
+
+def _load_bus(model, name):
+    dss.Circuit.SetActiveElement(f"Load.{name}")
+    return dss.CktElement.BusNames()[0].split(".")[0].lower()
+
+
+def _a3_zone_vector(spec, ctx, z_row, hour, factor, rng):
+    model = ctx.model
+    loads = _metered_loads(model)
+    source, sink = _pick_a3_zone(model, z_row, spec.group_size, rng)
+    pq = {n: (float(sum(z_row[i] for i in loads[n]["P"])), float(sum(z_row[i] for i in loads[n]["Q"])))
+          for n in source + sink}
+    total_metered_p = float(sum(z_row[e["id"]] for e in model.meas_entries if e["quantity"] == "P_injection"))
+    dP_total = spec.magnitude * factor * total_metered_p
+    src_p = sum(pq[n][0] for n in source)
+    snk_p = sum(pq[n][0] for n in sink)
+
+    model.pf_start(z_row, hour)
+    h_clean = build_measurement_dict(model.meas_entries, add_noise=False)
+    load_total_clean = _total_load()
+
+    new_p = {}
+    for n in source:  # remove, split by size
+        new_p[n] = pq[n][0] - dP_total * pq[n][0] / src_p
+    for n in sink:    # add, split by size
+        new_p[n] = pq[n][0] + dP_total * pq[n][0] / snk_p
+    for n in source + sink:
+        p0, q0 = pq[n]
+        dss.Loads.Name(n)
+        dss.Loads.kW(new_p[n])
+        dss.Loads.kvar(q0 * new_p[n] / p0)  # same power factor
+    dss.Text.Command("Set ControlMode=OFF")
+    try:
+        dss.Solution.Solve()
+        converged = bool(dss.Solution.Converged())
+        h_shift = build_measurement_dict(model.meas_entries, add_noise=False)
+        load_total_shift = _total_load()
+    finally:
+        dss.Text.Command("Set ControlMode=STATIC")
+
+    if spec.access == "full":
+        ids = [e["id"] for e in model.meas_entries]
+    elif spec.access == "partial":
+        ids = [e["id"] for e in model.meas_entries if e.get("load_name") in set(source + sink)]
+    else:
+        raise ValueError(f"unknown access {spec.access!r}")
+    a = {c: float(h_shift[c] - h_clean[c]) for c in ids}
+    diag = {"a3_source": ";".join(source), "a3_sink": ";".join(sink), "a3_dP_kw": dP_total,
+            "a3_feeder_load_kw": float(load_total_clean[0]),
+            "a3_dP_pct_feeder": float(100.0 * dP_total / load_total_clean[0]) if load_total_clean[0] else float("nan"),
+            "a3_dP_total_kw": float(load_total_shift[0] - load_total_clean[0]),
+            "a3_dQ_total_kvar": float(load_total_shift[1] - load_total_clean[1]),
+            "a3_pf_converged": converged}
+    return a, diag
 
 
 def _a3_vector(spec, ctx, z_row, hour, factor, rng_pair):
@@ -316,9 +455,13 @@ def attack(z_series, timestamps, spec, context=None):
                           index=z_series.index)
 
     rng = np.random.default_rng(spec.seed)
-    raw_bias = None
+    is_level = spec.pq_rel is not None or spec.v_abs_pu is not None
+    raw_bias = level_set = None
     if spec.type in ("A1", "A2"):
-        raw_bias = (_a1_raw if spec.type == "A1" else _a2_raw)(spec, ctx, rng)
+        if is_level:
+            level_set = (_a1_level if spec.type == "A1" else _a2_level)(spec, ctx, rng)
+        else:
+            raw_bias = (_a1_raw if spec.type == "A1" else _a2_raw)(spec, ctx, rng)
 
     for w, f in enumerate(factors):
         pos = spec.start + w
@@ -326,12 +469,14 @@ def attack(z_series, timestamps, spec, context=None):
             continue
         z_row = z_series.iloc[pos].to_dict()
         diag = {}
-        if raw_bias is not None:
-            a, n_capped = _apply_cap(raw_bias, f, ctx, z_row, spec.cap_mode)
-            diag = {"n_capped": n_capped, "n_targets": len(raw_bias)}
+        if spec.type in ("A1", "A2"):
+            raw = _level_bias(level_set[0], level_set[1], z_row, spec) if is_level else raw_bias
+            a, n_capped = _apply_cap(raw, f, ctx, z_row, spec.cap_mode)
+            diag = {"n_capped": n_capped, "n_targets": len(raw)}
         elif spec.type == "A3":
-            a, diag = _a3_vector(spec, ctx, z_row, int(str(timestamps[pos])[11:13]), f,
-                                 np.random.default_rng(spec.seed))
+            vec = _a3_zone_vector if spec.zone else _a3_vector
+            a, diag = vec(spec, ctx, z_row, int(str(timestamps[pos])[11:13]), f,
+                          np.random.default_rng(spec.seed))
         else:
             a, diag = _a45_vector(spec, ctx, z_row, str(timestamps[pos]), f)
         nz = [c for c, v in a.items() if v != 0.0]
