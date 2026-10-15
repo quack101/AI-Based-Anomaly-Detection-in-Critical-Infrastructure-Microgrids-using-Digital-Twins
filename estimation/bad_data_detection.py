@@ -76,7 +76,7 @@ def compute_chi2_and_lnr(estimator, result, z_real, real_timestamp, rho_critical
     state = model.state
 
     hour = int(real_timestamp[11:13])
-    weighted_entries = estimator._weighted_entries_for_hour(hour)
+    weighted_entries = estimator._weighted_entries_for_hour(hour, z_real)
     z = np.array([e["z_value"] if "z_value" in e else z_real[e["id"]] for e in weighted_entries])
     sigma = np.array([e["sigma"] for e in weighted_entries])
     W = 1.0 / (sigma ** 2)

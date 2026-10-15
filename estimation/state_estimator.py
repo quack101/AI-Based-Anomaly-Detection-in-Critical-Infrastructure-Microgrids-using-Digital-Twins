@@ -276,6 +276,13 @@ TSVD_RCOND = 1e-8
 # NOTE: with "pseudo_pf" any warm start a caller puts in state.x0_* is
 # ignored; pass init="flat" explicitly to use it.
 DEFAULT_INIT = "pseudo_pf"
+
+# Branch exp-pseudo: the value carried by each PSEUDO_* row.
+# "static" = the hour-bucket train mean (observability/pseudo_measurements.py,
+# the behaviour so far); "pf_drawn" = the P/Q that load actually draws in
+# the pseudo_pf start power flow for this timestep (observability/pf_start.py
+# pf_start.drawn). Sigmas are the same in both modes.
+DEFAULT_PSEUDO_MODE = "static"
 TSVD_MAX_ITER = 40
 TSVD_REL_COST_TOL = 1e-4
 TSVD_PATIENCE = 3
@@ -317,8 +324,11 @@ class StateEstimator:
     never this one) and does the actual Gauss-Newton solve -- pure
     numpy, no circuit access, per this module's own docstring."""
 
-    def __init__(self, model):
+    def __init__(self, model, pseudo_mode=None):
         self.model = model
+        self.pseudo_mode = DEFAULT_PSEUDO_MODE if pseudo_mode is None else pseudo_mode
+        if self.pseudo_mode not in ("static", "pf_drawn"):
+            raise ValueError(f"unknown pseudo_mode {self.pseudo_mode!r}")
         state = model.state
 
         self.m_weighted = (
@@ -332,11 +342,15 @@ class StateEstimator:
         v_base = np.array([state.v_base[name] for name in state.all_node_names])
         self._state_scale = np.concatenate([v_base, np.ones(state.dim - state.n_phase_nodes)])
 
-    def _weighted_entries_for_hour(self, hour):
+    def _weighted_entries_for_hour(self, hour, z_real=None):
         model = self.model
         pseudo_entries = build_pseudo_entries_for_hour(
             model.bus_phase_by_load, model.per_hour_by_load, hour,
         )
+        if self.pseudo_mode == "pf_drawn" and z_real is not None:
+            drawn = model.pf_start.drawn(z_real, hour)
+            pseudo_entries = [dict(e, z_value=drawn[e["load_name"]][0 if e["quantity"] == "P_injection" else 1])
+                              for e in pseudo_entries]
         # branch headp-excluded: model.weighted_meas_entries (default:
         # model.meas_entries minus P_head) feeds the WLS fit, J, LNR and
         # dof -- see EstimatorModel.weighted_meas_entries's docstring.
@@ -384,7 +398,7 @@ class StateEstimator:
 
         state = self.model.state
         hour = int(real_timestamp[11:13])
-        weighted_entries = self._weighted_entries_for_hour(hour)
+        weighted_entries = self._weighted_entries_for_hour(hour, z_real)
 
         z = np.array([
             e["z_value"] if "z_value" in e else z_real[e["id"]]

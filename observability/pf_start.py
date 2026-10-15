@@ -49,7 +49,7 @@ def build_pf_start_fn(state, meas_entries, per_hour_by_load):
         dss.RegControls.Name(name)
         initial_taps[name] = dss.RegControls.TapNumber()
 
-    def pf_start(z, hour):
+    def _solve(z, hour):
         for name, tap in initial_taps.items():
             dss.RegControls.Name(name)
             dss.RegControls.TapNumber(tap)
@@ -63,8 +63,26 @@ def build_pf_start_fn(state, meas_entries, per_hour_by_load):
             dss.Loads.kW(float(bucket["mean_p"]))
             dss.Loads.kvar(float(bucket["mean_q"]))
         dss.Solution.Solve()
-        converged = bool(dss.Solution.Converged())
+        return bool(dss.Solution.Converged())
+
+    def pf_start(z, hour):
+        converged = _solve(z, hour)
         x_v, x_delta = extract_solved_state(state)
         return np.asarray(x_v, dtype=float), np.asarray(x_delta, dtype=float), converged
 
+    def pf_drawn(z, hour):
+        """Same power flow as pf_start (same inputs: telemetry z, static
+        pseudo tables, the model); returns {unmetered load: (P_kW, Q_kvar)}
+        actually DRAWN at the solved voltages (the load element's terminal
+        power, consumption positive -- the same quantity a meter on that
+        load would read, sensors/measurement_functions.py)."""
+        _solve(z, hour)
+        drawn = {}
+        for load in unmetered:
+            dss.Circuit.SetActiveElement(f"Load.{load}")
+            pw = dss.CktElement.Powers()
+            drawn[load] = (float(sum(pw[0::2])), float(sum(pw[1::2])))
+        return drawn
+
+    pf_start.drawn = pf_drawn
     return pf_start
