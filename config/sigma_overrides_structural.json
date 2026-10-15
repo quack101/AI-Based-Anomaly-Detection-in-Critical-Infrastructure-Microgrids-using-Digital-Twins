@@ -1,0 +1,55 @@
+{
+ "source": "validation/fix_h_check.py: rows with |mean e| > 3 at x_true under h_model=network_y with S1 sigmas and a known structural reason; sigma = RMS(z - h(x_true)) on the corpus A TRAIN split, every 200th row (303 rows). Applied on top of S1.",
+ "sigma": {
+  "M004_P": 234.22934688486637,
+  "M004_Q": 234909.41536633784,
+  "M047_P": 21.88568170677502,
+  "M047_Q": 46.53014898880487,
+  "M049_P": 10.249138282281919,
+  "M049_Q": 22.72499323342082
+ },
+ "detail": {
+  "M004_P": {
+   "sigma": 234.22934688486637,
+   "sigma_s1": 0.400002395766581,
+   "train_mean_resid": 221.22069956944344,
+   "n_train": 303,
+   "reason": "regulator bus"
+  },
+  "M004_Q": {
+   "sigma": 234909.41536633784,
+   "sigma_s1": 0.1999999515960118,
+   "train_mean_resid": 221835.144088962,
+   "n_train": 303,
+   "reason": "regulator bus"
+  },
+  "M047_P": {
+   "sigma": 21.88568170677502,
+   "sigma_s1": 0.7885935883602568,
+   "train_mean_resid": -21.871230699589887,
+   "n_train": 303,
+   "reason": "bus/phase also carries s76c (meter reads one load, h is the node total)"
+  },
+  "M047_Q": {
+   "sigma": 46.53014898880487,
+   "sigma_s1": 0.08971618024820616,
+   "train_mean_resid": -46.52958417977743,
+   "n_train": 303,
+   "reason": "bus/phase also carries s76c (meter reads one load, h is the node total)"
+  },
+  "M049_P": {
+   "sigma": 10.249138282281919,
+   "sigma_s1": 0.484609101079354,
+   "train_mean_resid": -10.237645997644396,
+   "n_train": 303,
+   "reason": "bus/phase also carries s65b (meter reads one load, h is the node total)"
+  },
+  "M049_Q": {
+   "sigma": 22.72499323342082,
+   "sigma_s1": 0.05386438355815686,
+   "train_mean_resid": -22.72383907646755,
+   "n_train": 303,
+   "reason": "bus/phase also carries s65b (meter reads one load, h is the node total)"
+  }
+ }
+}

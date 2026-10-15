@@ -76,6 +76,68 @@ REG_SIGMA_SAMPLE_STRIDE = 200
 # measurement rows' contributions, not 8 orders of magnitude larger).
 REG_SIGMA_FLOOR = 1.0  # kW/kvar
 
+# Branch fix-h-yload: measurement model for every bus-injection row
+# (meter P/Q, PSEUDO_*, REGZI_*, ZI_*). The ONE place the default lives.
+#   "legacy"    -- OpenDSS system Y as compiled (it folds in each Load's
+#                  own admittance) and the injection (generation-positive)
+#                  sign: h(x_true) disagrees with the meters (they read the
+#                  load's terminal power, consumption-positive).
+#   "network_y" -- Y_network = system Y with every Load element disabled
+#                  (lines, transformers, regulators at the compile solve's
+#                  taps, capacitors and the source kept), stored NEGATED so
+#                  that h = V * conj(Y_h V) / 1000 is the power the loads at
+#                  that node CONSUME -- the meters' sign. H stays the exact
+#                  derivative of h because h is linear in Y.
+DEFAULT_H_MODEL = "network_y"
+
+# Branch fix-h-yload: the estimator's default meter sigmas, as override
+# files applied on top of the registry at model build (the registry file
+# itself is NOT edited -- its sigmas are also the sensor layer's noise
+# sigmas). S1 = the corpus noise sigmas for the 103 P/Q entries 81ff01a
+# widened; structural = train-split sigmas for the 6 rows h cannot match
+# by construction (validation/fix_h_check.py). Adopted as "U2" by the
+# fallback clause of the fix-h-yload rule (validation/fix_h_settings.py).
+# Pass sigma_overrides={} to use the registry sigmas alone ("S0").
+DEFAULT_SIGMA_OVERRIDE_FILES = (
+    BASE_DIR / "config" / "sigma_overrides_s1.json",
+    BASE_DIR / "config" / "sigma_overrides_structural.json",
+)
+
+
+def default_sigma_overrides():
+    import json
+    merged = {}
+    for path in DEFAULT_SIGMA_OVERRIDE_FILES:
+        with open(path) as f:
+            merged.update(json.load(f)["sigma"])
+    return merged
+
+
+def network_y_without_loads(node_index_expected):
+    """System Y with all Load elements disabled, taps held at their
+    current (compile-solve) positions. Restores the circuit afterwards
+    (loads enabled, taps, control mode) and re-solves."""
+    taps = {}
+    for name in dss.RegControls.AllNames():
+        dss.RegControls.Name(name)
+        taps[name] = dss.RegControls.TapNumber()
+    mode = dss.Solution.ControlMode()
+    dss.Text.Command("Set ControlMode=OFF")
+    dss.Text.Command("BatchEdit Load..* enabled=no")
+    try:
+        dss.Solution.Solve()
+        Y_net, node_index = get_system_y_index()
+    finally:
+        dss.Text.Command("BatchEdit Load..* enabled=yes")
+        for name, tap in taps.items():
+            dss.RegControls.Name(name)
+            dss.RegControls.TapNumber(tap)
+        dss.Solution.ControlMode(mode)
+        dss.Solution.Solve()
+    if node_index != node_index_expected:
+        raise RuntimeError("node order changed when loads were disabled")
+    return Y_net
+
 
 @dataclass
 class EstimatorModel:
@@ -95,6 +157,7 @@ class EstimatorModel:
     reg_pseudo_entries: list  # WEIGHTED regulator-adjacent pseudo-entries (target 0, empirical sigma)
     bus_phase_by_load: dict   # unmetered load_name -> (bus, phase)
     per_hour_by_load: dict    # unmetered load_name -> {hour: {mean_p,mean_q,sigma_p,sigma_q,...}}
+    h_model: str = "legacy"   # branch fix-h-yload: which measurement model Y holds (see DEFAULT_H_MODEL)
     pf_start: object = None   # branch est-pf-start: observability.pf_start's pf_start(z, hour)
                               # -> (x_v, x_delta, converged); used by StateEstimator.estimate(init="pseudo_pf")
 
@@ -217,7 +280,7 @@ def _amplify_bus83_regzi_sigma(reg_pseudo_entries, Y, node_index, state):
 
 
 def build_estimator_model(registry_variant="multiphase", exclude_dead_head_p=True, sigma_overrides=None,
-                          train_x_true_path=None):
+                          train_x_true_path=None, h_model=None):
     """Compiles the feeder ONCE and builds everything a StateEstimator
     needs -- none of which depends on the timestamp being estimated.
 
@@ -240,19 +303,29 @@ def build_estimator_model(registry_variant="multiphase", exclude_dead_head_p=Tru
     behaviour (P_head weighted, as in branch fix-head-p-model) --
     weighted_meas_entries then equals meas_entries exactly.
 
-    sigma_overrides (branch exp-sigma, experiment only): optional
-    {registry_id: sigma}. Applied to copies of the enabled registry
-    entries at build time; the registry file is not touched. None (the
-    default) leaves every sigma exactly as in the registry.
+    sigma_overrides: optional {registry_id: sigma}, applied to copies of
+    the enabled registry entries at build time; the registry file is not
+    touched. None (the default) = default_sigma_overrides() (branch
+    fix-h-yload: S1 + structural); {} = the registry sigmas alone.
 
     train_x_true_path (branch exp-p1): the train-split x_true .npz the
     regulator-adjacent REGZI_* mean/sigma are estimated from (train
     split only, as before). None (the default) = PHASE6_TRAIN_X_TRUE,
-    corpus A -- unchanged behaviour."""
+    corpus A -- unchanged behaviour.
 
+    h_model (branch fix-h-yload): "legacy" or "network_y", see
+    DEFAULT_H_MODEL. None = DEFAULT_H_MODEL."""
+
+    h_model = DEFAULT_H_MODEL if h_model is None else h_model
+    if sigma_overrides is None:
+        sigma_overrides = default_sigma_overrides()
     compile_feeder()
     state = build_state_vector()
     Y, node_index = get_system_y_index()
+    if h_model == "network_y":
+        Y = -network_y_without_loads(node_index)
+    elif h_model != "legacy":
+        raise ValueError(f"unknown h_model {h_model!r}")
 
     registry = load_registry(variant=registry_variant)
     meas_entries = enabled_entries(registry)
@@ -286,5 +359,5 @@ def build_estimator_model(registry_variant="multiphase", exclude_dead_head_p=Tru
         meas_entries=meas_entries, weighted_meas_entries=weighted_meas_entries,
         zi_entries=zi_entries, reg_pseudo_entries=reg_pseudo_entries,
         bus_phase_by_load=bus_phase_by_load, per_hour_by_load=per_hour_by_load,
-        pf_start=pf_start,
+        pf_start=pf_start, h_model=h_model,
     )

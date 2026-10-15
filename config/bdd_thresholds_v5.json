@@ -1,0 +1,7 @@
+{
+  "J99": 376.1518740887702,
+  "LNR99": 5.268640823228124,
+  "n": 90,
+  "source_file": "validation/phase8_bdd_baseline_v5_results.csv",
+  "note": "Same protocol as the other bdd_thresholds_*.json files, re-measured with the estimator-v5-hfix defaults (network-Y h, S1 + structural sigmas, pseudo_pf start). The older JSON files are left untouched."
+}

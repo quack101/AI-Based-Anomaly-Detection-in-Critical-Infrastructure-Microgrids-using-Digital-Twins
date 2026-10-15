@@ -1,0 +1,7 @@
+id,class,node,phase,load_name,mean_e,rms_e,reason,structural
+M004_P,meter P,9,A,s9a,485.7083573926205,527.0800658767911,regulator bus,True
+M004_Q,meter Q,9,A,s9a,973833.7485462964,1056874.1730549634,regulator bus,True
+M047_P,meter P,76,A,s76a,-27.735104116458277,27.755666435201057,"bus/phase also carries s76c (meter reads one load, h is the node total)",True
+M047_Q,meter Q,76,A,s76a,-518.7091115797658,518.7148735347859,"bus/phase also carries s76c (meter reads one load, h is the node total)",True
+M049_P,meter P,65,C,s65c,-21.04981803940356,21.075770847014173,"bus/phase also carries s65b (meter reads one load, h is the node total)",True
+M049_Q,meter Q,65,C,s65c,-420.87618168418976,420.91223711533945,"bus/phase also carries s65b (meter reads one load, h is the node total)",True
