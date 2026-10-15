@@ -80,6 +80,8 @@ class AttackSpec:
     meter: str = None         # A2: meter group, e.g. "M010" or "M043_B"
     quantities: tuple = ("P", "Q", "V")  # A2: which of the meter's channels
     access: str = "full"      # A3: "full" | "partial"
+    cap_mode: str = "train_p95"  # A1/A2 cap: "train_p95" | "current" (50% of |z| this row)
+    channel_class: str = None    # A1: restrict the random pool to "V" or "PQ" (None = all real)
 
 
 class AttackContext:
@@ -145,12 +147,21 @@ def profile_factors(profile, duration):
     raise ValueError(f"unknown profile {profile!r}")
 
 
-def _capped_bias(ids, raw, ctx):
-    caps = ctx.caps
-    b = {}
-    n_capped = 0
-    for cid, v in zip(ids, raw):
-        cap = caps[cid]
+def _cap_value(cid, ctx, z_row, cap_mode):
+    if cap_mode == "train_p95":
+        return ctx.caps[cid]
+    if cap_mode == "current":
+        return ctx.cap_fraction * abs(z_row[cid])
+    raise ValueError(f"unknown cap_mode {cap_mode!r}")
+
+
+def _apply_cap(raw, factor, ctx, z_row, cap_mode):
+    """raw: {id: uncapped bias at factor 1}. Returns the capped a at this
+    factor and how many channels the cap bound."""
+    b, n_capped = {}, 0
+    for cid, v in raw.items():
+        v = v * factor
+        cap = _cap_value(cid, ctx, z_row, cap_mode)
         if abs(v) > cap:
             n_capped += 1
             v = np.sign(v) * cap
@@ -158,19 +169,24 @@ def _capped_bias(ids, raw, ctx):
     return b, n_capped
 
 
-def _a1_bias(spec, ctx, rng):
+def _a1_raw(spec, ctx, rng):
     real = ctx.real_ids
+    if spec.channel_class == "V":
+        real = [c for c in real if c.endswith("_V") or "_V_" in c]
+    elif spec.channel_class == "PQ":
+        real = [c for c in real if not (c.endswith("_V") or "_V_" in c)]
+    elif spec.channel_class is not None:
+        raise ValueError(f"unknown channel_class {spec.channel_class!r}")
     if spec.targets:
         ids = list(spec.targets)
     else:
-        k = len(real) if spec.k is None else spec.k
+        k = len(real) if spec.k is None else min(spec.k, len(real))
         ids = sorted(rng.choice(real, size=k, replace=False).tolist(), key=real.index)
     sig = ctx.sigma
-    raw = [spec.magnitude * sig[c] * rng.standard_normal() for c in ids]
-    return _capped_bias(ids, raw, ctx)
+    return {c: spec.magnitude * sig[c] * rng.standard_normal() for c in ids}
 
 
-def _a2_bias(spec, ctx, rng):
+def _a2_raw(spec, ctx, rng):
     groups = ctx.meter_groups
     if spec.targets:
         ids = list(spec.targets)
@@ -178,8 +194,7 @@ def _a2_bias(spec, ctx, rng):
         meter = spec.meter or sorted(groups)[int(rng.integers(len(groups)))]
         ids = [groups[meter][q] for q in spec.quantities if q in groups[meter]]
     sig = ctx.sigma
-    raw = [spec.magnitude * sig[c] * (1.0 if rng.random() < 0.5 else -1.0) for c in ids]
-    return _capped_bias(ids, raw, ctx)
+    return {c: spec.magnitude * sig[c] * (1.0 if rng.random() < 0.5 else -1.0) for c in ids}
 
 
 def _metered_loads(model):
@@ -242,6 +257,8 @@ def _a3_vector(spec, ctx, z_row, hour, factor, rng_pair):
         raise ValueError(f"unknown access {spec.access!r}")
     a = {c: float(h_shift[c] - h_clean[c]) for c in ids}
     diag = {"a3_load_up": up, "a3_load_down": down, "a3_dP_kw": dP,
+            "a3_feeder_load_kw": float(load_total_clean[0]),
+            "a3_dP_pct_feeder": float(100.0 * dP / load_total_clean[0]) if load_total_clean[0] else float("nan"),
             "a3_dP_total_kw": float(load_total_shift[0] - load_total_clean[0]),
             "a3_dQ_total_kvar": float(load_total_shift[1] - load_total_clean[1]),
             "a3_dP_consumed_kw": float(load_total_shift[2] - load_total_clean[2]),
@@ -299,9 +316,9 @@ def attack(z_series, timestamps, spec, context=None):
                           index=z_series.index)
 
     rng = np.random.default_rng(spec.seed)
-    bias = None
+    raw_bias = None
     if spec.type in ("A1", "A2"):
-        bias, n_capped = (_a1_bias if spec.type == "A1" else _a2_bias)(spec, ctx, rng)
+        raw_bias = (_a1_raw if spec.type == "A1" else _a2_raw)(spec, ctx, rng)
 
     for w, f in enumerate(factors):
         pos = spec.start + w
@@ -309,9 +326,9 @@ def attack(z_series, timestamps, spec, context=None):
             continue
         z_row = z_series.iloc[pos].to_dict()
         diag = {}
-        if bias is not None:
-            a = {c: v * f for c, v in bias.items()}
-            diag = {"n_capped": n_capped, "n_targets": len(bias)}
+        if raw_bias is not None:
+            a, n_capped = _apply_cap(raw_bias, f, ctx, z_row, spec.cap_mode)
+            diag = {"n_capped": n_capped, "n_targets": len(raw_bias)}
         elif spec.type == "A3":
             a, diag = _a3_vector(spec, ctx, z_row, int(str(timestamps[pos])[11:13]), f,
                                  np.random.default_rng(spec.seed))
