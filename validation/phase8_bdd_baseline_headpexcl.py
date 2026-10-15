@@ -21,13 +21,12 @@ from observability.estimator_model import build_estimator_model
 from observability.jacobian import head_p_balance_residual
 from estimation.state_estimator import StateEstimator
 from estimation.bad_data_detection import compute_chi2_and_lnr
-from validation.bdd_thresholds import ACTIVE_THRESHOLDS_PATH
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 CORPUS_DIR = BASE_DIR / "simulation" / "phase6_corpus"
 OUT_PATH = BASE_DIR / "validation" / "phase8_bdd_baseline_headpexcl_results.csv"
 OUT_BALANCE = BASE_DIR / "validation" / "phase8_head_balance_headpexcl_results.csv"
-OUT_THRESHOLDS = ACTIVE_THRESHOLDS_PATH
+OUT_THRESHOLDS = BASE_DIR / "config" / "bdd_thresholds_headpexcl.json"
 
 SEED = 777
 N_PER_STRATUM = 10

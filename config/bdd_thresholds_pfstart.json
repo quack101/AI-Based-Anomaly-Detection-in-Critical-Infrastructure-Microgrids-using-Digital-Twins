@@ -1,0 +1,7 @@
+{
+  "J99": 419.4146484059734,
+  "LNR99": 5.756997496278614,
+  "n": 90,
+  "source_file": "validation/phase8_bdd_baseline_pfstart_results.csv",
+  "note": "Same protocol as the other bdd_thresholds_*.json files, re-measured on branch est-pf-start with the power-flow start (init=pseudo_pf) as the estimator default. The older JSON files are left untouched."
+}

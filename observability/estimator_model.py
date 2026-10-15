@@ -30,6 +30,7 @@ from observability.zero_injection import (
     build_regulator_pseudo_entries,
 )
 from observability.pseudo_measurements import estimate_sigma_pseudo
+from observability.pf_start import build_pf_start_fn
 from sensors.registry import load_registry, enabled_entries
 from simulation.opendss_utils import compile_feeder
 
@@ -94,6 +95,8 @@ class EstimatorModel:
     reg_pseudo_entries: list  # WEIGHTED regulator-adjacent pseudo-entries (target 0, empirical sigma)
     bus_phase_by_load: dict   # unmetered load_name -> (bus, phase)
     per_hour_by_load: dict    # unmetered load_name -> {hour: {mean_p,mean_q,sigma_p,sigma_q,...}}
+    pf_start: object = None   # branch est-pf-start: observability.pf_start's pf_start(z, hour)
+                              # -> (x_v, x_delta, converged); used by StateEstimator.estimate(init="pseudo_pf")
 
 
 def _unmetered_load_names(registry):
@@ -258,10 +261,12 @@ def build_estimator_model(registry_variant="multiphase", exclude_dead_head_p=Tru
     unmetered = _unmetered_load_names(registry)
     bus_phase_by_load = {name: _resolve_bus_and_phase(name) for name in unmetered}
     per_hour_by_load = {name: estimate_sigma_pseudo(name) for name in unmetered}
+    pf_start = build_pf_start_fn(state, meas_entries, per_hour_by_load)
 
     return EstimatorModel(
         state=state, Y=Y, node_index=node_index,
         meas_entries=meas_entries, weighted_meas_entries=weighted_meas_entries,
         zi_entries=zi_entries, reg_pseudo_entries=reg_pseudo_entries,
         bus_phase_by_load=bus_phase_by_load, per_hour_by_load=per_hour_by_load,
+        pf_start=pf_start,
     )

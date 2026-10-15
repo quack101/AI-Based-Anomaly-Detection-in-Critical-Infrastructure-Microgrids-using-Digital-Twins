@@ -266,6 +266,16 @@ LM_MAX_TRIES = 15
 # SVD drops those same near-null directions directly instead of
 # creeping along them, converging in ~5 iterations instead of 30+.
 TSVD_RCOND = 1e-8
+
+# Branch est-pf-start: start point used when estimate(init=None).
+# "flat" = state.x0_v/x0_delta (the earlier behaviour); "pseudo_pf" =
+# the power-flow start of observability/pf_start.py. Adopted as the
+# default on this branch after validation/phase7_scorecard_pfstart.py
+# met every adoption condition (60/60 converged, 5.32 mean iterations,
+# median/max V error 0.00443/0.0197 pu, feasibility max 4.7e-7 kW).
+# NOTE: with "pseudo_pf" any warm start a caller puts in state.x0_* is
+# ignored; pass init="flat" explicitly to use it.
+DEFAULT_INIT = "pseudo_pf"
 TSVD_MAX_ITER = 40
 TSVD_REL_COST_TOL = 1e-4
 TSVD_PATIENCE = 3
@@ -339,7 +349,8 @@ class StateEstimator:
                  tol_v_pu=DEFAULT_TOL_V_PU,
                  tol_delta_rad=DEFAULT_TOL_DELTA_RAD,
                  tol_constraint_kw=DEFAULT_TOL_CONSTRAINT_KW,
-                 legacy_solver=False):
+                 legacy_solver=False,
+                 init=None):
         """z_real: {registry_id: value} for the real (meter+head)
         entries -- e.g. one row of Phase 6's {split}_telemetry.csv.
         real_timestamp: 'YYYY-MM-DD HH:MM:SS' -- selects which static
@@ -357,7 +368,16 @@ class StateEstimator:
         defaults to DEFAULT_MAX_ITER, step-size-based convergence)
         exactly, kept reachable for comparison/rollback.
         max_iter=None picks DEFAULT_MAX_ITER or TSVD_MAX_ITER to match
-        legacy_solver; pass an explicit value to override either way."""
+        legacy_solver; pass an explicit value to override either way.
+
+        init (branch est-pf-start): None -> DEFAULT_INIT. "flat" starts
+        from state.x0_v/x0_delta exactly as before (the flat start, or
+        whatever warm start the caller put there). "pseudo_pf" ignores
+        state.x0_* and starts from model.pf_start(z_real, hour): one
+        power flow of the compiled feeder model with every metered load
+        at its telemetry P/Q and every unmetered load at its static
+        pseudo value for this hour (observability/pf_start.py) -- built
+        from telemetry, pseudo tables and the model only."""
 
         if max_iter is None:
             max_iter = DEFAULT_MAX_ITER if legacy_solver else TSVD_MAX_ITER
@@ -382,8 +402,15 @@ class StateEstimator:
         s = self._state_scale  # diagonal preconditioner: dx = s * y
         v_base = s[:state.n_phase_nodes]
 
-        x_v = np.array(state.x0_v, dtype=float)
-        x_delta = np.array(state.x0_delta, dtype=float)
+        init = DEFAULT_INIT if init is None else init
+        if init == "flat":
+            x_v = np.array(state.x0_v, dtype=float)
+            x_delta = np.array(state.x0_delta, dtype=float)
+        elif init == "pseudo_pf":
+            x_v, x_delta, _ = self.model.pf_start(z_real, hour)
+            x_v, x_delta = np.array(x_v, dtype=float), np.array(x_delta, dtype=float)
+        else:
+            raise ValueError(f"unknown init {init!r}")
 
         def _merit(xv, xd):
             at_v = complex_v_from_state(state, xv, xd)

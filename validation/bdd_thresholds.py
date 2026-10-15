@@ -4,18 +4,18 @@ LNR99) the Phase 8 validation scripts use. Every attack/scan script
 loads its thresholds through load_active_thresholds(), and the
 baseline script that measures them writes to ACTIVE_THRESHOLDS_PATH.
 
-Active: config/bdd_thresholds_headpexcl.json -- measured by
-validation/phase8_bdd_baseline_headpexcl.py on the HEAD_P-excluded
-estimator (tag estimator-v2-headp-excluded). The older
-bdd_thresholds_frozen.json and bdd_thresholds_headpfix.json are kept
-for reference only; nothing reads them.
+Active (branch est-pf-start): config/bdd_thresholds_pfstart.json --
+measured by validation/phase8_bdd_baseline_pfstart.py on the HEAD_P-
+excluded estimator with the power-flow start as default. The older
+bdd_thresholds_frozen.json, _headpfix.json and _headpexcl.json are
+kept for reference only; nothing reads them.
 """
 
 import json
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-ACTIVE_THRESHOLDS_PATH = BASE_DIR / "config" / "bdd_thresholds_headpexcl.json"
+ACTIVE_THRESHOLDS_PATH = BASE_DIR / "config" / "bdd_thresholds_pfstart.json"
 
 
 def load_active_thresholds():
