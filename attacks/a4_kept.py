@@ -33,7 +33,9 @@ import numpy as np
 
 from observability.state_vector import complex_v_from_state
 from observability import jacobian as J
-from estimation.state_estimator import TSVD_RCOND, NULLSPACE_RANK_TOL
+from estimation.state_estimator import TSVD_RCOND, NULLSPACE_RANK_TOL, DEFAULT_TOL_CONSTRAINT_KW
+
+MAX_NEWTON = 5
 
 
 def kept_subspace_basis(est, result, real_timestamp, cos_threshold=0.95, rank_tol=1e-8):
@@ -145,3 +147,34 @@ def random_weighted_control(a, sigma, rng):
     target = np.linalg.norm(a[support] / sigma[support])
     gw = np.linalg.norm(g[support])
     return g * sigma * (target / gw) if gw > 0 else g
+
+
+def a5_from_c(model, state, result_clean, unattack_entries, basis, c):
+    """Exact nonlinear attack from the kept-direction c, Newton-corrected
+    on the unattackable rows (same procedure as the old scan's
+    build_a5_attack, applied to this c)."""
+    n, s = state.n_phase_nodes, basis["s"]
+
+    def h(entries, c_):
+        at_v = complex_v_from_state(state, result_clean.x_v + c_[:n], result_clean.x_delta + c_[n:])
+        return J.build_jacobian(entries, model.Y, model.node_index, state, at_v=at_v)
+
+    _, h_un_clean = h(unattack_entries, np.zeros_like(c))
+    _, h_att_clean = h(model.meas_entries, np.zeros_like(c))
+    H_un_bad, h_un_bad = h(unattack_entries, c)
+    resid = h_un_bad - h_un_clean
+    max_resid = float(np.max(np.abs(resid)))
+    n_newton = 0
+    while max_resid > DEFAULT_TOL_CONSTRAINT_KW and n_newton < MAX_NEWTON:
+        dy = np.linalg.pinv(H_un_bad * s[None, :], rcond=1e-8) @ (-resid)
+        c = c + s * dy
+        H_un_bad, h_un_bad = h(unattack_entries, c)
+        resid = h_un_bad - h_un_clean
+        max_resid = float(np.max(np.abs(resid)))
+        n_newton += 1
+    _, h_att_bad = h(model.meas_entries, c)
+    a = h_att_bad - h_att_clean
+    a[basis["zero_mask"]] = 0.0
+    y = c / s
+    frac_in_K = float(np.linalg.norm(basis["Q_K"].T @ (basis["Z"].T @ y)) / np.linalg.norm(y))
+    return a, c, n_newton, max_resid, frac_in_K

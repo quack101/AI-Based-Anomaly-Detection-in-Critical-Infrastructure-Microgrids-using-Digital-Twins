@@ -41,12 +41,10 @@ import numpy as np
 import pandas as pd
 
 from observability.estimator_model import build_estimator_model
-from observability.state_vector import complex_v_from_state
-from observability import jacobian as J
 from estimation.state_estimator import StateEstimator, DEFAULT_TOL_CONSTRAINT_KW
 from estimation.bad_data_detection import compute_chi2_and_lnr, unattackable_jacobian
 from attacks.a4_synthesis import random_sign_control
-from attacks.a4_kept import kept_subspace_basis, synthesize_kept_attack, random_weighted_control
+from attacks.a4_kept import kept_subspace_basis, synthesize_kept_attack, random_weighted_control, a5_from_c
 from validation.bdd_thresholds import load_active_thresholds
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -60,7 +58,6 @@ SEED = 777
 N_PER_STRATUM = 10
 N_POINTS = 20
 MAGNITUDES = [0.005, 0.01, 0.02, 0.05, 0.10, 0.20]
-MAX_NEWTON = 5
 
 
 def stratified_picks(df, p_cols):
@@ -75,37 +72,6 @@ def stratified_picks(df, p_cols):
         return sorted(rng.choice(idx, size=k, replace=False).tolist())
 
     return {"low": pick(low, N_PER_STRATUM), "mid": pick(mid, N_PER_STRATUM), "high": pick(high, N_PER_STRATUM)}
-
-
-def a5_from_c(model, state, result_clean, unattack_entries, basis, c):
-    """Exact nonlinear attack from the kept-direction c, Newton-corrected
-    on the unattackable rows (same procedure as the old scan's
-    build_a5_attack, applied to this c)."""
-    n, s = state.n_phase_nodes, basis["s"]
-
-    def h(entries, c_):
-        at_v = complex_v_from_state(state, result_clean.x_v + c_[:n], result_clean.x_delta + c_[n:])
-        return J.build_jacobian(entries, model.Y, model.node_index, state, at_v=at_v)
-
-    _, h_un_clean = h(unattack_entries, np.zeros_like(c))
-    _, h_att_clean = h(model.meas_entries, np.zeros_like(c))
-    H_un_bad, h_un_bad = h(unattack_entries, c)
-    resid = h_un_bad - h_un_clean
-    max_resid = float(np.max(np.abs(resid)))
-    n_newton = 0
-    while max_resid > DEFAULT_TOL_CONSTRAINT_KW and n_newton < MAX_NEWTON:
-        dy = np.linalg.pinv(H_un_bad * s[None, :], rcond=1e-8) @ (-resid)
-        c = c + s * dy
-        H_un_bad, h_un_bad = h(unattack_entries, c)
-        resid = h_un_bad - h_un_clean
-        max_resid = float(np.max(np.abs(resid)))
-        n_newton += 1
-    _, h_att_bad = h(model.meas_entries, c)
-    a = h_att_bad - h_att_clean
-    a[basis["zero_mask"]] = 0.0
-    y = c / s
-    frac_in_K = float(np.linalg.norm(basis["Q_K"].T @ (basis["Z"].T @ y)) / np.linalg.norm(y))
-    return a, c, n_newton, max_resid, frac_in_K
 
 
 def process_point(i, real_ts, z_real, seed_for_point, model, est, warm_diag=False):
