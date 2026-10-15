@@ -113,7 +113,7 @@ def _resolve_bus_and_phase(load_name):
     return bus, phase
 
 
-def _estimate_regulator_mean_sigma(nodes, Y, node_index, state):
+def _estimate_regulator_mean_sigma(nodes, Y, node_index, state, train_x_true_path=PHASE6_TRAIN_X_TRUE):
     """PER-NODE empirical (mean_p, mean_q, sigma_p, sigma_q) for
     build_regulator_pseudo_entries -- ESTIMATED, not hand-picked, same
     principle Phase 5 applied to load pseudo-measurement sigma (RES.md:
@@ -162,7 +162,7 @@ def _estimate_regulator_mean_sigma(nodes, Y, node_index, state):
         entries.append({"id": f"{node_name}_P", "node": bus_root, "phase": phase, "quantity": "P_injection"})
         entries.append({"id": f"{node_name}_Q", "node": bus_root, "phase": phase, "quantity": "Q_injection"})
 
-    npz = np.load(PHASE6_TRAIN_X_TRUE, allow_pickle=True)
+    npz = np.load(train_x_true_path, allow_pickle=True)
     x_v_all = npz["x_v"][::REG_SIGMA_SAMPLE_STRIDE]
     x_delta_all = npz["x_delta"][::REG_SIGMA_SAMPLE_STRIDE]
 
@@ -216,7 +216,8 @@ def _amplify_bus83_regzi_sigma(reg_pseudo_entries, Y, node_index, state):
                      f"formula as the registry's M042_Q fix).")
 
 
-def build_estimator_model(registry_variant="multiphase", exclude_dead_head_p=True, sigma_overrides=None):
+def build_estimator_model(registry_variant="multiphase", exclude_dead_head_p=True, sigma_overrides=None,
+                          train_x_true_path=None):
     """Compiles the feeder ONCE and builds everything a StateEstimator
     needs -- none of which depends on the timestamp being estimated.
 
@@ -242,7 +243,12 @@ def build_estimator_model(registry_variant="multiphase", exclude_dead_head_p=Tru
     sigma_overrides (branch exp-sigma, experiment only): optional
     {registry_id: sigma}. Applied to copies of the enabled registry
     entries at build time; the registry file is not touched. None (the
-    default) leaves every sigma exactly as in the registry."""
+    default) leaves every sigma exactly as in the registry.
+
+    train_x_true_path (branch exp-p1): the train-split x_true .npz the
+    regulator-adjacent REGZI_* mean/sigma are estimated from (train
+    split only, as before). None (the default) = PHASE6_TRAIN_X_TRUE,
+    corpus A -- unchanged behaviour."""
 
     compile_feeder()
     state = build_state_vector()
@@ -265,7 +271,8 @@ def build_estimator_model(registry_variant="multiphase", exclude_dead_head_p=Tru
     zi_entries = build_zero_injection_entries(state.all_node_names)
 
     reg_nodes = enumerate_regulator_adjacent_nodes(state.all_node_names)
-    reg_stats_by_node = _estimate_regulator_mean_sigma(reg_nodes, Y, node_index, state)
+    reg_stats_by_node = _estimate_regulator_mean_sigma(
+        reg_nodes, Y, node_index, state, train_x_true_path or PHASE6_TRAIN_X_TRUE)
     reg_pseudo_entries = build_regulator_pseudo_entries(state.all_node_names, reg_stats_by_node)
     _amplify_bus83_regzi_sigma(reg_pseudo_entries, Y, node_index, state)
 

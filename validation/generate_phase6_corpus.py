@@ -123,8 +123,19 @@ def compute_splits(real_timestamps):
     return split_of_row, boundaries
 
 
-def main(add_noise=True, seed=RNG_SEED):
-    CORPUS_DIR.mkdir(parents=True, exist_ok=True)
+def main(add_noise=True, seed=RNG_SEED, out_dir=None, drive_all_loads=False, sigma_overrides=None):
+    """out_dir: where the 12 files are written (default CORPUS_DIR,
+    corpus A). drive_all_loads (branch exp-p1, "P1" physics): also drive
+    the 42 loads that are not representative meters from their own
+    dataset/node_loads_91 series at the same row index (the same mapping
+    validation/exp_all91_physics.py uses); False (default, "P0") leaves
+    them at their compiled nominal values, as corpus A. sigma_overrides:
+    {registry_id: sigma} applied to copies of the enabled entries before
+    noise is drawn (the registry file is not touched); the noise stream
+    itself (random.Random(seed), one gauss per entry per step, registry
+    order) is unchanged."""
+    out_dir = Path(out_dir).resolve() if out_dir is not None else CORPUS_DIR  # resolve BEFORE compile_feeder changes cwd
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     representative_meters, datasets = load_inputs()
     num_rows = min(len(df) for df in datasets)
@@ -141,6 +152,28 @@ def main(add_noise=True, seed=RNG_SEED):
 
     registry = load_registry(variant="multiphase")
     entries = enabled_entries(registry)
+    if sigma_overrides:
+        unknown = set(sigma_overrides) - {e["id"] for e in entries}
+        if unknown:
+            raise KeyError(f"sigma_overrides for ids not in the enabled registry: {sorted(unknown)}")
+        entries = [dict(e, sigma=float(sigma_overrides[e["id"]])) if e["id"] in sigma_overrides else e
+                   for e in entries]
+
+    extra_loads = []
+    if drive_all_loads:
+        available = {f.stem[len("node_"):].lower(): f for f in DATASET_DIR.glob("node_*.csv")}
+        metered = {m["load_name"].lower() for m in representative_meters}
+        extra_names = sorted(n for n in available if n not in metered)
+        dss_names = {n.lower(): n for n in dss.Loads.AllNames()}
+        if len(extra_names) + len(metered) != len(dss_names) or set(extra_names) - set(dss_names):
+            raise ValueError("node_loads_91 files do not match the feeder's loads one-to-one")
+        extra_loads = [(dss_names[n], pd.read_csv(available[n])) for n in extra_names]
+        if any(len(d) < num_rows for _, d in extra_loads):
+            raise ValueError("a node_loads_91 series is shorter than the representative meters' series")
+        ts0 = str(datasets[0]["timestamp"].iloc[0])
+        if any(str(d["timestamp"].iloc[0]) != ts0 for _, d in extra_loads):
+            raise ValueError("node_loads_91 series are not aligned at row 0")
+        print(f"drive_all_loads: also driving {len(extra_loads)} non-representative loads from node_loads_91")
     print(f"Registry: {len(entries)} enabled entries (multiphase variant, "
           f"Phase 5/6 minimum-set deployment)")
 
@@ -157,13 +190,13 @@ def main(add_noise=True, seed=RNG_SEED):
     split_cursor = {s: 0 for s in split_names}
 
     telemetry_files = {
-        s: open(CORPUS_DIR / f"{s}_telemetry.csv", "w", newline="") for s in split_names
+        s: open(out_dir / f"{s}_telemetry.csv", "w", newline="") for s in split_names
     }
     ground_truth_files = {
-        s: open(CORPUS_DIR / f"{s}_ground_truth.csv", "w", newline="") for s in split_names
+        s: open(out_dir / f"{s}_ground_truth.csv", "w", newline="") for s in split_names
     }
     label_files = {
-        s: open(CORPUS_DIR / f"{s}_labels.csv", "w", newline="") for s in split_names
+        s: open(out_dir / f"{s}_labels.csv", "w", newline="") for s in split_names
     }
 
     import csv
@@ -192,6 +225,11 @@ def main(add_noise=True, seed=RNG_SEED):
             if i == 0:
                 real_ts = str(row["timestamp"])
             dss.Loads.Name(meter["load_name"])
+            dss.Loads.kW(float(row["P_kW"]))
+            dss.Loads.kvar(float(row["Q_kvar"]))
+        for load_name, df_extra in extra_loads:
+            row = df_extra.iloc[t]
+            dss.Loads.Name(load_name)
             dss.Loads.kW(float(row["P_kW"]))
             dss.Loads.kvar(float(row["Q_kvar"]))
 
@@ -242,7 +280,7 @@ def main(add_noise=True, seed=RNG_SEED):
         ground_truth_files[s].close()
         label_files[s].close()
         np.savez_compressed(
-            CORPUS_DIR / f"{s}_x_true.npz",
+            out_dir / f"{s}_x_true.npz",
             x_v=x_v_buffers[s], x_delta=x_delta_buffers[s],
             v_index=np.array(list(state.v_index.items()), dtype=object),
             delta_index=np.array(list(state.delta_index.items()), dtype=object),
@@ -259,4 +297,16 @@ def main(add_noise=True, seed=RNG_SEED):
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--out-dir", default=None, help="output folder (default: simulation/phase6_corpus)")
+    ap.add_argument("--all91", action="store_true", help="drive all 91 loads from node_loads_91 (P1 physics)")
+    ap.add_argument("--sigma-overrides", default=None,
+                    help="JSON file with a 'sigma' {id: sigma} map, e.g. config/sigma_overrides_s1.json")
+    args = ap.parse_args()
+    ov = None
+    if args.sigma_overrides:
+        with open(args.sigma_overrides) as f:
+            ov = json.load(f)["sigma"]
+    main(out_dir=args.out_dir, drive_all_loads=args.all91, sigma_overrides=ov)
