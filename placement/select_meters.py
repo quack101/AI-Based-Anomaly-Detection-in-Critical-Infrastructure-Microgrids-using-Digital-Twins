@@ -38,7 +38,7 @@ from pathlib import Path
 from core.ieee123_model import extract_all
 from placement.feeder_context import FeederContext
 from placement.feeder_adapter import network_and_loads_from_core_extraction
-from placement.placement_strategy import HybridPlacement
+from placement.placement_strategy import HybridPlacement, REFERENCE_TARGET_METERS
 from placement.hybrid_v2 import HybridV2Placement
 from placement.metrics import evaluate
 from placement.representative_meters import save_representative_meters
@@ -89,7 +89,8 @@ def build_parser():
                              "v1 requires --out or --overwrite-set-A)")
     parser.add_argument("--overwrite-set-A", dest="overwrite_set_a", action="store_true",
                         help="allow writing simulation/representative_meters.json (set A)")
-    parser.add_argument("--target", type=int, default=49, help="target_meters")
+    parser.add_argument("--target", type=int, default=REFERENCE_TARGET_METERS,
+                        help="target_meters (default: config/reference_configuration.json)")
     parser.add_argument("--verbose", action="store_true",
                          help="print topology graph, bus loads, per-load "
                               "branch assignment (32-run sweeps should NOT "

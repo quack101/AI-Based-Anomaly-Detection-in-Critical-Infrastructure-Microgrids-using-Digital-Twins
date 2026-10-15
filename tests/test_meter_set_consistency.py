@@ -24,6 +24,8 @@ SETS = {
     "A_rebuilt": (SIM / "representative_meters.json", "Arebuilt_noise", SIM / "phase6_corpus_Arebuilt"),
     "B": (SIM / "representative_meters_B.json", "Ball91_noise", SIM / "phase6_corpus_Ball91"),
     "A_all91": (SIM / "representative_meters.json", "Aall91_noise", SIM / "phase6_corpus_Aall91"),
+    "H30_all91": (SIM / "representative_meters_H30.json", "H30all91_noise", SIM / "phase6_corpus_H30all91"),
+    "H45_all91": (SIM / "representative_meters_H45.json", "H45all91_noise", SIM / "phase6_corpus_H45all91"),
 }
 
 
