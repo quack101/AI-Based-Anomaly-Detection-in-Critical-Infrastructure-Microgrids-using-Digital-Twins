@@ -184,7 +184,7 @@ tests/test_import_boundaries.py enforces the direct-import half of this
 boundary; this module's own docstring states the design intent.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
@@ -299,6 +299,9 @@ class EstimationResult:
     m_weighted: int
     p_constraints: int
     constraint_residual_inf: float  # max|c(x_hat)| -- should be ~0
+    # branch exp-tsvd (experiment only): number of reduced directions the
+    # TSVD step kept at each iteration; None on the legacy (LM) path.
+    tsvd_kept: list = field(default=None)
 
 
 class StateEstimator:
@@ -339,7 +342,9 @@ class StateEstimator:
                  tol_v_pu=DEFAULT_TOL_V_PU,
                  tol_delta_rad=DEFAULT_TOL_DELTA_RAD,
                  tol_constraint_kw=DEFAULT_TOL_CONSTRAINT_KW,
-                 legacy_solver=False):
+                 legacy_solver=False,
+                 tsvd_rcond=TSVD_RCOND,
+                 tsvd_equilibrate=False):
         """z_real: {registry_id: value} for the real (meter+head)
         entries -- e.g. one row of Phase 6's {split}_telemetry.csv.
         real_timestamp: 'YYYY-MM-DD HH:MM:SS' -- selects which static
@@ -357,7 +362,14 @@ class StateEstimator:
         defaults to DEFAULT_MAX_ITER, step-size-based convergence)
         exactly, kept reachable for comparison/rollback.
         max_iter=None picks DEFAULT_MAX_ITER or TSVD_MAX_ITER to match
-        legacy_solver; pass an explicit value to override either way."""
+        legacy_solver; pass an explicit value to override either way.
+
+        Branch exp-tsvd (experiment only; defaults reproduce the main-
+        line behaviour exactly): tsvd_rcond is the relative singular-
+        value cutoff of the TSVD step (default TSVD_RCOND). With
+        tsvd_equilibrate=True, A_reduced's columns are scaled to unit
+        2-norm before the SVD and the solution is unscaled afterwards
+        (w = D w'), so the cutoff applies to the equilibrated spectrum."""
 
         if max_iter is None:
             max_iter = DEFAULT_MAX_ITER if legacy_solver else TSVD_MAX_ITER
@@ -399,6 +411,7 @@ class StateEstimator:
         max_dx_delta_rad = float("nan")
         lm_lambda = LM_LAMBDA_INIT
         stall_count = 0
+        tsvd_kept = None if legacy_solver else []
 
         current_merit, H_all, h0_all = _merit(x_v, x_delta)
 
@@ -529,11 +542,20 @@ class StateEstimator:
                 # TSVD_RCOND*largest directly, instead of LM's iterative
                 # damp-and-retry. One SVD, no retry loop -- the truncation
                 # itself is what regularises an ill-conditioned A_reduced.
-                U, sv, Vt2 = np.linalg.svd(A_reduced, full_matrices=False)
-                keep = sv > TSVD_RCOND * sv[0]
+                if tsvd_equilibrate:
+                    col_norm = np.linalg.norm(A_reduced, axis=0)
+                    col_scale = np.where(col_norm > 0, 1.0 / np.where(col_norm > 0, col_norm, 1.0), 1.0)
+                    A_svd = A_reduced * col_scale[None, :]
+                else:
+                    A_svd = A_reduced
+                U, sv, Vt2 = np.linalg.svd(A_svd, full_matrices=False)
+                keep = sv > tsvd_rcond * sv[0]
+                tsvd_kept.append(int(keep.sum()))
                 sv_inv = np.zeros_like(sv)
                 sv_inv[keep] = 1.0 / sv[keep]
                 w = (Vt2.T * sv_inv) @ (U.T @ b_reduced)
+                if tsvd_equilibrate:
+                    w = col_scale * w
                 y_full = y_particular + Z @ w
 
                 for frac in STEP_FRACTIONS:
@@ -605,6 +627,7 @@ class StateEstimator:
             max_dx_v_pu=max_dx_v_pu, max_dx_delta_rad=max_dx_delta_rad,
             J=Jval, dof=self.dof, m_weighted=m, p_constraints=p,
             constraint_residual_inf=constraint_residual_inf,
+            tsvd_kept=tsvd_kept,
         )
 
 
