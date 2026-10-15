@@ -27,9 +27,10 @@ Two controls per attack case, both built in attacks/a4_synthesis.py:
     random +/-1 signs.
 
 Decision thresholds (J99, LNR99) are loaded from
-config/bdd_thresholds_frozen.json -- the single source of truth,
-computed from validation/phase8_bdd_baseline_results.csv's n=90
-clean-data run under this same frozen estimator. No EMPIRICAL_J99/
+config/bdd_thresholds_headpexcl.json via validation/bdd_thresholds.py
+-- the single source of truth,
+computed from validation/phase8_bdd_baseline_headpexcl_results.csv's
+n=90 clean-data run under the HEAD_P-excluded estimator. No EMPIRICAL_J99/
 EMPIRICAL_LNR99 literal appears in this file.
 
 Per solve, logs: converged, iterations, J before/after, lnr before/
@@ -42,7 +43,6 @@ itself.
 Run: python -m validation.phase8_a4_a5_boundary_scan
 """
 
-import json
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
@@ -58,16 +58,13 @@ from estimation.bad_data_detection import (
     compute_chi2_and_lnr, unattackable_jacobian, nullspace_basis, RHO_CRITICAL_THRESHOLD,
 )
 from attacks.a4_synthesis import synthesize_a4_attack, random_control, random_sign_control
+from validation.bdd_thresholds import ACTIVE_THRESHOLDS_PATH as THRESHOLDS_PATH, load_active_thresholds
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 CORPUS_DIR = BASE_DIR / "simulation" / "phase6_corpus"
-OUT_PATH = BASE_DIR / "validation" / "phase8_a4_a5_pilot2_frozen.csv"
-THRESHOLDS_PATH = BASE_DIR / "config" / "bdd_thresholds_frozen.json"
+OUT_PATH = BASE_DIR / "validation" / "phase8_a4_a5_pilot2_headpexcl.csv"
 
-with open(THRESHOLDS_PATH) as _f:
-    _thresholds = json.load(_f)
-EMPIRICAL_J99 = float(_thresholds["J99"])
-EMPIRICAL_LNR99 = float(_thresholds["LNR99"])
+EMPIRICAL_J99, EMPIRICAL_LNR99 = load_active_thresholds()
 
 TARGET_POINTS = [46, 94, 154]
 A4_MODES = ["M1", "M3"]

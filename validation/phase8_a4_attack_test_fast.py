@@ -28,7 +28,6 @@ remaining points in parallel) exceeds 60 minutes.
 Run: python -m validation.phase8_a4_attack_test_fast
 """
 
-import json
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
@@ -40,11 +39,11 @@ from observability.estimator_model import build_estimator_model
 from estimation.state_estimator import StateEstimator
 from estimation.bad_data_detection import compute_chi2_and_lnr, unattackable_jacobian
 from attacks.a4_synthesis import synthesize_a4_attack, random_control
+from validation.bdd_thresholds import ACTIVE_THRESHOLDS_PATH as THRESHOLDS_PATH, load_active_thresholds
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 CORPUS_DIR = BASE_DIR / "simulation" / "phase6_corpus"
-OUT_PATH = BASE_DIR / "validation" / "phase8_a4_attack_test_fast_results_frozen.csv"
-THRESHOLDS_PATH = BASE_DIR / "config" / "bdd_thresholds_frozen.json"
+OUT_PATH = BASE_DIR / "validation" / "phase8_a4_attack_test_fast_results_headpexcl.csv"
 
 SEED = 777
 N_PER_STRATUM = 10
@@ -54,10 +53,7 @@ MAGNITUDES = [0.05, 0.10]
 N_SPARSE_METERS = 20
 ZERO_REDUNDANCY_REAL_METER_IDS = {"M004_P", "M004_Q", "M040_P", "HEAD_Q_A", "HEAD_Q_B", "HEAD_Q_C"}
 
-with open(THRESHOLDS_PATH) as _f:
-    _thresholds = json.load(_f)
-EMPIRICAL_J99 = float(_thresholds["J99"])
-EMPIRICAL_LNR99 = float(_thresholds["LNR99"])
+EMPIRICAL_J99, EMPIRICAL_LNR99 = load_active_thresholds()
 MAX_ETA_MINUTES = 60.0
 
 

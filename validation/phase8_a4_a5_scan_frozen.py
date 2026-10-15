@@ -1,6 +1,7 @@
 """
 RES.md D10 Phase 8 -- size sweep for A4-M1 and A5-M1 against the
-FROZEN estimator (estimation/state_estimator.py's production
+HEAD_P-excluded estimator (tag estimator-v2-headp-excluded;
+estimation/state_estimator.py's production
 StateEstimator.estimate(), default truncated-SVD solve). Every solve
 goes through est.estimate() directly; no hand-copied solve loop.
 
@@ -13,7 +14,8 @@ random direction) and control 2 (random_sign_control: same per-
 channel magnitude, random sign) -- both from attacks/a4_synthesis.py.
 
 Decision thresholds (J99, LNR99) are loaded from
-config/bdd_thresholds_frozen.json -- the single source of truth. No
+config/bdd_thresholds_headpexcl.json via validation/bdd_thresholds.py
+-- the single source of truth. No
 literal J99/LNR99 number appears in this file.
 
 "intended shift" = the target max voltage-magnitude shift (the
@@ -28,7 +30,6 @@ validation/phase8_a4_a5_boundary_scan.py.
 Run: python -m validation.phase8_a4_a5_scan_frozen
 """
 
-import json
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
@@ -42,16 +43,13 @@ from observability import jacobian as J
 from estimation.state_estimator import StateEstimator, DEFAULT_TOL_CONSTRAINT_KW
 from estimation.bad_data_detection import compute_chi2_and_lnr, unattackable_jacobian, nullspace_basis
 from attacks.a4_synthesis import synthesize_a4_attack, random_control, random_sign_control
+from validation.bdd_thresholds import ACTIVE_THRESHOLDS_PATH as THRESHOLDS_PATH, load_active_thresholds
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 CORPUS_DIR = BASE_DIR / "simulation" / "phase6_corpus"
-OUT_PATH = BASE_DIR / "validation" / "phase8_a4_a5_scan_frozen.csv"
-THRESHOLDS_PATH = BASE_DIR / "config" / "bdd_thresholds_frozen.json"
+OUT_PATH = BASE_DIR / "validation" / "phase8_a4_a5_scan_headpexcl.csv"
 
-with open(THRESHOLDS_PATH) as _f:
-    _thresholds = json.load(_f)
-EMPIRICAL_J99 = float(_thresholds["J99"])
-EMPIRICAL_LNR99 = float(_thresholds["LNR99"])
+EMPIRICAL_J99, EMPIRICAL_LNR99 = load_active_thresholds()
 
 SEED = 777
 N_PER_STRATUM = 10

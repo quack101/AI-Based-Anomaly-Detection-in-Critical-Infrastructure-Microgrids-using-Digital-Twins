@@ -14,7 +14,6 @@ control on the same meters.
 Run: python -m validation.phase8_a4_attack_test
 """
 
-import json
 from pathlib import Path
 
 import numpy as np
@@ -24,11 +23,11 @@ from observability.estimator_model import build_estimator_model
 from estimation.state_estimator import StateEstimator
 from estimation.bad_data_detection import compute_chi2_and_lnr, unattackable_jacobian
 from attacks.a4_synthesis import synthesize_a4_attack, random_control
+from validation.bdd_thresholds import ACTIVE_THRESHOLDS_PATH as THRESHOLDS_PATH, load_active_thresholds
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 CORPUS_DIR = BASE_DIR / "simulation" / "phase6_corpus"
-OUT_PATH = BASE_DIR / "validation" / "phase8_a4_attack_test_results_frozen.csv"
-THRESHOLDS_PATH = BASE_DIR / "config" / "bdd_thresholds_frozen.json"
+OUT_PATH = BASE_DIR / "validation" / "phase8_a4_attack_test_results_headpexcl.csv"
 
 SEED = 777
 N_PER_STRATUM = 10
@@ -39,10 +38,7 @@ ZERO_REDUNDANCY_REAL_METER_IDS = {"M004_P", "M004_Q", "M040_P", "HEAD_Q_A", "HEA
 CHI2_THRESH = 75.6237  # chi2.ppf(0.95, 57) -- textbook, NOT used for decisions
 LNR_THRESH = 3.0       # textbook, NOT used for decisions
 
-with open(THRESHOLDS_PATH) as _f:
-    _thresholds = json.load(_f)
-EMPIRICAL_J99 = float(_thresholds["J99"])
-EMPIRICAL_LNR99 = float(_thresholds["LNR99"])
+EMPIRICAL_J99, EMPIRICAL_LNR99 = load_active_thresholds()
 
 
 def stratified_picks(df, p_cols):
