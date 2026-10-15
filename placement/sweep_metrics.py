@@ -56,6 +56,24 @@ def phase_kw(selected):
     return totals
 
 
+def compute_phase_dev_pp(phase_kw_a, phase_kw_b, phase_kw_c):
+    """Worst-phase deviation, in percentage points, of the selected
+    meters' kW phase shares from the feeder's nominal phase shares
+    (PHASE_KW_BASELINE). Lower is better; 0 == perfectly proportional.
+    Same per-phase quantity tests/test_placement_regression.py
+    test_phase_balance_within_tolerance bounds by 5pp, collapsed to the
+    worst of the three phases. Takes the phase_kw_A/B/C cells.csv
+    columns so it can be applied to already-written sweep output."""
+
+    selected = {"A": phase_kw_a, "B": phase_kw_b, "C": phase_kw_c}
+    total = sum(selected.values())
+    baseline_total = sum(PHASE_KW_BASELINE.values())
+    return max(
+        abs(100.0 * selected[p] / total - 100.0 * PHASE_KW_BASELINE[p] / baseline_total)
+        for p in ("A", "B", "C")
+    )
+
+
 def compute_cell_metrics(selected, context):
     downstream_kw = downstream_coverage_kw(selected, context)
     phases = phase_kw(selected)

@@ -115,13 +115,14 @@ def main():
     """Live mode -- requires a running Kafka broker."""
 
     from kafka import KafkaConsumer, KafkaProducer
-    from pathlib import Path
     from .kafka_config import (
         BOOTSTRAP_SERVERS, TOPIC_RAW, TOPIC_DELIVERED, TOPIC_LABELS,
     )
 
-    BASE_DIR = Path(__file__).resolve().parent.parent
-    with open(BASE_DIR / "simulation" / "representative_meters.json") as f:
+    from sensors.meter_set import resolve_meter_set
+
+    meters_path, _ = resolve_meter_set()  # $METER_SET, default set A
+    with open(meters_path) as f:
         expected_meters = len(json.load(f))
 
     consumer = KafkaConsumer(

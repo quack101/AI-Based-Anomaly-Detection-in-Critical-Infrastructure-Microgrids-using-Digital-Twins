@@ -44,6 +44,7 @@ import opendssdirect as dss
 
 from simulation.opendss_utils import compile_feeder, get_solution_metrics
 from sensors.registry import load_registry, enabled_entries
+from sensors.meter_set import resolve_meter_set
 from sensors.sensor_layer import build_measurement_dict
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -62,13 +63,13 @@ GROUND_TRUTH_FIELDS = [
 ADD_NOISE_DEFAULT = True  # live/production default -- see run_timestep(add_noise=)
 
 
-def load_inputs():
+def load_inputs(meters_path=None):
     """Same name-keyed corpus lookup as validation/validate_phase0.py
     (duplicated intentionally, not imported from it -- that script is
     the frozen, already-validated Phase 0/1 acceptance artifact and
     must not gain a new caller that could motivate future edits to it)."""
 
-    with open(REPRESENTATIVE_METERS, "r") as f:
+    with open(meters_path or REPRESENTATIVE_METERS, "r") as f:
         representative_meters = json.load(f)
 
     available = {
@@ -112,9 +113,12 @@ class Producer:
     direct-replay validation (validation/validate_phase3.py, used
     because no Docker broker is available in this environment)."""
 
-    def __init__(self, registry_variant="default", add_noise=ADD_NOISE_DEFAULT, seed=None):
-        self.representative_meters, self.datasets = load_inputs()
-        self.registry = load_registry(variant=registry_variant)
+    def __init__(self, registry_variant="default", add_noise=ADD_NOISE_DEFAULT, seed=None,
+                 meter_set=None):
+        # meter_set: name in sensors.meter_set.METER_SETS; None -> $METER_SET -> set A
+        meters_path, registry_set = resolve_meter_set(meter_set)
+        self.representative_meters, self.datasets = load_inputs(meters_path)
+        self.registry = load_registry(variant=registry_variant, meter_set=registry_set)
         self.entries = enabled_entries(self.registry)
         self.entries_by_load = _entries_by_load_name(self.entries)
         self.add_noise = add_noise

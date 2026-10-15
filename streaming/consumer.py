@@ -57,6 +57,7 @@ import opendssdirect as dss
 
 from simulation.opendss_utils import compile_feeder, get_solution_metrics
 from sensors.registry import load_registry, enabled_entries
+from sensors.meter_set import resolve_meter_set
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -80,12 +81,15 @@ DEFAULT_WINDOW_TIMEOUT_S = 5.0
 
 
 class Consumer:
-    def __init__(self, registry_variant="default", window_timeout_s=DEFAULT_WINDOW_TIMEOUT_S, clock=None):
-        with open(REPRESENTATIVE_METERS) as f:
+    def __init__(self, registry_variant="default", window_timeout_s=DEFAULT_WINDOW_TIMEOUT_S, clock=None,
+                 meter_set=None):
+        # meter_set: name in sensors.meter_set.METER_SETS; None -> $METER_SET -> set A
+        meters_path, registry_set = resolve_meter_set(meter_set)
+        with open(meters_path) as f:
             self.representative_meters = json.load(f)
         self.expected_meters = len(self.representative_meters)
 
-        registry = load_registry(variant=registry_variant)
+        registry = load_registry(variant=registry_variant, meter_set=registry_set)
         entries = enabled_entries(registry)
 
         # id -> (load_name, quantity) metadata only -- no circuit access

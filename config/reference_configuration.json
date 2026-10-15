@@ -1,6 +1,6 @@
 {
-  "target_meters": 49,
-  "fraction_of_85": 0.5765,
-  "status": "provisional, retained for continuity with earlier runs, carries no optimality claim",
-  "note": "RES.md D10 Phase 4 sub-study 4A: the ONLY place target_meters=49 may be hardcoded. Every placement-strategy constructor and sweep script reads this value rather than defaulting to 49 directly, so the reference count can be revised in one place. 49 was the pipeline's original meter count, predating any placement-quality or observability analysis -- it is kept as a comparison baseline for continuity with the Phase 0-3 reports, not because 49 is shown to be a good choice."
+  "target_meters": 45,
+  "fraction_of_85": 0.5294,
+  "status": "chosen from measurement (reports/meter_count_30_45_49_measured.md): lowest tested count that matches the 49-meter set A on every metric; 30 fails convergence. Not shown optimal -- 35 and 40 were not tested.",
+  "note": "RES.md D10 Phase 4 sub-study 4A: the ONLY place the reference meter count may be hardcoded. Every placement-strategy constructor and sweep script reads this value rather than defaulting to a number directly, so the reference count can be revised in one place. Previously 49, the pipeline's original count (set A, simulation/representative_meters.json), which is still the frozen estimator/corpus baseline and is unchanged. Changing this value changes only placement defaults; the live producer/consumer/injector still read simulation/representative_meters.json."
 }

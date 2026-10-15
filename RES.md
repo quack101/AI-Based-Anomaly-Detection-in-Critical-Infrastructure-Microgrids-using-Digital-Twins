@@ -1315,6 +1315,14 @@ before Phase 1 delivers load data.
   3. **Debug output must be gated.** 8 counts × 4 strategies = 32 runs, each currently
      printing the full topology graph, all bus loads and every load's branch assignment.
 
+**[I] Measured meter-count result (2026-10-15, `reports/meter_count_30_45_49_measured.md`).**
+With the frozen estimator and all-91 physics, a 45-meter `HybridPlacement` set matches the 49-meter set A
+on accuracy (paired, same 60 points), convergence (60/60, 90/90), clean-BDD thresholds (J99 +1.7%,
+LNR99 -3%) and null space (105 vs 113); a 30-meter set does not converge reliably (55/60 and 82/90,
+24 iterations on average, null space 75). `config/reference_configuration.json` is set to 45 on this
+evidence. Not established: that 45 is the minimum (35/40 untested) or that it is detection-optimal
+(Phase 12). The estimator's ~2% accuracy floor (regulator taps) is unchanged at every count.
+
 ### Phase 5 — Add the minimum sensor set + finalise the pseudo-measurements
 
 * **Goal:** implement exactly what Phase 4 says is needed, and no more.
