@@ -26,6 +26,57 @@ def threshold_99(clean_scores):
     return float(np.quantile(np.asarray(clean_scores, dtype=float), 0.99))
 
 
+def _avg_ranks(a):
+    """Average ranks (1-based) with tie handling."""
+    a = np.asarray(a, dtype=float)
+    order = np.argsort(a, kind="mergesort")
+    ranks = np.empty(len(a), dtype=float)
+    sa = a[order]
+    i = 0
+    n = len(a)
+    while i < n:
+        j = i
+        while j < n and sa[j] == sa[i]:
+            j += 1
+        ranks[order[i:j]] = (i + 1 + j) / 2.0  # average of 1-based ranks i+1..j
+        i = j
+    return ranks
+
+
+def roc_auc(scores, y):
+    """Mann-Whitney AUC; y==1 is the positive (attacked) class. NaN scores
+    are dropped. Returns NaN if a class is empty."""
+    s = np.asarray(scores, dtype=float)
+    y = np.asarray(y).astype(bool)
+    ok = np.isfinite(s)
+    s, y = s[ok], y[ok]
+    npos, nneg = int(y.sum()), int((~y).sum())
+    if npos == 0 or nneg == 0:
+        return float("nan")
+    r = _avg_ranks(s)
+    return float((r[y].sum() - npos * (npos + 1) / 2.0) / (npos * nneg))
+
+
+def roc_curve(scores, y, n_points=200):
+    """Per-timestep ROC as a DataFrame (threshold, tpr, fpr). Thresholds
+    swept over the observed score range."""
+    s = np.asarray(scores, dtype=float)
+    y = np.asarray(y).astype(bool)
+    ok = np.isfinite(s)
+    s, y = s[ok], y[ok]
+    P, N = int(y.sum()), int((~y).sum())
+    lo, hi = float(np.min(s)), float(np.max(s))
+    thr = np.unique(np.concatenate([[lo - 1e-9], np.linspace(lo, hi, n_points), [hi + 1e-9]]))
+    rows = []
+    for t in thr:
+        flag = s > t
+        tp = int((flag & y).sum())
+        fp = int((flag & ~y).sum())
+        rows.append({"threshold": float(t), "tpr": tp / P if P else float("nan"),
+                     "fpr": fp / N if N else float("nan")})
+    return pd.DataFrame(rows)
+
+
 def _window_table(att, flagged):
     """att: attacked test rows (DataFrame with window_id/type/class/level/
     profile/duration and a positional 'pos'); flagged: bool Series aligned

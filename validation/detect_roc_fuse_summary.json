@@ -1,0 +1,21 @@
+{
+  "part_c_auc": {
+    "BDD": 0.6064640386198304,
+    "AE": 0.7528519696451889
+  },
+  "common_scored_rows": 12951,
+  "thresholds": {
+    "bdd_1pct": 1.0388801839347097,
+    "ae_1pct": 6.281843272887934
+  },
+  "fusion_OR": {
+    "clean_test_FAR": 0.0199630639345704,
+    "attacked_timestep_detection": 0.08734177215189873,
+    "windows_detected": 12,
+    "window_detection_rate": 0.6666666666666666,
+    "median_delay": 12.0,
+    "clean_60block_FA": 79
+  },
+  "fusion_OR_AUC": 0.6887948912901908,
+  "rule2_status": "BLOCKED: logistic-regression fusion needs bdd_score on the 1580 attacked val timesteps; val_residuals.csv holds clean val only and the rules forbid re-running the estimator. Rule 2 not trained."
+}

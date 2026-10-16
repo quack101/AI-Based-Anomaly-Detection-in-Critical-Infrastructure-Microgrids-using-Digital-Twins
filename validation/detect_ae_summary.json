@@ -1,0 +1,28 @@
+{
+  "name": "AE_d32_s_max",
+  "n_scored": 12951,
+  "clean_scored": 11371,
+  "att_scored": 1580,
+  "clean_test_FAR": 0.00879430129276229,
+  "attacked_timestep_detection": 0.049367088607594936,
+  "windows": 18,
+  "windows_detected": 7,
+  "window_detection_rate": 0.3888888888888889,
+  "median_delay": 37.0,
+  "clean_60block_FA": 36,
+  "clean_60block_total": 254,
+  "d": 32,
+  "chosen_score": "s_max",
+  "threshold": 6.281843272887934,
+  "per_timestep_AUC": 0.7528519696451889,
+  "val_AUC_s_max": 0.7258320355245245,
+  "val_AUC_s_mean": 0.6900888781031916,
+  "sustained": {
+    "window_id": 8,
+    "n_steps": 240,
+    "flagged_frac": 0.05416666666666667,
+    "onset_block_rate": 0.0,
+    "mid_block_rate": 0.20408163265306123,
+    "end_block_rate": 0.0625
+  }
+}

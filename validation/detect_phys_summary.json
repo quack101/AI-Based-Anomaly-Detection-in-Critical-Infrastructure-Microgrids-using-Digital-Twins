@@ -1,0 +1,19 @@
+{
+  "name": "BDD_single",
+  "n_scored": 12960,
+  "clean_scored": 11380,
+  "att_scored": 1580,
+  "clean_test_FAR": 0.011335676625659052,
+  "attacked_timestep_detection": 0.04683544303797468,
+  "windows": 18,
+  "windows_detected": 10,
+  "window_detection_rate": 0.5555555555555556,
+  "median_delay": 12.0,
+  "clean_60block_FA": 63,
+  "clean_60block_total": 254,
+  "threshold": 1.0388801839347097,
+  "clean_val_FAR_target": 0.01,
+  "per_timestep_AUC": 0.6064640386198304,
+  "J99_val": 402.36488998337177,
+  "LNR99_val": 5.663743305509957
+}
