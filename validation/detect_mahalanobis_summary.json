@@ -1,0 +1,86 @@
+{
+  "ledoit_wolf_lambda": 0.0006836269191179204,
+  "cond_sample": 6457.040099386987,
+  "cond_shrunk": 5734.601752269356,
+  "n_train": 60471,
+  "results": {
+    "maha_full": {
+      "FAR": 0.00879430129276229,
+      "step_det": 0.4487341772151899,
+      "win_det": 11,
+      "n_win": 18,
+      "by_family": {
+        "A3": "2/3",
+        "A1": "9/12",
+        "A2": "0/3"
+      },
+      "per_ts_AUC": 0.8736595091444035,
+      "window_AUC": 0.7702871410736579,
+      "det": {
+        "0": true,
+        "1": false,
+        "2": false,
+        "3": false,
+        "4": true,
+        "5": true,
+        "6": false,
+        "7": true,
+        "8": true,
+        "9": true,
+        "10": true,
+        "11": true,
+        "12": true,
+        "13": true,
+        "14": false,
+        "15": false,
+        "16": false,
+        "17": true
+      },
+      "localization": 0.7272727272727273,
+      "loc_hits": 8,
+      "loc_tot": 11,
+      "threshold": 449.4904884350353
+    },
+    "maha_diag": {
+      "FAR": 0.008882244305689914,
+      "step_det": 0.026582278481012658,
+      "win_det": 7,
+      "n_win": 18,
+      "by_family": {
+        "A3": "2/3",
+        "A1": "5/12",
+        "A2": "0/3"
+      },
+      "per_ts_AUC": 0.7268131010598803,
+      "window_AUC": 0.6485642946317104,
+      "det": {
+        "0": true,
+        "1": false,
+        "2": false,
+        "3": false,
+        "4": true,
+        "5": true,
+        "6": false,
+        "7": false,
+        "8": true,
+        "9": false,
+        "10": false,
+        "11": false,
+        "12": true,
+        "13": true,
+        "14": false,
+        "15": false,
+        "16": false,
+        "17": true
+      },
+      "localization": 0.7142857142857143,
+      "loc_hits": 5,
+      "loc_tot": 7,
+      "threshold": 759.8766342252331
+    }
+  },
+  "baselines": {
+    "bdd_anystep": "10/18 @ 1.13% FAR, per-ts AUC 0.607",
+    "ae_maxagg_v3": "7/18 @ 0.88% FAR, per-ts AUC 0.753"
+  }
+}
