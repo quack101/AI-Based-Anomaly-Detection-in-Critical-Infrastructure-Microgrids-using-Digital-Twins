@@ -112,11 +112,27 @@ class Producer:
     direct-replay validation (validation/validate_phase3.py, used
     because no Docker broker is available in this environment)."""
 
-    def __init__(self, registry_variant="default", add_noise=ADD_NOISE_DEFAULT, seed=None):
+    def __init__(self, registry_variant="default", add_noise=ADD_NOISE_DEFAULT, seed=None,
+                 sigma_overrides=None):
         self.representative_meters, self.datasets = load_inputs()
         self.registry = load_registry(variant=registry_variant)
         self.entries = enabled_entries(self.registry)
+        # sigma_overrides (live multiphase run): the sensor-layer MEASUREMENT
+        # NOISE sigma per channel. The registry's P/Q sigmas were widened
+        # (commit 81ff01a) for estimator WEIGHTING robustness and are NOT the
+        # true sensor-noise scale; the corpus the detector was calibrated on
+        # used the ae0fcfb sigmas (config/sigma_overrides_s1.json). Applying
+        # them here makes the live noisy telemetry match that corpus. Only
+        # the noise draw reads entry["sigma"]; nothing else here does.
+        if sigma_overrides:
+            self.entries = [dict(e, sigma=float(sigma_overrides[e["id"]])) if e["id"] in sigma_overrides else e
+                            for e in self.entries]
         self.entries_by_load = _entries_by_load_name(self.entries)
+        # Head/branch entries carry no load_name (HEAD_P/Q/V_A/B/C). The
+        # multiphase registry has 9; the default registry has 0, so the
+        # head message below is published ONLY under multiphase -- default
+        # behavior (and tests/test_streaming.py) is unchanged.
+        self.head_entries = [e for e in self.entries if e.get("load_name") is None]
         self.add_noise = add_noise
         self.rng = random.Random(seed) if add_noise else None
 
@@ -168,6 +184,21 @@ class Producer:
                 "measurements": measurements,
             })
 
+        # Head channels (multiphase only): one extra message carrying the
+        # same sensor-layer HEAD_P/Q/V values z_dict already holds. HEAD_P
+        # is included even though the estimator drops it from the weighted
+        # set -- the wire carries the full registry, the estimator decides
+        # what to weight. Empty under the default registry (no head entries).
+        if self.head_entries:
+            raw_messages.append({
+                "timestamp": t,
+                "real_timestamp": real_ts,
+                "meter_id": "HEAD",
+                "load_name": None,
+                "bus": None,
+                "measurements": {e["id"]: z_dict[e["id"]] for e in self.head_entries},
+            })
+
         return raw_messages, metrics
 
     def _log_ground_truth(self, t, real_ts, metrics):
@@ -189,34 +220,108 @@ class Producer:
             csv.DictWriter(f, fieldnames=GROUND_TRUTH_FIELDS).writerow(row)
 
 
-def main():
-    """Live mode -- requires a running Kafka broker (streaming/docker-compose.yml)."""
+def replay_messages(producer, row):
+    """Build the per-meter + HEAD raw messages from ONE row of an existing
+    telemetry CSV (e.g. simulation/phase6_corpus/test_telemetry.csv): the
+    SAME dict layout run_timestep publishes, but the values are read, not
+    simulated -- no OpenDSS solve, no new noise. 'REPLAY' mode only."""
+    real_ts = str(row["real_timestamp"])
+    t = int(row["timestamp"])
+    msgs = []
+    for meter in producer.representative_meters:
+        load_name = meter["load_name"]
+        msgs.append({
+            "timestamp": t, "real_timestamp": real_ts, "meter_id": meter["meter_id"],
+            "load_name": load_name, "bus": meter["bus"],
+            "measurements": {e["id"]: float(row[e["id"]]) for e in producer.entries_by_load.get(load_name, [])},
+        })
+    if producer.head_entries:
+        msgs.append({"timestamp": t, "real_timestamp": real_ts, "meter_id": "HEAD", "load_name": None,
+                     "bus": None, "measurements": {e["id"]: float(row[e["id"]]) for e in producer.head_entries}})
+    return msgs
 
+
+def main():
+    """Live mode -- requires a running Kafka broker (streaming/docker-compose.yml).
+    Env knobs (all additive; defaults reproduce the original behaviour):
+      REGISTRY_VARIANT   registry ("default"; the live detector run uses "multiphase")
+      PRODUCER_SLEEP_S   cadence in seconds (default 1)
+      PRODUCER_NOISE     1 = sensor noise on (default), 0 = noise-free
+      PRODUCER_MAX_STEPS number of timesteps to publish (0 = whole corpus)
+      PRODUCER_START     first published stream index (default 0); the test
+                         split begins at stream index 73440
+      PRODUCER_WARMUP    steps solved (not published) before START so the
+                         regulator-tap state settles
+      PRODUCER_TRUTH_LOG CSV path: the producer's own merged channel vector
+                         per published step (for the wire-fidelity gate)
+      PRODUCER_REPLAY    path to a telemetry CSV; publish its rows instead of
+                         simulating ("replay of a corpus through Kafka, not
+                         live OpenDSS")"""
+
+    import os
     from kafka import KafkaProducer
     from .kafka_config import BOOTSTRAP_SERVERS, TOPIC_RAW
+
+    variant = os.environ.get("REGISTRY_VARIANT", "default")
+    sleep_s = float(os.environ.get("PRODUCER_SLEEP_S", "1"))
+    add_noise = os.environ.get("PRODUCER_NOISE", "1") == "1"
+    start = int(os.environ.get("PRODUCER_START", "0"))
+    warmup = int(os.environ.get("PRODUCER_WARMUP", "0"))
+    truth_log = os.environ.get("PRODUCER_TRUTH_LOG")
+    replay = os.environ.get("PRODUCER_REPLAY")
+    sigma_ov = None
+    if variant == "multiphase":
+        import json as _json
+        sigma_ov = _json.load(open(BASE_DIR / "config" / "sigma_overrides_s1.json"))["sigma"]
+    max_steps = int(os.environ.get("PRODUCER_MAX_STEPS", "0"))  # 0 = full corpus
 
     kafka_producer = KafkaProducer(
         bootstrap_servers=BOOTSTRAP_SERVERS,
         value_serializer=lambda v: json.dumps(v).encode("utf-8"),
     )
 
-    producer = Producer()
+    producer = Producer(registry_variant=variant, add_noise=add_noise, sigma_overrides=sigma_ov)
     print(f"Loaded {len(producer.representative_meters)} representative meters, "
-          f"{len(producer.entries)} enabled registry entries")
-    print(f"Streaming {producer.num_rows} timestamps to {TOPIC_RAW}...")
+          f"{len(producer.entries)} enabled registry entries", flush=True)
 
-    for t in range(producer.num_rows):
-        raw_messages, metrics = producer.run_timestep(t)
+    truth_f = None
+    if truth_log:
+        truth_f = open(truth_log, "w", newline="")
+        truth_w = csv.writer(truth_f)
+        truth_w.writerow(["timestamp"] + [e["id"] for e in producer.entries])
 
+    def publish(raw_messages, t, converged=None):
         for msg in raw_messages:
             kafka_producer.send(TOPIC_RAW, key=msg["meter_id"].encode(), value=msg)
         kafka_producer.flush()
-
+        if truth_f:
+            merged = {}
+            for m in raw_messages:
+                merged.update(m["measurements"])
+            truth_w.writerow([t] + [repr(merged[e["id"]]) for e in producer.entries])
+            truth_f.flush()
         if t % 100 == 0:
-            print(f"  t={t}  converged={metrics['converged']}  "
-                  f"published {len(raw_messages)} raw messages")
+            print(f"  t={t}  converged={converged}  published {len(raw_messages)} raw messages", flush=True)
 
-        time.sleep(1)  # 1 second = 1 simulated minute, matching the prior cadence
+    if replay:
+        df = pd.read_csv(replay)
+        df = df[df["timestamp"] >= start]
+        if max_steps:
+            df = df.head(max_steps)
+        print(f"REPLAY (not live OpenDSS): {len(df)} rows of {replay} from stream index {start}", flush=True)
+        for _, row in df.iterrows():
+            publish(replay_messages(producer, row), int(row["timestamp"]), converged="replay")
+            time.sleep(sleep_s)
+        return
+
+    n_steps = min(producer.num_rows - start, max_steps) if max_steps else producer.num_rows - start
+    print(f"Streaming {n_steps} timestamps from t={start} (warmup {warmup}) to {TOPIC_RAW}...", flush=True)
+    for t in range(max(0, start - warmup), start):
+        producer.run_timestep(t)            # solved, not published: settles regulator taps
+    for t in range(start, start + n_steps):
+        raw_messages, metrics = producer.run_timestep(t)
+        publish(raw_messages, t, metrics["converged"])
+        time.sleep(sleep_s)  # 1s = 1 simulated minute by default; lowered for the live demo
 
 
 if __name__ == "__main__":

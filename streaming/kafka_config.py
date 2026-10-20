@@ -7,5 +7,6 @@ TOPIC_RAW = "telemetry.raw"            # z_true = h(x_true) + e, from the sensor
 TOPIC_DELIVERED = "telemetry.delivered"  # z_delivered = z_true + a, what the consumer reads
 TOPIC_LABELS = "labels"                 # {timestamp, attacked_meters, attack_class, magnitude, stealth_flag}
 TOPIC_STATE = "state"                   # solved operator-twin state per timestamp
+TOPIC_ALARMS = "alarms"                 # {timestamp, fusion_score, alarm, top_channel, J, maxLNR} from the detector
 
 TOPIC = "smartgrid.telemetry"  # deprecated (pre-Phase-3), unused

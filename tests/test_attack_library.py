@@ -147,3 +147,63 @@ def test_a3_partial_only_touches_the_two_meters(data):
     allowed = {e["id"] for e in ctx.model.meas_entries if e.get("load_name") in loads}
     changed = set(z.columns[(za.iloc[7] != z.iloc[7]).values])
     assert changed and changed <= allowed
+
+
+# ---------------------------------------------------------------------------
+# apply_bias_timestep (streaming A1/A2 path) reproduces windowed attack() exactly
+# ---------------------------------------------------------------------------
+
+from attacks.library import apply_bias_timestep, BiasContext
+
+
+@pytest.fixture(scope="module")
+def bias_ctx():
+    return BiasContext("multiphase")
+
+
+_BIAS_SPECS = [
+    AttackSpec("A1", 3, 12, "step", seed=41, k=20, channel_class="mixed", pq_rel=0.10, v_abs_pu=0.01),
+    AttackSpec("A1", 2, 15, "ramp", seed=42, k=5, channel_class="PQ", pq_rel=0.20),
+    AttackSpec("A1", 4, 10, "pulse", seed=43, k=20, channel_class="V", v_abs_pu=0.02),
+    AttackSpec("A2", 3, 12, "step", seed=44, pq_rel=0.10, v_abs_pu=0.01),
+    AttackSpec("A2", 5, 10, "ramp", seed=45, pq_rel=0.05, v_abs_pu=0.005),
+    AttackSpec("A1", 3, 10, "step", magnitude=5.0, seed=46, k=20),       # m*sigma mode
+    AttackSpec("A2", 2, 14, "pulse", magnitude=10.0, seed=47),           # m*sigma mode
+]
+
+
+@pytest.mark.parametrize("spec", _BIAS_SPECS)
+def test_apply_bias_timestep_reproduces_windowed_attack(data, bias_ctx, spec):
+    z, ts, ctx = data
+    za, lb = attack(z, ts, spec, ctx)                     # committed windowed output (AttackContext)
+    cols = list(z.columns)
+    # split each row into 3 per-"meter" subsets, as the injector sees messages
+    parts = [cols[0::3], cols[1::3], cols[2::3]]
+    for t in range(len(z)):
+        row = z.iloc[t].to_dict()
+        merged, targets = {}, []
+        for part in parts:
+            sub = {c: row[c] for c in part}
+            out, info = apply_bias_timestep(sub, spec, t, bias_ctx)
+            merged.update(out)
+            targets += info["targets"]
+        expect = za.iloc[t].to_dict()
+        assert merged == expect, f"row {t} differs"               # exact equality
+        assert sorted(targets) == sorted(c for c in cols if expect[c] != row[c])
+        assert bool(targets) == bool(lb.iloc[t]["attacked"])
+
+
+def test_apply_bias_timestep_outside_window_is_identity(data, bias_ctx):
+    z, ts, ctx = data
+    spec = AttackSpec("A1", 10, 5, "step", seed=1, k=5, channel_class="PQ", pq_rel=0.10)
+    row = z.iloc[0].to_dict()
+    out, info = apply_bias_timestep(row, spec, 0, bias_ctx)
+    assert out == row and not info["attacked"]
+    out, info = apply_bias_timestep(row, spec, 15, bias_ctx)       # t == start+duration -> outside
+    assert out == row and not info["attacked"]
+
+
+def test_apply_bias_timestep_rejects_other_types(data, bias_ctx):
+    z, ts, ctx = data
+    with pytest.raises(NotImplementedError):
+        apply_bias_timestep(z.iloc[0].to_dict(), AttackSpec("A3", 0, 1, "step"), 0, bias_ctx)

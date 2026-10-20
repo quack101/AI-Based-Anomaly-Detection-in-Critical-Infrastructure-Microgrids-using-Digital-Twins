@@ -21,21 +21,34 @@ import copy
 import json
 
 
-def apply_attack(raw_message, attack=None):
-    """z_delivered = z_true + a. attack=None => a=0 => delivered is a
-    deep copy of raw, byte-identical once serialized. The seam for
-    Phase 8: a real attack function would take (raw_message, attack)
-    and perturb raw_message['measurements'][id] for the targeted ids,
-    returning a new dict -- this function's signature already supports
-    that; only the attack logic itself is deferred."""
+def _apply_attack_info(raw_message, attack=None, context=None):
+    """Returns (delivered_message, info). attack=None => deep copy, info
+    unattacked. attack = an attacks.library.AttackSpec of type A1/A2 =>
+    per-timestep additive bias via attacks.library.apply_bias_timestep
+    (Layer 2 only; no circuit access here -- the helper is registry-metadata
+    plus arithmetic). A3/A4/A5 and the legacy dict form stay unimplemented."""
 
     if attack is None:
-        return copy.deepcopy(raw_message)
+        return copy.deepcopy(raw_message), {"attacked": False, "targets": []}
+
+    if getattr(attack, "type", None) in ("A1", "A2"):
+        from attacks.library import apply_bias_timestep   # lazy: keeps the null path import-light
+        delivered = copy.deepcopy(raw_message)
+        new_meas, info = apply_bias_timestep(delivered["measurements"], attack, raw_message["timestamp"], context)
+        delivered["measurements"] = new_meas
+        return delivered, info
 
     raise NotImplementedError(
-        "Attack injection is RES.md D10 Phase 8 scope -- Phase 3 builds "
-        "the pass-through seam only."
+        "Only A1/A2 additive-bias attacks (attacks.library.AttackSpec) are "
+        "implemented on the stream; A3/A4/A5 need circuit/estimator access "
+        "the injector layer must not have."
     )
+
+
+def apply_attack(raw_message, attack=None, context=None):
+    """z_delivered = z_true + a. attack=None => a=0 => delivered is a deep
+    copy of raw, byte-identical once serialized."""
+    return _apply_attack_info(raw_message, attack, context)[0]
 
 
 class Injector:
@@ -48,7 +61,9 @@ class Injector:
     timestamp. This phase never marks anything attacked; attacked_meters
     is always []."""
 
-    def __init__(self, expected_meters, timeout_s=5.0, clock=None):
+    def __init__(self, expected_meters, timeout_s=5.0, clock=None, attack_specs=None, bias_context=None):
+        self.attack_specs = list(attack_specs or [])
+        self.bias_context = bias_context
         self.expected_meters = expected_meters
         self.timeout_s = timeout_s
         self._clock = clock or _default_clock
@@ -91,16 +106,30 @@ class Injector:
         raw_messages = self._buffer.pop(t)
         self._first_seen.pop(t, None)
 
-        delivered_messages = [
-            apply_attack(msg, attack=None) for msg in raw_messages.values()
-        ]
+        delivered_messages = []
+        attacked_meters, targets, classes, mags = [], [], [], []
+        for msg in raw_messages.values():
+            delivered, hit = copy.deepcopy(msg), False
+            for spec in self.attack_specs:
+                delivered, info = _apply_attack_info(delivered, spec, self.bias_context)
+                if info["attacked"]:
+                    hit = True
+                    targets += info["targets"]
+                    if spec.type not in classes:
+                        classes.append(spec.type)
+                        mags.append(spec.pq_rel if spec.pq_rel is not None else spec.magnitude)
+            if hit:
+                attacked_meters.append(msg["meter_id"])
+            delivered_messages.append(delivered)
 
         label = {
             "timestamp": t,
-            "attacked_meters": [],
-            "attack_class": None,
-            "magnitude": 0.0,
+            "attacked_meters": sorted(attacked_meters),
+            "attack_class": "+".join(classes) if classes else None,
+            "magnitude": float(max(mags)) if mags else 0.0,
             "stealth_flag": False,
+            "attacked": 1 if targets else 0,
+            "targets": sorted(targets),
         }
 
         return delivered_messages, label
@@ -120,25 +149,40 @@ def main():
         BOOTSTRAP_SERVERS, TOPIC_RAW, TOPIC_DELIVERED, TOPIC_LABELS,
     )
 
+    import os
     BASE_DIR = Path(__file__).resolve().parent.parent
     with open(BASE_DIR / "simulation" / "representative_meters.json") as f:
         expected_meters = len(json.load(f))
+    # multiphase adds one HEAD message per timestamp (streaming/producer.py),
+    # so the injector must expect one more message to flush by count.
+    if os.environ.get("REGISTRY_VARIANT", "default") == "multiphase":
+        expected_meters += 1
 
     consumer = KafkaConsumer(
         TOPIC_RAW,
         bootstrap_servers=BOOTSTRAP_SERVERS,
         value_deserializer=lambda m: json.loads(m.decode("utf-8")),
         auto_offset_reset="earliest",
-        group_id="injector",
+        group_id="injector" + os.environ.get("KAFKA_GROUP_SUFFIX", ""),
+        consumer_timeout_ms=int(os.environ.get("INJECTOR_IDLE_MS", "60000")),
     )
     producer = KafkaProducer(
         bootstrap_servers=BOOTSTRAP_SERVERS,
         value_serializer=lambda v: json.dumps(v).encode("utf-8"),
     )
 
-    injector = Injector(expected_meters=expected_meters)
+    specs, ctx = [], None
+    spec_path = os.environ.get("INJECTOR_ATTACKS")
+    if spec_path:
+        from attacks.library import AttackSpec, BiasContext
+        with open(spec_path) as f:
+            specs = [AttackSpec(**d) for d in json.load(f)]
+        ctx = BiasContext(os.environ.get("REGISTRY_VARIANT", "default"))
+        _ = ctx.caps          # preload train-split caps now, not at the first attacked message
+    injector = Injector(expected_meters=expected_meters, attack_specs=specs, bias_context=ctx)
 
-    print(f"Injector waiting on {TOPIC_RAW} (pass-through only, no attack class active)...")
+    mode = f"{len(specs)} A1/A2 window(s) from {spec_path}" if specs else "pass-through only, no attack class active"
+    print(f"Injector waiting on {TOPIC_RAW} ({mode})...", flush=True)
 
     for record in consumer:
         delivered_messages, label = injector.ingest(record.value)

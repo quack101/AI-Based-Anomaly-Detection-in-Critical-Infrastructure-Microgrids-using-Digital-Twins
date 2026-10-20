@@ -64,13 +64,32 @@ Phase 0 also confirmed the known data-layer defect: metered loads run ~14.7× li
 (household kW substituted for feeder-scale spot loads), masked at feeder aggregate
 by static unmetered load.
 
-**Phase 1 — in progress.** Fixing the data layer: rescale P to nodal nominal, derive
-Q from nodal power factor, reject household `Voltage`/`Global_intensity`/`Sub_metering_*`
-at the producer schema level, diversify load profiles, declare the 42 unmetered
-loads as explicit pseudo-measurements.
+**Phase 1 — complete.** Data layer: `telemetry.raw` carries registry channels only
+(`tests/test_streaming.py` fails if an unregistered field — e.g. household
+`Voltage`/`Global_intensity`/`Sub_metering_*` — is published), and the 42 unmetered
+loads enter the estimator as explicit pseudo-measurements with a σ estimated from
+held-out data.
 
 Phases 2–13 (measurement model, observability, state estimator, attack injector,
 detectors, evaluation) are specified in `RES.md` Deliverable 10.
+
+### Live detector demo (Kafka)
+
+The frozen estimator (`estimator-v5-hfix`) and the adopted detector (physics BDD +
+AE-Mahalanobis fusion) run on the stream as `streaming/detector_consumer.py`; the
+injector applies A1/A2 additive-bias attacks (`attacks/library.py`
+`apply_bias_timestep`). Every stage runs its own OpenDSS process with
+`REGISTRY_VARIANT=multiphase`.
+
+```
+docker compose -f streaming/docker-compose.yml up -d
+python -m streaming.run_demo runB_realistic --start 81640 --noise 1 --warmup 120
+python -m streaming.run_demo runA_functional --start 0 --noise 0 --functional
+docker compose -f streaming/docker-compose.yml down
+```
+
+Artifacts land in `streaming/demo_runs/<run>/` (alarms, labels, summary, timeline PNG).
+See `reports/live_kafka_demo.md`.
 
 ## Stack
 

@@ -489,3 +489,92 @@ def attack(z_series, timestamps, spec, context=None):
                 labels[kk] = None
             labels.at[idx, kk] = v
     return z_att, labels
+
+
+# ---------------------------------------------------------------------------
+# Per-timestep A1/A2 bias (live streaming path). ADDITIVE: nothing above is
+# modified. apply_bias_timestep reuses the SAME selection and bias math as
+# attack() (same rng draw order, _a1_level/_a2_level/_a1_raw/_a2_raw,
+# _level_bias, _apply_cap, profile_factors), applied to one timestep's
+# measurements dict (a whole row or any per-meter subset of it) so the
+# streaming injector can bias messages as they pass.
+# ---------------------------------------------------------------------------
+
+class BiasContext:
+    """OpenDSS-free stand-in for AttackContext, enough for A1/A2 only:
+    real channels (weighted registry entries = enabled minus P_head), sigmas
+    (registry sigma overlaid with the estimator's default overrides, exactly
+    what AttackContext.sigma returns), meter groups and train-split caps.
+    Registry metadata only -- no circuit access."""
+
+    def __init__(self, registry_variant="multiphase", sigma_overrides=None, cap_fraction=CAP_FRACTION):
+        from sensors.registry import load_registry, enabled_entries
+        entries = enabled_entries(load_registry(variant=registry_variant))
+        if sigma_overrides is None:
+            from observability.estimator_model import default_sigma_overrides
+            sigma_overrides = default_sigma_overrides()
+        self.sigma = {e["id"]: float(sigma_overrides.get(e["id"], e["sigma"])) for e in entries}
+        self.real_ids = [e["id"] for e in entries if e["quantity"] != "P_head"]
+        self.cap_fraction = cap_fraction
+        self._caps = None
+
+    meter_groups = AttackContext.meter_groups   # same regex grouping over real_ids
+    caps = AttackContext.caps                   # same train-split p95 caps
+
+
+_BIAS_SELECTION = {}
+_DEFAULT_BIAS_CONTEXT = {}
+
+
+def _bias_spec_key(spec):
+    return (spec.type, spec.start, spec.duration, spec.profile, tuple(spec.targets or ()), spec.magnitude,
+            spec.seed, spec.k, spec.meter, tuple(spec.quantities), spec.cap_mode, spec.channel_class,
+            spec.pq_rel, spec.v_abs_pu)
+
+
+def apply_bias_timestep(measurements, spec, t, context=None):
+    """Apply the A1/A2 bias of `spec` at stream index t to `measurements`
+    ({channel_id: value}, a full row or a per-meter subset). Returns
+    (new_measurements, info) with info = {attacked, targets, n_capped,
+    factor}. Outside the window (or where the profile factor is 0) the
+    measurements are returned unchanged. Selection (channels, signs) is drawn
+    once per spec from default_rng(spec.seed) in the same order as attack().
+    A3/A4/A5 are not supported here (raise NotImplementedError)."""
+
+    if spec.type not in ("A1", "A2"):
+        raise NotImplementedError("apply_bias_timestep supports A1/A2 only")
+    w = t - spec.start
+    out = dict(measurements)
+    if w < 0 or w >= spec.duration:
+        return out, {"attacked": False, "targets": [], "n_capped": 0, "factor": 0.0}
+    f = float(profile_factors(spec.profile, spec.duration)[w])
+    if f == 0:
+        return out, {"attacked": False, "targets": [], "n_capped": 0, "factor": 0.0}
+
+    ctx = context
+    if ctx is None:
+        ctx = _DEFAULT_BIAS_CONTEXT.get("ctx")
+        if ctx is None:
+            ctx = _DEFAULT_BIAS_CONTEXT["ctx"] = BiasContext()
+    key = (_bias_spec_key(spec), id(ctx))
+    sel = _BIAS_SELECTION.get(key)
+    if sel is None:
+        rng = np.random.default_rng(spec.seed)
+        is_level = spec.pq_rel is not None or spec.v_abs_pu is not None
+        if is_level:
+            sel = ("level", (_a1_level if spec.type == "A1" else _a2_level)(spec, ctx, rng))
+        else:
+            sel = ("raw", (_a1_raw if spec.type == "A1" else _a2_raw)(spec, ctx, rng))
+        _BIAS_SELECTION[key] = sel
+
+    if sel[0] == "level":
+        ids, signs = sel[1]
+        present = [c for c in ids if c in measurements]
+        raw = _level_bias(present, signs, measurements, spec)
+    else:
+        raw = {c: v for c, v in sel[1].items() if c in measurements}
+    a, n_capped = _apply_cap(raw, f, ctx, measurements, spec.cap_mode)
+    nz = [c for c, v in a.items() if v != 0.0]
+    for c in nz:
+        out[c] = measurements[c] + a[c]
+    return out, {"attacked": bool(nz), "targets": nz, "n_capped": n_capped, "factor": f}

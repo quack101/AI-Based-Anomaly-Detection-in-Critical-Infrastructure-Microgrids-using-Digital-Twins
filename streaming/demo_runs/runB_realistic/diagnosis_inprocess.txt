@@ -1,0 +1,4 @@
+interleaved (shared circuit)  test-split start (81640), warmup 120 alarms 10/21  median J  141.3  maha  437.2  fusion 0.265
+generate-first (separate circuit) test-split start (81640), warmup 120 alarms  0/21  median J  201.4  maha  169.0  fusion 0.093
+interleaved (shared circuit)  t=0, no warmup   alarms  9/21  median J  101.8  maha  597.1  fusion 0.373
+generate-first (separate circuit) t=0, no warmup alarms  0/21  median J  133.0  maha  105.8  fusion 0.055
