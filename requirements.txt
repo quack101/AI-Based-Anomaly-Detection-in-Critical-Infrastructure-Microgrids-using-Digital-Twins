@@ -1,0 +1,10 @@
+# Python packages for the twin, the detector, the live Kafka demo and the tests.
+# Tested with Python 3.14 and the versions in the comments.
+numpy             # 2.5.3
+pandas            # 3.0.6
+scipy             # 1.18.1
+matplotlib        # 3.11.2
+pillow            # 12.3.0   (GIF recording in streaming/live_view.py)
+opendssdirect.py  # 0.9.4
+kafka-python>=2.0,<3  # 2.3.2; 3.0.x crashes on Windows when a consumer closes (WinError 10038)
+pytest            # 9.1.1
