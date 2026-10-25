@@ -1,0 +1,147 @@
+placement_v1_vs_v2_N49.txt
+READ-ONLY comparison of HybridPlacement (v1), HybridV2Placement (v2),
+and RandomPlacement (20-seed average) at target_meters=49, computed
+entirely in memory via reports/_scratch_placement_v1_v2_compare.py.
+No file under simulation/ or config/ was written. Not committed.
+
+===============================================================
+STEP 1 -- what changed (git status --short)
+===============================================================
+ M placement/placement_strategy.py
+ M placement/select_meters.py          <- NOT expected by the task brief
+?? placement/hybrid_v2.py
+?? placement/placement_strategy_old.py <- NOT expected by the task brief
+
+Extra findings beyond the expected "placement_strategy.py modified,
+hybrid_v2.py new":
+  - placement/select_meters.py was also modified: its import and
+    main() now use HybridV2Placement instead of HybridPlacement
+    (placement/placement_strategy.py import line swapped for
+    placement/hybrid_v2.py; the strategy instantiation line too).
+    Net effect: if select_meters.py were run, it would now save V2's
+    meter set as the new representative_meters.json, not V1's. Not
+    run here, per the hard rules.
+  - placement/placement_strategy_old.py is new and untracked. Content
+    diff against the pre-edit (HEAD) placement_strategy.py is empty
+    once CRLF/LF differences are stripped (diff --strip-trailing-cr):
+    it is a byte-for-byte backup of the file BEFORE the weights-kwarg
+    edit, not a second new strategy.
+
+placement/placement_strategy.py diff (--ignore-cr-at-eol
+--ignore-space-at-eol), summary: adds an optional weights=None kwarg
+to HybridPlacement.__init__. When given, it must be a dict with
+exactly {kw, depth, downstream, backbone}, all >= 0, summing to 1.0
+(raises ValueError otherwise), and overrides WEIGHT_KW/WEIGHT_DEPTH/
+WEIGHT_DOWNSTREAM/WEIGHT_BACKBONE on the instance. Default behaviour
+(weights=None) is unchanged. No other lines touched.
+
+===============================================================
+STEP 2 -- tests
+===============================================================
+python -m pytest tests/test_placement_regression.py -q
+  -> 25 passed  (one reproducible, benign "Windows fatal exception"
+     trace prints during the native OpenDSS DLL import on every run,
+     before any test executes -- same as seen in earlier sessions;
+     exit code 0, all 25 pass regardless. Not fixed, per instruction.)
+
+python -c "from placement.hybrid_v2 import HybridV2Placement; print('import ok')"
+  -> import ok
+
+===============================================================
+STEP 3 -- does v1 still give the saved 49 meters?
+===============================================================
+NO. Re-running HybridPlacement(target_meters=49) in memory, through
+the exact same context-build steps select_meters.py uses
+(extract_all -> network_and_loads_from_core_extraction -> FeederContext
+-> annotate_loads), gives a 49-meter set that differs from
+simulation/representative_meters.json in 4 of 49 load names:
+
+  only in saved file   : s30c, s64b, s66c, s76a
+  only in fresh v1 run  : s12b, s29a, s2b, s84c
+
+(45 of 49 load names match; counts match at 49 both sides.) This is
+a real divergence between the code currently on disk and the file
+that was saved -- not something this task fixes, just reports.
+
+===============================================================
+STEP 4 -- v1 vs v2 vs random, N=49, in memory
+===============================================================
+
+                                   v1          v2        random(20-seed avg)
+n_meters                           49          49        49
+overlap with v1 (bus count)        49 (self)   36        28.15
+kw_share on metered bus          0.5831      0.5946      0.5863
+meters per phase  A                24          23        22.20
+                   B                14          14        15.50
+                   C                17          18        15.85
+
+hop-to-nearest-meter, over 124 reachable topology buses
+(bus '610' excluded for all three -- it has zero edges in
+context.topology_graph, the sole link being an open tie switch that
+build_topology_graph() drops; this is a graph-construction fact, not
+a placement-quality signal, and is identical for every strategy):
+  mean                             1.863       0.847       0.999
+  p95                              8           2           3.150
+  max                              12          4           4.900
+  n_buses >= 4 hops from a meter   23          2           3.350
+
+overlap v1 n v2 (36 buses): 1, 2, 4, 5, 7, 9, 10, 11, 12, 16, 17, 20,
+22, 24, 32, 33, 34, 35, 37, 39, 41, 42, 46, 47, 48, 50, 53, 59, 60,
+71, 75, 79, 80, 83, 85, 88
+
+buses 80-83 (the weak area) -- hop to nearest meter:
+  bus   v1   v2
+  80     0    0
+  81     1    1
+  82     0    1
+  83     0    0
+All 4 buses are within 1 hop of a meter under BOTH strategies; v1 is
+marginally better at bus 82 only (directly metered vs 1 hop for v2).
+
+buses 64-114 (51 buses) -- hop to nearest meter:
+  directly metered (hop=0)        13/51       18/51
+  mean hop                        3.373       0.980
+  max hop                         12          3
+Per-bus hops (v1 / v2), bus:hop pairs, 64..114:
+  v1: 64:1 65:0 66:1 67:2 68:2 69:1 70:0 71:0 72:2 73:2 74:1 75:0 76:1
+      77:0 78:1 79:0 80:0 81:1 82:0 83:0 84:0 85:0 86:1 87:0 88:0 89:1
+      90:2 91:2 92:3 93:3 94:4 95:4 96:5 97:3 98:4 99:5 100:6 101:5
+      102:6 103:7 104:8 105:6 106:7 107:8 108:7 109:8 110:9 111:10
+      112:10 113:11 114:12
+  v2: 64:0 65:1 66:2 67:2 68:3 69:2 70:1 71:0 72:1 73:2 74:1 75:0 76:0
+      77:1 78:1 79:0 80:0 81:1 82:1 83:0 84:1 85:0 86:1 87:1 88:0
+      89:1 90:0 91:1 92:0 93:1 94:0 95:1 96:0 97:3 98:2 99:1 100:0
+      101:3 102:2 103:1 104:0 105:2 106:1 107:0 108:3 109:2 110:1
+      111:0 112:2 113:1 114:0
+
+===============================================================
+5-line summary
+===============================================================
+1. v1, re-run in memory through the same context-build path as
+   select_meters.py, does NOT reproduce the saved 49-meter set: 4 of
+   49 load names differ (s30c/s64b/s66c/s76a saved vs s12b/s29a/s2b/
+   s84c fresh) -- a real divergence to flag, not a test that was run.
+2. v1 and v2 agree on 36 of 49 metered buses (73%); v2's changes
+   (farthest-first branch order + phase look-ahead) only move the
+   other 13 meters, and the kW coverage and A/B/C phase split stay
+   essentially tied across v1 (0.583, 24/14/17), v2 (0.595, 23/14/18)
+   and random (0.586, ~22/16/16) -- these strategies differ in spatial
+   spread, not in load or phase coverage.
+3. v2 is a clear tail-coverage improvement over v1: mean hop-to-
+   nearest-meter 0.85 vs 1.86, p95 2 vs 8, max 4 vs 12, over the 124
+   topology buses reachable from any meter (bus 610 is structurally
+   isolated -- zero edges in the collapsed topology graph -- for
+   every strategy alike, and is excluded from these stats).
+4. That gain is concentrated exactly where hybrid_v2.py's docstring
+   says it should be -- the high-bus-number side of the feeder
+   (64-114): v2 directly meters 18/51 of those buses vs v1's 13/51,
+   mean hop 0.98 vs 3.37, max hop 3 vs 12.
+5. The already-weak 80-83 area is covered within 1 hop by BOTH
+   strategies (v1 is marginally better, by one bus: 82 is directly
+   metered under v1, 1 hop away under v2) -- v2's improvement is
+   additive on top of v1's existing 80-83 coverage, not a trade-off
+   against it.
+
+Also flagged (STEP 1): select_meters.py now defaults to V2, and an
+exact pre-edit backup of placement_strategy.py exists as
+placement_strategy_old.py -- neither was mentioned in the task brief.
