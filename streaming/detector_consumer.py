@@ -32,8 +32,9 @@ DEFAULT_WINDOW_TIMEOUT_S = 5.0
 
 
 class DetectorConsumer:
-    def __init__(self, core, window_timeout_s=DEFAULT_WINDOW_TIMEOUT_S, clock=None, peer=None):
+    def __init__(self, core, window_timeout_s=DEFAULT_WINDOW_TIMEOUT_S, clock=None, peer=None, gate=None):
         self.core = core
+        self.gate = gate               # streaming.windowing.WindowGate, for ingest_stream
         self.peer = peer               # optional streaming.peer_monitor.PeerMonitor
         self.cols = core.cols
         self.col_set = set(self.cols)
@@ -58,6 +59,22 @@ class DetectorConsumer:
         if not (complete or timed_out):
             return None
         return self._close(t, complete)
+
+    def ingest_stream(self, msg, partition):
+        """The multi-partition path: buffer one message read from partition and
+        return a result for every timestamp that is now final
+        (streaming/windowing.py), oldest first, so W=10 consecutiveness survives
+        partitions being read at different speeds."""
+        t = msg["timestamp"]
+        if not self.gate.accept(partition, t):
+            return []
+        if t not in self._buf:
+            self._buf[t] = {}
+            self._first_seen[t] = self._clock()
+        self._buf[t].update(msg.get("measurements", {}))
+        self._real_ts[t] = msg.get("real_timestamp")
+        ready = self.gate.closable(self._buf, lambda x: self.col_set <= set(self._buf[x]))
+        return [self._close(x, self.col_set <= set(self._buf[x])) for x in ready]
 
     def flush_all(self):
         out = []
@@ -108,8 +125,9 @@ class DetectorConsumer:
 
 def main():
     import os
-    from kafka import KafkaConsumer, KafkaProducer
-    from .kafka_config import BOOTSTRAP_SERVERS, TOPIC_DELIVERED, TOPIC_ALARMS
+    from kafka import KafkaConsumer
+    from .kafka_config import BOOTSTRAP_SERVERS, TOPIC_DELIVERED, TOPIC_ALARMS, reliable_producer, send_all
+    from .windowing import WindowGate
 
     variant = os.environ.get("REGISTRY_VARIANT", "multiphase")
     core = DetectorCore(registry_variant=variant)
@@ -119,7 +137,6 @@ def main():
         peer = PeerMonitor(core.cols)
         print(f"Peer detectors on: V-peer thr={peer.V.thr:.3f}, P-peer thr={peer.P.thr:.3f}, "
               f"persistence {3} steps", flush=True)
-    dc = DetectorConsumer(core, peer=peer)
 
     kafka_consumer = KafkaConsumer(
         TOPIC_DELIVERED,
@@ -129,39 +146,41 @@ def main():
         group_id="detector" + os.environ.get("KAFKA_GROUP_SUFFIX", ""),
         consumer_timeout_ms=int(os.environ.get("DETECTOR_IDLE_MS", "60000")),
     )
-    kafka_producer = KafkaProducer(
-        bootstrap_servers=BOOTSTRAP_SERVERS,
-        value_serializer=lambda v: json.dumps(v).encode("utf-8"),
-    )
+    kafka_producer = reliable_producer(value_serializer=lambda v: json.dumps(v).encode("utf-8"))
+    dc = DetectorConsumer(core, peer=peer, gate=WindowGate(kafka_consumer.partitions_for_topic(TOPIC_DELIVERED)))
     print(f"Detector consumer up (variant={variant}, J99={core.J99:.2f}, LNR99={core.LNR99:.3f}, "
           f"fusion thr={core.thr_f:.4f}). Waiting on {TOPIC_DELIVERED}...", flush=True)
 
-    n_scored = n_alarm = n_skip = 0
-    for record in kafka_consumer:
-        res = dc.ingest(record.value)
-        if res is None:
-            continue
+    counts = {"scored": 0, "alarm": 0, "skip": 0}
+
+    def handle(res):
         if not res["scored"]:
             if res["reason"] == "incomplete":
-                n_skip += 1
+                counts["skip"] += 1
                 print(f"  t={res['timestamp']} NOT SCORED (incomplete: {res['n_missing']} missing)", flush=True)
-            continue
-        n_scored += 1
-        n_alarm += int(res["alarm"])
+            return
+        counts["scored"] += 1
+        counts["alarm"] += int(res["alarm"])
         rec = {"timestamp": res["timestamp"], "fusion_score": res["fusion_score"], "alarm": res["alarm"],
                "top_channel": res["top_channel"], "J": res["J"], "maxLNR": res["maxLNR"],
                "bdd_score": res["bdd_score"], "ae_mahalanobis": res["ae_mahalanobis"]}
         for k in ("fusion_alarm", "fusion_ratio", "v_ratio", "p_ratio", "v_alarm", "p_alarm", "fired_by"):
             if k in res:
                 rec[k] = res[k]
-        kafka_producer.send(TOPIC_ALARMS, key=str(res["timestamp"]).encode(), value=rec)
-        kafka_producer.flush()
+        send_all(kafka_producer, [(TOPIC_ALARMS, str(res["timestamp"]).encode(), rec)])
         if res["alarm"] or res["timestamp"] % 50 == 0 or "v_ratio" in res:
             ratios = (f" F={res['fusion_ratio']:.2f} V={res['v_ratio']:.2f} P={res['p_ratio']:.2f}"
                       if "v_ratio" in res else "")
             print(f"  t={res['timestamp']} fusion={res['fusion_score']:.4f}{ratios} alarm={res['alarm']} "
                   f"{('by ' + res['fired_by']) if res.get('fired_by') else ''} top={res['top_channel']}", flush=True)
-    print(f"Detector done: scored {n_scored}, alarms {n_alarm}, skipped-incomplete {n_skip}", flush=True)
+
+    for record in kafka_consumer:
+        for res in dc.ingest_stream(record.value, record.partition):
+            handle(res)
+    for res in dc.flush_all():
+        handle(res)
+    print(f"Detector done: scored {counts['scored']}, alarms {counts['alarm']}, skipped-incomplete {counts['skip']}, "
+          f"late messages dropped {dc.gate.late}", flush=True)
 
 
 if __name__ == "__main__":

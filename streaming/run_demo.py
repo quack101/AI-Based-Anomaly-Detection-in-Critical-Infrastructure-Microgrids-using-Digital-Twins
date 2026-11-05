@@ -42,21 +42,16 @@ RUN_PRESETS = {"B": {"run_name": "runB_live", "start": 81640, "noise": "1", "war
                "C": {"run_name": "runC_all", "start": 80440, "noise": "1", "warmup": 120, "sleep": "0.2",
                      "steps": 520, "schedule": "C"}}
 COMPOSE = BASE / "streaming" / "docker-compose.yml"
-
-
-def alarm_end_offset():
-    from kafka import KafkaConsumer, TopicPartition
-    c = KafkaConsumer(bootstrap_servers="localhost:9092")
-    tp = TopicPartition("alarms", 0)
-    off = c.end_offsets([tp])[tp]
-    c.close()
-    return off
+BROKERS = ("kafka-1", "kafka-2", "kafka-3")
 
 
 def broker_check(timeout_s=90):
-    """Kafka at localhost:9092 answering? If not and docker is on PATH, bring up
-    streaming/docker-compose.yml and wait for it. Exits with instructions otherwise."""
+    """Kafka cluster answering? If not and docker is on PATH, bring up the three
+    brokers of streaming/docker-compose.yml (not its stage containers: this
+    launcher runs the stages itself) and wait for them. Exits with instructions
+    otherwise."""
     import shutil
+    from streaming.kafka_config import BOOTSTRAP_SERVERS
     try:
         from kafka import KafkaAdminClient
     except ImportError:
@@ -64,24 +59,24 @@ def broker_check(timeout_s=90):
 
     def up():
         try:
-            KafkaAdminClient(bootstrap_servers="localhost:9092", request_timeout_ms=3000).close()
+            KafkaAdminClient(bootstrap_servers=BOOTSTRAP_SERVERS, request_timeout_ms=3000).close()
             return True
         except Exception:
             return False
     if up():
-        print("broker check: Kafka reachable at localhost:9092", flush=True)
+        print(f"broker check: Kafka reachable at {','.join(BOOTSTRAP_SERVERS)}", flush=True)
         return
     if shutil.which("docker"):
-        print("broker check: no broker -- docker compose up -d", flush=True)
-        subprocess.run(["docker", "compose", "-f", str(COMPOSE), "up", "-d"], check=True)
+        print("broker check: no broker -- docker compose up -d kafka-1 kafka-2 kafka-3", flush=True)
+        subprocess.run(["docker", "compose", "-f", str(COMPOSE), "up", "-d", *BROKERS], check=True)
         t0 = time.time()
         while time.time() - t0 < timeout_s:
             if up():
                 print(f"broker check: Kafka up after {time.time() - t0:.0f}s", flush=True)
                 return
             time.sleep(3)
-    sys.exit("broker check FAILED: no Kafka at localhost:9092 (docker compose -f streaming/docker-compose.yml "
-             "up -d). Offline backup: streaming/demo_runs/live_demo.gif, or "
+    sys.exit(f"broker check FAILED: no Kafka at {','.join(BOOTSTRAP_SERVERS)} (docker compose -f "
+             "streaming/docker-compose.yml up -d kafka-1 kafka-2 kafka-3). Offline backup: streaming/demo_runs/live_demo.gif, or "
              "python -m streaming.live_view --replay streaming/demo_runs/runB_realistic")
 
 
@@ -160,12 +155,13 @@ def main():
                                    "--xmax", str(S + a.steps + 2), "--stop-at", str(S + a.steps - 1),
                                    "--idle-exit", "240", "--title", title,
                                    *(["--save-gif", str(run_dir / "live_demo.gif")] if a.save_gif else [])], cwd=BASE, env=env)
+    from streaming.demo_tools import alarm_count
     expected = a.steps - (W - 1)
     last, last_change = -1, time.time()
     try:
         while True:
             time.sleep(5)
-            off = alarm_end_offset()
+            off = alarm_count()
             if off != last:
                 last, last_change = off, time.time()
                 print(f"  alarms published: {off}/{expected}  ({time.time() - t0:.0f}s)", flush=True)

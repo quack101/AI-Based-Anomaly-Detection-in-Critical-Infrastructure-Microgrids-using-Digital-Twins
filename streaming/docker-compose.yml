@@ -1,21 +1,210 @@
-version: '3.8'
+# The whole live system: three Kafka brokers, then every pipeline stage in its own
+# container. From the repo root:
+#
+#   docker compose up --build
+#
+# Brokers + topics -> injector, detector, operator twin, viewer -> producer -> report.
+# Results land in streaming/demo_runs/$RUN_NAME (default runC_docker). Attack plans in
+# streaming/demo_attacks/ exist for the default start only. Settings below can be
+# overridden from a .env file or the shell, e.g. DEMO_STEPS=60 for a quick check.
+# The data folders in the README's Setup section must be in place first.
+name: microgrid-twin
+
+x-kafka: &kafka
+  # Pinned by digest: the same broker build on every machine.
+  image: apache/kafka:4.3.2@sha256:852a0d49fc4e656b022e7f23785411802c9a088c78a7c5e39f33969de9c227a7
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:19092 > /dev/null 2>&1"]
+    interval: 10s
+    timeout: 20s
+    retries: 18
+    start_period: 20s
+
+x-kafka-env: &kafka-env
+  CLUSTER_ID: 5L6g3nShT-eMCtK--X86sw
+  KAFKA_PROCESS_ROLES: broker,controller
+  # Three controllers: the cluster keeps its quorum with one broker down.
+  KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
+  KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+  KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+  # Replicate everything, including consumer offsets, so stages keep their position
+  # when a broker dies. Same values as streaming/kafka_config.py.
+  KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+  KAFKA_MIN_INSYNC_REPLICAS: 2
+  KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+  KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+  KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+  KAFKA_SHARE_COORDINATOR_STATE_TOPIC_REPLICATION_FACTOR: 3
+  KAFKA_SHARE_COORDINATOR_STATE_TOPIC_MIN_ISR: 2
+  # Topics come only from streaming/kafka_config.py, never from a stray client.
+  KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+  KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+  KAFKA_LOG_DIRS: /var/lib/kafka/data
+  KAFKA_HEAP_OPTS: -Xms256m -Xmx512m
+
+x-stage-env: &stage-env
+  KAFKA_BOOTSTRAP_SERVERS: kafka-1:19092,kafka-2:19092,kafka-3:19092
+  KAFKA_GROUP_SUFFIX: -${RUN_NAME:-runC_docker}
+  REGISTRY_VARIANT: multiphase
+  OMP_NUM_THREADS: "1"
+  MKL_NUM_THREADS: "1"
+  OPENBLAS_NUM_THREADS: "1"
+  PYTHONUNBUFFERED: "1"
+  PYTHONIOENCODING: utf-8
+
+x-after-topics: &after-topics
+  kafka-init:
+    condition: service_completed_successfully
 
 services:
-  kafka:
-    image: apache/kafka:latest
-    container_name: kafka
-
-    ports:
-      - "9092:9092"
-
+  kafka-1:
+    <<: *kafka
+    hostname: kafka-1
+    ports: ["9092:9092"]
+    volumes: ["kafka-1-data:/var/lib/kafka/data"]
     environment:
+      <<: *kafka-env
       KAFKA_NODE_ID: 1
-      KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_LISTENERS: INTERNAL://:19092,EXTERNAL://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-1:19092,EXTERNAL://localhost:9092
+
+  kafka-2:
+    <<: *kafka
+    hostname: kafka-2
+    ports: ["9094:9094"]
+    volumes: ["kafka-2-data:/var/lib/kafka/data"]
+    environment:
+      <<: *kafka-env
+      KAFKA_NODE_ID: 2
+      KAFKA_LISTENERS: INTERNAL://:19092,EXTERNAL://:9094,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-2:19092,EXTERNAL://localhost:9094
+
+  kafka-3:
+    <<: *kafka
+    hostname: kafka-3
+    ports: ["9096:9096"]
+    volumes: ["kafka-3-data:/var/lib/kafka/data"]
+    environment:
+      <<: *kafka-env
+      KAFKA_NODE_ID: 3
+      KAFKA_LISTENERS: INTERNAL://:19092,EXTERNAL://:9096,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-3:19092,EXTERNAL://localhost:9096
+
+  # One-shot: recreates the topics for a fresh run and checks their layout.
+  kafka-init:
+    build: { context: .., dockerfile: docker/report.Dockerfile }
+    image: microgrid-twin/report
+    command: ["python", "-m", "streaming.demo_tools", "reset"]
+    environment: *stage-env
+    depends_on:
+      kafka-1: { condition: service_healthy }
+      kafka-2: { condition: service_healthy }
+      kafka-3: { condition: service_healthy }
+
+  injector:
+    build: { context: .., dockerfile: docker/injector.Dockerfile }
+    image: microgrid-twin/injector
+    restart: on-failure:3
+    command:
+      - sh
+      - -c
+      - >-
+        python -m streaming.demo_schedule ${DEMO_START:-80440} /app/streaming/demo_runs/${RUN_NAME:-runC_docker}/attacks.json
+        && exec python -m streaming.injector
+    environment:
+      <<: *stage-env
+      INJECTOR_ATTACKS: /app/streaming/demo_runs/${RUN_NAME:-runC_docker}/attacks.json
+      INJECTOR_IDLE_MS: "360000"
+    volumes:
+      - ../simulation/phase6_corpus:/app/simulation/phase6_corpus:ro
+      - ../streaming/demo_runs:/app/streaming/demo_runs
+    depends_on: *after-topics
+
+  detector:
+    build: { context: .., dockerfile: docker/detector.Dockerfile }
+    image: microgrid-twin/detector
+    restart: on-failure:3
+    environment:
+      <<: *stage-env
+      DETECTOR_IDLE_MS: "360000"
+      PEER_FIT_CACHE: /cache/peer_fit_cache.pkl
+    volumes:
+      - ../dataset/fdia_v1:/app/dataset/fdia_v1:ro
+      - ../dataset/node_loads_91:/app/dataset/node_loads_91:ro
+      - ../simulation/phase6_corpus:/app/simulation/phase6_corpus:ro
+      - fit-cache:/cache
+    depends_on: *after-topics
+
+  # L3c operator twin: its own AC solve from delivered telemetry, published to "state".
+  consumer:
+    build: { context: .., dockerfile: docker/consumer.Dockerfile }
+    image: microgrid-twin/consumer
+    restart: on-failure:3
+    environment:
+      <<: *stage-env
+      CONSUMER_IDLE_MS: "360000"
+    depends_on: *after-topics
+
+  # Not restarted automatically: a new producer would replay the stream from the start.
+  producer:
+    build: { context: .., dockerfile: docker/producer.Dockerfile }
+    image: microgrid-twin/producer
+    environment:
+      <<: *stage-env
+      PRODUCER_NOISE: "1"
+      PRODUCER_START: ${DEMO_START:-80440}
+      PRODUCER_MAX_STEPS: ${DEMO_STEPS:-520}
+      PRODUCER_WARMUP: ${DEMO_WARMUP:-120}
+      PRODUCER_SLEEP_S: ${DEMO_SLEEP:-0.2}
+      PRODUCER_TRUTH_LOG: /app/streaming/demo_runs/${RUN_NAME:-runC_docker}/truth.csv
+    volumes:
+      - ../dataset/node_loads_91:/app/dataset/node_loads_91:ro
+      - ../streaming/demo_runs:/app/streaming/demo_runs
+    depends_on:
+      <<: *after-topics
+      injector: { condition: service_started }
+      detector: { condition: service_started }
+
+  # A container has no display, so this records the live plot to a GIF. For the live
+  # window, run on the host: python -m streaming.live_view
+  viewer:
+    build: { context: .., dockerfile: docker/viewer.Dockerfile }
+    image: microgrid-twin/viewer
+    restart: on-failure:3
+    command:
+      - sh
+      - -c
+      - >-
+        exec python -m streaming.live_view --headless
+        --save-gif /app/streaming/demo_runs/${RUN_NAME:-runC_docker}/live_demo.gif
+        --stop-at $$((${DEMO_START:-80440} + ${DEMO_STEPS:-520} - 1)) --idle-exit 360
+        --title "LIVE containers: OpenDSS producer, Kafka, injector, detector"
+    environment: *stage-env
+    volumes:
+      - ../streaming/demo_runs:/app/streaming/demo_runs
+    depends_on: *after-topics
+
+  # One-shot: waits for the last scored step, then writes alarms, labels, summary, timeline.
+  report:
+    build: { context: .., dockerfile: docker/report.Dockerfile }
+    image: microgrid-twin/report
+    command:
+      - python
+      - -m
+      - streaming.demo_tools
+      - finish
+      - /app/streaming/demo_runs/${RUN_NAME:-runC_docker}
+      - "${RUN_NAME:-runC_docker}: live OpenDSS producer, containers, 3-broker Kafka"
+      - ${DEMO_STEPS:-520}
+    environment: *stage-env
+    volumes:
+      - ../streaming/demo_runs:/app/streaming/demo_runs
+    depends_on: *after-topics
+
+volumes:
+  kafka-1-data:
+  kafka-2-data:
+  kafka-3-data:
+  fit-cache:

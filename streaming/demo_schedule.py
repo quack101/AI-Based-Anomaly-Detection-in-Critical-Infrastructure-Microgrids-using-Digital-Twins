@@ -48,3 +48,14 @@ def schedule_C(S):
 def injector_specs(schedule):
     """attacks.json content: drop the offline build parameters."""
     return [{k: v for k, v in d.items() if k != "build"} for d in schedule]
+
+
+if __name__ == "__main__":
+    # python -m streaming.demo_schedule <start> <attacks.json>: write the injector's specs
+    import json
+    import sys
+    from pathlib import Path
+    start, out = int(sys.argv[1]), Path(sys.argv[2])
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(injector_specs(schedule_C(start)), indent=2))
+    print(f"wrote {out}", flush=True)

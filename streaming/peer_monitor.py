@@ -20,6 +20,7 @@ DetectorConsumer resets its own window. The fitted detectors are cached in
 streaming/peer_fit_cache.pkl (rebuilt automatically if missing).
 """
 
+import os
 import pickle
 from collections import deque
 from pathlib import Path
@@ -27,7 +28,7 @@ from pathlib import Path
 import numpy as np
 
 BASE = Path(__file__).resolve().parent.parent
-CACHE = BASE / "streaming" / "peer_fit_cache.pkl"
+CACHE = Path(os.environ.get("PEER_FIT_CACHE", BASE / "streaming" / "peer_fit_cache.pkl"))
 PERSIST = 3
 HISTORY = 30          # longest V-peer trailing window
 
@@ -38,6 +39,7 @@ def load_detectors(use_cache=True):
             return pickle.load(f)
     from validation import detect_a2_peer, detect_peer_power
     dets = {"V": detect_a2_peer.fit_default(), "P": detect_peer_power.fit_default()}
+    CACHE.parent.mkdir(parents=True, exist_ok=True)
     with open(CACHE, "wb") as f:
         pickle.dump(dets, f)
     return dets

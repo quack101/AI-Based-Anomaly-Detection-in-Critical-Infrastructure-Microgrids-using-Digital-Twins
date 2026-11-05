@@ -72,7 +72,8 @@ class Injector:
     timestamp. This phase never marks anything attacked; attacked_meters
     is always []."""
 
-    def __init__(self, expected_meters, timeout_s=5.0, clock=None, attack_specs=None, bias_context=None):
+    def __init__(self, expected_meters, timeout_s=5.0, clock=None, attack_specs=None, bias_context=None, gate=None):
+        self.gate = gate    # streaming.windowing.WindowGate, for ingest_stream
         self.attack_specs = list(attack_specs or [])
         self.bias_context = bias_context
         self.expected_meters = expected_meters
@@ -102,6 +103,21 @@ class Injector:
             return None, None
 
         return self._flush(t)
+
+    def ingest_stream(self, raw_message, partition):
+        """The multi-partition path: buffer one message read from partition and
+        return [(delivered_messages, label), ...] for every timestamp that is now
+        final (streaming/windowing.py), oldest first."""
+
+        t = raw_message["timestamp"]
+        if not self.gate.accept(partition, t):
+            return []
+        if t not in self._buffer:
+            self._buffer[t] = {}
+            self._first_seen[t] = self._clock()
+        self._buffer[t][raw_message["meter_id"]] = raw_message
+        ready = self.gate.closable(self._buffer, lambda x: len(self._buffer[x]) >= self.expected_meters)
+        return [self._flush(x) for x in ready]
 
     def flush_all(self):
         """Force-flush every still-open timestamp -- used at end of
@@ -154,11 +170,12 @@ def _default_clock():
 def main():
     """Live mode -- requires a running Kafka broker."""
 
-    from kafka import KafkaConsumer, KafkaProducer
+    from kafka import KafkaConsumer
     from pathlib import Path
     from .kafka_config import (
-        BOOTSTRAP_SERVERS, TOPIC_RAW, TOPIC_DELIVERED, TOPIC_LABELS,
+        BOOTSTRAP_SERVERS, TOPIC_RAW, TOPIC_DELIVERED, TOPIC_LABELS, reliable_producer, send_all,
     )
+    from .windowing import WindowGate
 
     import os
     BASE_DIR = Path(__file__).resolve().parent.parent
@@ -177,10 +194,7 @@ def main():
         group_id="injector" + os.environ.get("KAFKA_GROUP_SUFFIX", ""),
         consumer_timeout_ms=int(os.environ.get("INJECTOR_IDLE_MS", "60000")),
     )
-    producer = KafkaProducer(
-        bootstrap_servers=BOOTSTRAP_SERVERS,
-        value_serializer=lambda v: json.dumps(v).encode("utf-8"),
-    )
+    producer = reliable_producer(value_serializer=lambda v: json.dumps(v).encode("utf-8"))
 
     specs, ctx = [], None
     spec_path = os.environ.get("INJECTOR_ATTACKS")
@@ -191,21 +205,24 @@ def main():
             specs = [PrecomputedAttack(**d) if "plan" in d else AttackSpec(**d) for d in json.load(f)]
         ctx = BiasContext(os.environ.get("REGISTRY_VARIANT", "default"))
         _ = ctx.caps          # preload train-split caps now, not at the first attacked message
-    injector = Injector(expected_meters=expected_meters, attack_specs=specs, bias_context=ctx)
+    injector = Injector(expected_meters=expected_meters, attack_specs=specs, bias_context=ctx,
+                        gate=WindowGate(consumer.partitions_for_topic(TOPIC_RAW)))
 
     mode = (f"{len(specs)} attack window(s) ({', '.join(sp.type for sp in specs)}) from {spec_path}" if specs
             else "pass-through only, no attack class active")
     print(f"Injector waiting on {TOPIC_RAW} ({mode})...", flush=True)
 
-    for record in consumer:
-        delivered_messages, label = injector.ingest(record.value)
-        if delivered_messages is None:
-            continue
+    def publish(delivered_messages, label):
+        records = [(TOPIC_DELIVERED, msg["meter_id"].encode(), msg) for msg in delivered_messages]
+        records.append((TOPIC_LABELS, str(label["timestamp"]).encode(), label))
+        send_all(producer, records)
 
-        for msg in delivered_messages:
-            producer.send(TOPIC_DELIVERED, key=msg["meter_id"].encode(), value=msg)
-        producer.send(TOPIC_LABELS, key=str(label["timestamp"]).encode(), value=label)
-        producer.flush()
+    for record in consumer:
+        for delivered_messages, label in injector.ingest_stream(record.value, record.partition):
+            publish(delivered_messages, label)
+    for delivered_messages, label in injector.flush_all():
+        publish(delivered_messages, label)
+    print(f"Injector done ({injector.gate.late} late message(s) dropped)", flush=True)
 
 
 if __name__ == "__main__":

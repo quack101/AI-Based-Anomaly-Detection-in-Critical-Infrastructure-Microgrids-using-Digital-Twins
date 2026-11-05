@@ -3,7 +3,10 @@ streaming/demo_tools.py -- helpers for the live Kafka demo runs. Not part of
 the detector: these only move data, check it, and summarise it.
 
   python -m streaming.demo_tools reset
-        delete + recreate telemetry.raw / telemetry.delivered / labels / alarms
+        delete + recreate every live topic with its partitions and replication
+        (streaming/kafka_config.py), then check the layout on the brokers
+  python -m streaming.demo_tools finish <run_dir> <run_label> <steps>
+        wait for the detector to score the run, then dump + analyze it
   python -m streaming.demo_tools dump <run_dir>
         consume alarms + labels from the broker into <run_dir>/alarms.csv and
         labels.csv (consumes from the beginning until the topic goes idle)
@@ -29,48 +32,116 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from streaming.kafka_config import BOOTSTRAP_SERVERS as BOOT, MIN_INSYNC_REPLICAS, REPLICATION_FACTOR, \
+    TOPIC_PARTITIONS, new_topics
+
 BASE = Path(__file__).resolve().parent.parent
-TOPICS = ["telemetry.raw", "telemetry.delivered", "labels", "alarms"]
-BOOT = "localhost:9092"
 TEST_ROW0 = 73440          # stream index of test-split row 0
 W = 10
 
 
 def reset():
-    from kafka.admin import KafkaAdminClient, NewTopic
+    from kafka.admin import KafkaAdminClient
+    from kafka.errors import TopicAlreadyExistsError
     a = KafkaAdminClient(bootstrap_servers=BOOT)
-    try:
-        a.delete_topics(TOPICS)
-    except Exception:
-        pass
-    time.sleep(6)
-    for _ in range(15):
+    wanted = set(TOPIC_PARTITIONS)
+    existing = wanted & set(a.list_topics())
+    if existing:
+        a.delete_topics(sorted(existing))
+    deadline = time.time() + 60
+    while wanted & set(a.list_topics()):
+        if time.time() > deadline:
+            raise SystemExit(f"topics still being deleted after 60 s: {sorted(wanted & set(a.list_topics()))}")
+        time.sleep(1)
+    while True:                                 # a deletion can still be finishing on the brokers
         try:
-            a.create_topics([NewTopic(t, 1, 1) for t in TOPICS])
+            a.create_topics(new_topics())
             break
-        except Exception:
-            time.sleep(2)
-    print("topics:", sorted(t for t in a.list_topics() if not t.startswith("__")))
+        except TopicAlreadyExistsError:
+            if time.time() > deadline:
+                raise
+            time.sleep(1)
+    check_topics(a)
+    a.close()
+
+
+def check_topics(admin):
+    """Read the layout back from the brokers; stop if it is not what was asked for."""
+    deadline = time.time() + 30
+    while True:
+        rows, bad = [], []
+        described = {d["topic"]: d for d in admin.describe_topics(sorted(TOPIC_PARTITIONS))}
+        for name, partitions in TOPIC_PARTITIONS.items():
+            parts = described.get(name, {}).get("partitions", [])
+            rf = {len(p["replicas"]) for p in parts}
+            isr = min((len(p["isr"]) for p in parts), default=0)
+            rows.append(f"{name}: {len(parts)} partitions, replication {sorted(rf)}, min in-sync {isr}")
+            if len(parts) != partitions or rf != {REPLICATION_FACTOR} or isr < MIN_INSYNC_REPLICAS:
+                bad.append(name)
+        if not bad:
+            break
+        if time.time() > deadline:
+            raise SystemExit("topic layout check FAILED:\n  " + "\n  ".join(rows))
+        time.sleep(1)
+    print("topics:\n  " + "\n  ".join(rows), flush=True)
+
+
+def _partitions(consumer, topic):
+    from kafka import TopicPartition
+    return [TopicPartition(topic, p) for p in sorted(consumer.partitions_for_topic(topic))]
+
+
+def _retrying(action, timeout_s=120):
+    """Run action(), retrying Kafka errors: while a broker is down, a new client can
+    fail by trying that broker first, and a partition can briefly have no leader."""
+    from kafka.errors import KafkaError
+    deadline = time.time() + timeout_s
+    while True:
+        try:
+            return action()
+        except KafkaError as e:
+            if time.time() > deadline:
+                raise
+            print(f"  kafka not ready ({type(e).__name__}), retrying", flush=True)
+            time.sleep(3)
+
+
+def alarm_count():
+    """Records on the alarms topic, over all its partitions."""
+    from kafka import KafkaConsumer
+
+    def count():
+        c = KafkaConsumer(bootstrap_servers=BOOT)
+        try:
+            return sum(c.end_offsets(_partitions(c, "alarms")).values())
+        finally:
+            c.close()
+    return _retrying(count)
 
 
 def _read_topic(topic, idle_ms=5000):
-    from kafka import KafkaConsumer, TopicPartition
-    c = KafkaConsumer(bootstrap_servers=BOOT, auto_offset_reset="earliest", consumer_timeout_ms=idle_ms,
-                      value_deserializer=lambda m: json.loads(m.decode("utf-8")))
-    tp = TopicPartition(topic, 0)
-    c.assign([tp])
-    c.seek_to_beginning(tp)
-    rows = [r.value for r in c]
-    c.close()
-    return rows
+    from kafka import KafkaConsumer
+
+    def read():
+        c = KafkaConsumer(bootstrap_servers=BOOT, auto_offset_reset="earliest", consumer_timeout_ms=idle_ms,
+                          value_deserializer=lambda m: json.loads(m.decode("utf-8")))
+        try:
+            tps = _partitions(c, topic)
+            c.assign(tps)
+            c.seek_to_beginning(*tps)
+            return [r.value for r in c]
+        finally:
+            c.close()
+    return _retrying(read)
 
 
 def dump(run_dir):
     run_dir = Path(run_dir)
     run_dir.mkdir(parents=True, exist_ok=True)
-    al = pd.DataFrame(_read_topic("alarms")).sort_values("timestamp")
+    # topic order is per partition; a stage restarted mid-run may have re-published a step
+    al = pd.DataFrame(_read_topic("alarms")).drop_duplicates("timestamp", keep="last").sort_values("timestamp")
     al.to_csv(run_dir / "alarms.csv", index=False)
-    lb = pd.DataFrame(_read_topic("labels")).sort_values("timestamp")
+    lb = pd.DataFrame(_read_topic("labels")).drop_duplicates("timestamp", keep="last").sort_values("timestamp")
     lb["attacked_meters"] = lb["attacked_meters"].map(lambda v: ";".join(v))
     lb["targets"] = lb["targets"].map(lambda v: ";".join(v))
     lb.to_csv(run_dir / "labels.csv", index=False)
@@ -86,32 +157,34 @@ def gate(run_dir, n_scored=20):
     labels = pd.read_csv(run_dir / "labels.csv").set_index("timestamp")
     core = DetectorCore(registry_variant="multiphase")
     dc = DetectorConsumer(core, window_timeout_s=1e9)
-    from kafka import KafkaConsumer, TopicPartition
+    from kafka import KafkaConsumer
+    from streaming.windowing import WindowGate
     c = KafkaConsumer(bootstrap_servers=BOOT, auto_offset_reset="earliest", consumer_timeout_ms=8000,
                       value_deserializer=lambda m: json.loads(m.decode("utf-8")))
-    tp = TopicPartition("telemetry.delivered", 0)
-    c.assign([tp])
-    c.seek_to_beginning(tp)
+    tps = _partitions(c, "telemetry.delivered")
+    c.assign(tps)
+    c.seek_to_beginning(*tps)
+    dc.gate = WindowGate([tp.partition for tp in tps])
     n_msgs, rows = 0, []
     hist = []
     for rec in c:                                   # real-broker consumption, as stored
         n_msgs += 1
-        r = dc.ingest(rec.value)
-        if r is None or not r["scored"]:
-            continue
-        t = r["timestamp"]
-        if labels.loc[t, "attacked"] == 1:
-            continue                                # gate on clean timesteps only
-        # truth window = the producer's own vectors for t-9..t (all clean for this gate)
-        tw = [t - k for k in range(AE_W - 1, -1, -1)]
-        if any(labels.loc[x, "attacked"] == 1 for x in tw if x in labels.index):
-            continue
-        window = truth.loc[tw, core.cols].to_numpy(float)
-        direct = core.score_vector(window, str(r["real_timestamp"]))
-        rows.append({"timestamp": t, "dvec": float(np.max(np.abs(r["current_vec"] - window[-1]))),
-                     "dfus": abs(r["fusion_score"] - direct["fusion_score"]),
-                     "alarm_match": bool(r["alarm"] == direct["alarm"]),
-                     "dJ_rel": abs(r["J"] - direct["J"]) / max(abs(direct["J"]), 1e-12)})
+        for r in dc.ingest_stream(rec.value, rec.partition):
+            if not r["scored"]:
+                continue
+            t = r["timestamp"]
+            if labels.loc[t, "attacked"] == 1:
+                continue                            # gate on clean timesteps only
+            # truth window = the producer's own vectors for t-9..t (all clean for this gate)
+            tw = [t - k for k in range(AE_W - 1, -1, -1)]
+            if any(labels.loc[x, "attacked"] == 1 for x in tw if x in labels.index):
+                continue
+            window = truth.loc[tw, core.cols].to_numpy(float)
+            direct = core.score_vector(window, str(r["real_timestamp"]))
+            rows.append({"timestamp": t, "dvec": float(np.max(np.abs(r["current_vec"] - window[-1]))),
+                         "dfus": abs(r["fusion_score"] - direct["fusion_score"]),
+                         "alarm_match": bool(r["alarm"] == direct["alarm"]),
+                         "dJ_rel": abs(r["J"] - direct["J"]) / max(abs(direct["J"]), 1e-12)})
         if len(rows) >= n_scored:
             break
     c.close()
@@ -126,6 +199,30 @@ def gate(run_dir, n_scored=20):
     ok = len(df) >= n_scored and df["dvec"].max() <= 1e-6 and df["dfus"].max() <= 1e-6 and df["alarm_match"].all()
     print(f"REAL-KAFKA GATE: {'PASS' if ok else 'FAIL'}")
     return ok
+
+
+def finish(run_dir, label, steps, idle_s=300):
+    """Wait until the detector has published every scored step (a W=10 window needs
+    9 steps of history first) or the stream has gone quiet, then dump + analyze."""
+    expected = int(steps) - (W - 1)
+    last, last_change = -1, time.time()
+    while True:
+        n = alarm_count()
+        if n != last:
+            last, last_change = n, time.time()
+            print(f"  alarms published: {n}/{expected}", flush=True)
+        if n >= expected:
+            break
+        if time.time() - last_change > idle_s:
+            print(f"  no new alarms for {idle_s} s -- reporting what was scored", flush=True)
+            break
+        time.sleep(5)
+    if n == 0:
+        print("nothing was scored -- see the producer, injector and detector logs", flush=True)
+        return False
+    dump(run_dir)
+    analyze(run_dir, label)
+    return n >= expected
 
 
 def _windows(labels):
@@ -343,6 +440,8 @@ if __name__ == "__main__":
     cmd = sys.argv[1]
     if cmd == "reset":
         reset()
+    elif cmd == "finish":
+        sys.exit(0 if finish(sys.argv[2], sys.argv[3], sys.argv[4]) else 1)
     elif cmd == "dump":
         dump(sys.argv[2])
     elif cmd == "gate":

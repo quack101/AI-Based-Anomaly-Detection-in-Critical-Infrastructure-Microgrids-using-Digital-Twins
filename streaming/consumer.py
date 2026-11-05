@@ -80,10 +80,12 @@ DEFAULT_WINDOW_TIMEOUT_S = 5.0
 
 
 class Consumer:
-    def __init__(self, registry_variant="default", window_timeout_s=DEFAULT_WINDOW_TIMEOUT_S, clock=None):
+    def __init__(self, registry_variant="default", window_timeout_s=DEFAULT_WINDOW_TIMEOUT_S, clock=None, gate=None):
+        self.gate = gate    # streaming.windowing.WindowGate, for ingest_stream
         with open(REPRESENTATIVE_METERS) as f:
             self.representative_meters = json.load(f)
         self.expected_meters = len(self.representative_meters)
+        self._meter_ids = {m["meter_id"] for m in self.representative_meters}
 
         registry = load_registry(variant=registry_variant)
         entries = enabled_entries(registry)
@@ -143,6 +145,23 @@ class Consumer:
             return None
 
         return self._close_window(t)
+
+    def ingest_stream(self, delivered_message, partition):
+        """The multi-partition path: buffer one message read from partition and
+        return a state row for every timestamp that is now final
+        (streaming/windowing.py), oldest first. The multiphase HEAD message
+        is not a load setpoint, so it never counts towards a window."""
+
+        t = delivered_message["timestamp"]
+        if delivered_message["meter_id"] not in self._meter_ids:
+            self.gate.observe(partition, t)
+        elif self.gate.accept(partition, t):
+            if t not in self._buffer:
+                self._buffer[t] = {}
+                self._first_seen[t] = self._clock()
+            self._buffer[t][delivered_message["meter_id"]] = delivered_message
+        ready = self.gate.closable(self._buffer, lambda x: len(self._buffer[x]) >= self.expected_meters)
+        return [self._close_window(x) for x in ready]
 
     def flush_all(self):
         results = []
@@ -233,37 +252,39 @@ def _default_clock():
 def main():
     """Live mode -- requires a running Kafka broker."""
 
-    from kafka import KafkaConsumer, KafkaProducer
-    from .kafka_config import BOOTSTRAP_SERVERS, TOPIC_DELIVERED, TOPIC_STATE
+    import os
+    from kafka import KafkaConsumer
+    from .kafka_config import BOOTSTRAP_SERVERS, TOPIC_DELIVERED, TOPIC_STATE, reliable_producer, send_all
+    from .windowing import WindowGate
 
     kafka_consumer = KafkaConsumer(
         TOPIC_DELIVERED,
         bootstrap_servers=BOOTSTRAP_SERVERS,
         value_deserializer=lambda m: json.loads(m.decode("utf-8")),
         auto_offset_reset="earliest",
-        group_id="smartgrid",
+        group_id="smartgrid" + os.environ.get("KAFKA_GROUP_SUFFIX", ""),
+        consumer_timeout_ms=int(os.environ.get("CONSUMER_IDLE_MS", "0")) or float("inf"),
     )
-    kafka_producer = KafkaProducer(
-        bootstrap_servers=BOOTSTRAP_SERVERS,
-        value_serializer=lambda v: json.dumps(v).encode("utf-8"),
-    )
+    kafka_producer = reliable_producer(value_serializer=lambda v: json.dumps(v).encode("utf-8"))
 
-    consumer = Consumer()
+    consumer = Consumer(registry_variant=os.environ.get("REGISTRY_VARIANT", "default"),
+                        gate=WindowGate(kafka_consumer.partitions_for_topic(TOPIC_DELIVERED)))
     print(f"Loaded {consumer.expected_meters} representative meters. "
           f"Window timeout {consumer.window_timeout_s}s, policy=hold_last_value.")
     print("Waiting for messages...")
 
-    for record in kafka_consumer:
-        state_row = consumer.ingest(record.value)
-        if state_row is None:
-            continue
-
-        kafka_producer.send(TOPIC_STATE, key=str(state_row["timestamp"]).encode(), value=state_row)
-        kafka_producer.flush()
-
+    def publish(state_row):
+        send_all(kafka_producer, [(TOPIC_STATE, str(state_row["timestamp"]).encode(), state_row)])
         if state_row["timestamp"] % 100 == 0:
             print(f"  t={state_row['timestamp']}  converged={state_row['converged']}  "
-                  f"dropouts={state_row['dropout_count']}")
+                  f"dropouts={state_row['dropout_count']}", flush=True)
+
+    for record in kafka_consumer:
+        for state_row in consumer.ingest_stream(record.value, record.partition):
+            publish(state_row)
+    for state_row in consumer.flush_all():
+        publish(state_row)
+    print(f"Consumer done ({consumer.gate.late} late message(s) dropped)", flush=True)
 
 
 if __name__ == "__main__":

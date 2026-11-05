@@ -1,0 +1,16 @@
+# Images hold code and frozen model files only. Data is mounted read-only at run
+# time and results go to streaming/demo_runs (streaming/docker-compose.yml).
+.git
+.claude
+.pytest_cache
+.venv
+**/__pycache__
+*.log
+artifacts
+dataset
+reports
+tests
+simulation/phase6_corpus
+simulation/*.csv
+streaming/demo_runs
+streaming/peer_fit_cache.pkl
