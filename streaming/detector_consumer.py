@@ -6,6 +6,12 @@ order, and once W=10 CONSECUTIVE complete timesteps are buffered, calls
 streaming.detector_core.DetectorCore.score_vector and publishes
 {timestamp, fusion_score, alarm, top_channel, J, maxLNR} to "alarms".
 
+With the peer detectors on (default; DETECTOR_PEER=0 turns them off) every
+complete vector is also fed to streaming.peer_monitor.PeerMonitor, and the
+published "alarm" is the combined system: fusion OR V-peer OR P-peer. The
+record then also carries fusion_alarm, fusion_ratio, v_ratio, p_ratio (score /
+own threshold), v_alarm, p_alarm and fired_by.
+
 No fabrication: a timestep whose 168-vector is still incomplete when its
 window times out is logged "not scored" and skipped (which also breaks
 the W=10 consecutiveness, so the next score waits for 10 fresh complete
@@ -26,8 +32,9 @@ DEFAULT_WINDOW_TIMEOUT_S = 5.0
 
 
 class DetectorConsumer:
-    def __init__(self, core, window_timeout_s=DEFAULT_WINDOW_TIMEOUT_S, clock=None):
+    def __init__(self, core, window_timeout_s=DEFAULT_WINDOW_TIMEOUT_S, clock=None, peer=None):
         self.core = core
+        self.peer = peer               # optional streaming.peer_monitor.PeerMonitor
         self.cols = core.cols
         self.col_set = set(self.cols)
         self.W = AE_W
@@ -69,6 +76,7 @@ class DetectorConsumer:
             return {"timestamp": t, "scored": False, "reason": "incomplete",
                     "n_present": len(buf), "n_missing": missing}
         vec = np.array([buf[c] for c in self.cols], dtype=float)
+        peer = self.peer.push(t, vec) if self.peer is not None else None
         if self._history and t == self._history[-1][0] + 1:
             self._history.append((t, vec))
         else:
@@ -79,11 +87,23 @@ class DetectorConsumer:
                     "have": len(self._history)}
         window = np.stack([v for _, v in self._history], axis=0)
         out = self.core.score_vector(window, str(rts))
-        return {"timestamp": t, "scored": True, "real_timestamp": rts,
-                "fusion_score": out["fusion_score"], "alarm": out["alarm"],
-                "top_channel": out["top_channel"], "J": out["J"], "maxLNR": out["maxLNR"],
-                "bdd_score": out["bdd_score"], "ae_mahalanobis": out["ae_mahalanobis"],
-                "current_vec": vec}            # current_vec for the equivalence gate; not published live
+        res = {"timestamp": t, "scored": True, "real_timestamp": rts,
+               "fusion_score": out["fusion_score"], "alarm": out["alarm"],
+               "top_channel": out["top_channel"], "J": out["J"], "maxLNR": out["maxLNR"],
+               "bdd_score": out["bdd_score"], "ae_mahalanobis": out["ae_mahalanobis"],
+               "current_vec": vec}             # current_vec for the equivalence gate; not published live
+        if peer is not None:
+            # combined system: fusion OR V-peer OR P-peer (each at its own ~1% threshold)
+            fusion_ratio = out["fusion_score"] / self.core.thr_f
+            fired = [n for n, on in (("fusion", out["alarm"]), ("V-peer", peer["v_alarm"]),
+                                     ("P-peer", peer["p_alarm"])) if on]
+            peer_leads = max(peer["v_ratio"], peer["p_ratio"]) > fusion_ratio
+            res.update({"fusion_alarm": out["alarm"], "fusion_ratio": fusion_ratio,
+                        "v_ratio": peer["v_ratio"], "p_ratio": peer["p_ratio"],
+                        "v_alarm": peer["v_alarm"], "p_alarm": peer["p_alarm"],
+                        "alarm": bool(fired), "fired_by": "+".join(fired),
+                        "top_channel": peer["peer_top_channel"] if peer_leads else out["top_channel"]})
+        return res
 
 
 def main():
@@ -93,7 +113,13 @@ def main():
 
     variant = os.environ.get("REGISTRY_VARIANT", "multiphase")
     core = DetectorCore(registry_variant=variant)
-    dc = DetectorConsumer(core)
+    peer = None
+    if os.environ.get("DETECTOR_PEER", "1") == "1":
+        from .peer_monitor import PeerMonitor
+        peer = PeerMonitor(core.cols)
+        print(f"Peer detectors on: V-peer thr={peer.V.thr:.3f}, P-peer thr={peer.P.thr:.3f}, "
+              f"persistence {3} steps", flush=True)
+    dc = DetectorConsumer(core, peer=peer)
 
     kafka_consumer = KafkaConsumer(
         TOPIC_DELIVERED,
@@ -122,14 +148,19 @@ def main():
             continue
         n_scored += 1
         n_alarm += int(res["alarm"])
-        kafka_producer.send(TOPIC_ALARMS, key=str(res["timestamp"]).encode(), value={
-            "timestamp": res["timestamp"], "fusion_score": res["fusion_score"], "alarm": res["alarm"],
-            "top_channel": res["top_channel"], "J": res["J"], "maxLNR": res["maxLNR"],
-            "bdd_score": res["bdd_score"], "ae_mahalanobis": res["ae_mahalanobis"]})
+        rec = {"timestamp": res["timestamp"], "fusion_score": res["fusion_score"], "alarm": res["alarm"],
+               "top_channel": res["top_channel"], "J": res["J"], "maxLNR": res["maxLNR"],
+               "bdd_score": res["bdd_score"], "ae_mahalanobis": res["ae_mahalanobis"]}
+        for k in ("fusion_alarm", "fusion_ratio", "v_ratio", "p_ratio", "v_alarm", "p_alarm", "fired_by"):
+            if k in res:
+                rec[k] = res[k]
+        kafka_producer.send(TOPIC_ALARMS, key=str(res["timestamp"]).encode(), value=rec)
         kafka_producer.flush()
-        if res["alarm"] or res["timestamp"] % 50 == 0:
-            print(f"  t={res['timestamp']} fusion={res['fusion_score']:.4f} alarm={res['alarm']} "
-                  f"top={res['top_channel']}", flush=True)
+        if res["alarm"] or res["timestamp"] % 50 == 0 or "v_ratio" in res:
+            ratios = (f" F={res['fusion_ratio']:.2f} V={res['v_ratio']:.2f} P={res['p_ratio']:.2f}"
+                      if "v_ratio" in res else "")
+            print(f"  t={res['timestamp']} fusion={res['fusion_score']:.4f}{ratios} alarm={res['alarm']} "
+                  f"{('by ' + res['fired_by']) if res.get('fired_by') else ''} top={res['top_channel']}", flush=True)
     print(f"Detector done: scored {n_scored}, alarms {n_alarm}, skipped-incomplete {n_skip}", flush=True)
 
 

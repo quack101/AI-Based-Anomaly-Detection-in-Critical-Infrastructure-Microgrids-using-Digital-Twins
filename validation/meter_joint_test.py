@@ -2,7 +2,7 @@
 Tuning half only (even benchmark ids for A3; A2 windows from the overall_eval
 generator, even positions). Same calibration (99% clean val, untouched rows),
 K = 3, FAR on clean test."""
-import json, re, sys, types
+import re, sys, types
 import numpy as np, pandas as pd
 sys.modules.setdefault("opendssdirect", types.ModuleType("opendssdirect"))
 from attacks.library import BiasContext

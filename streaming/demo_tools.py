@@ -152,9 +152,11 @@ def analyze(run_dir, label, functional=False):
     thr = float(np.load(BASE / "streaming" / "detector_fit_cache.npz")["thr_f"])
     wins = _windows(lb)
     attacked_ts = set(lb.loc[lb["attacked"] == 1, "timestamp"])
+    peer = "v_ratio" in al.columns
+    mem = 30 if peer else W                               # V-peer averages over up to 30 steps
     spill = set()
     for s, e, _, _ in wins:
-        spill |= set(range(e + 1, e + W))                 # detector window still holds attacked steps
+        spill |= set(range(e + 1, e + mem))               # detector history still holds attacked steps
     al["in_window"] = al["timestamp"].isin(attacked_ts)
     al["spill"] = al["timestamp"].isin(spill)
     clean = al[~al["in_window"] & ~al["spill"]]
@@ -165,7 +167,10 @@ def analyze(run_dir, label, functional=False):
         summary["clean_stretch"] = {"n_steps": int(len(clean)), "n_alarms": int(clean["alarm"].sum()),
                                     "alarm_rate": float(clean["alarm"].mean()) if len(clean) else None,
                                     "definition": "scored steps outside attack windows and not within the "
-                                                  f"{W - 1} steps after one (detector history spillover)"}
+                                                  f"{mem - 1} steps after one (detector history spillover)"}
+        if peer:
+            for col, name in (("fusion_alarm", "fusion"), ("v_alarm", "V-peer"), ("p_alarm", "P-peer")):
+                summary["clean_stretch"][f"alarm_rate_{name}"] = float(clean[col].astype(bool).mean()) if len(clean) else None
     for s, e, cls, tg in wins:
         sub = al[(al["timestamp"] >= s) & (al["timestamp"] <= e)]
         hit = sub[sub["alarm"]]
@@ -179,6 +184,9 @@ def analyze(run_dir, label, functional=False):
                           "top_channel_matches_attacked": bool(first["top_channel"] in tg),
                           "alarm_steps": int(len(hit)),
                           "frac_alarm_steps_top_in_targets": float(np.mean([c in tg for c in hit["top_channel"]]))})
+                if peer:
+                    w["detected_by"] = {name: bool(sub[col].astype(bool).any()) for col, name in
+                                        (("fusion_alarm", "fusion"), ("v_alarm", "V-peer"), ("p_alarm", "P-peer"))}
             else:
                 w.update({"detected": False, "delay": None, "top_channel_matches_attacked": None})
         summary["windows"].append(w)
@@ -189,20 +197,33 @@ def analyze(run_dir, label, functional=False):
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     ink, muted, grid = "#1f2933", "#6b7785", "#e3e7ec"
-    hues = {"A1": "#d9822b", "A2": "#2b7bb9"}
+    hues = {"A1": "#d9822b", "A2": "#2b7bb9", "A3": "#1baf7a", "A4": "#e87ba4", "A5": "#8e6c8a"}
     fig, ax = plt.subplots(figsize=(11, 3.8), dpi=140)
     for s, e, cls, _ in wins:
         ax.axvspan(s - 0.5, e + 0.5, color=hues.get(cls, "#999999"), alpha=0.16, lw=0)
         ax.text((s + e) / 2, 1.03, cls, ha="center", va="bottom", fontsize=9, color=ink,
                 transform=ax.get_xaxis_transform())
-    ax.plot(al["timestamp"], al["fusion_score"], color=ink, lw=1.2, label="fusion score")
     fired = al[al["alarm"]]
-    if len(fired):
-        ax.plot(fired["timestamp"], fired["fusion_score"], "o", ms=3.5, color="#c0392b", label="alarm")
-    ax.axhline(thr, color=muted, lw=1, ls=(0, (4, 3)), label=f"threshold ({thr:.3f})")
-    ax.set_ylim(-0.02, 1.05)
+    if peer:
+        ymax = 4.0
+        ratios = {"fusion (physics BDD + AE)": (al["fusion_score"] / thr, ink),
+                  "voltage peer check": (al["v_ratio"], "#6a3fb5"), "power peer check": (al["p_ratio"], "#b07d12")}
+        for name, (y, col) in ratios.items():
+            ax.plot(al["timestamp"], np.clip(y, 0, ymax), color=col, lw=1.1, label=name)
+        top = np.clip(np.nanmax(np.vstack([y for y, _ in ratios.values()]), axis=0), 0, ymax)
+        if len(fired):
+            ax.plot(fired["timestamp"], top[fired.index], "o", ms=3.5, color="#c0392b", label="alarm (any detector)")
+        ax.axhline(1.0, color=muted, lw=1, ls=(0, (4, 3)), label="threshold (each detector's own ~1% level)")
+        ax.set_ylim(-0.05, ymax + 0.1)
+        ax.set_ylabel(f"score / threshold (clipped at {ymax:g})", fontsize=9, color=muted)
+    else:
+        ax.plot(al["timestamp"], al["fusion_score"], color=ink, lw=1.2, label="fusion score")
+        if len(fired):
+            ax.plot(fired["timestamp"], fired["fusion_score"], "o", ms=3.5, color="#c0392b", label="alarm")
+        ax.axhline(thr, color=muted, lw=1, ls=(0, (4, 3)), label=f"threshold ({thr:.3f})")
+        ax.set_ylim(-0.02, 1.05)
+        ax.set_ylabel("fusion score", fontsize=9, color=muted)
     ax.set_xlabel("stream index (1 step = 1 simulated minute)", fontsize=9, color=muted)
-    ax.set_ylabel("fusion score", fontsize=9, color=muted)
     ax.grid(True, color=grid, lw=0.7)
     for sp in ("top", "right"):
         ax.spines[sp].set_visible(False)
@@ -220,14 +241,17 @@ def analyze(run_dir, label, functional=False):
         print("  (functional run: pipeline test only -- no rates reported)")
     else:
         cs = summary["clean_stretch"]
-        print(f"  clean-stretch: {cs['n_alarms']}/{cs['n_steps']} alarms = {cs['alarm_rate']*100:.2f}%")
+        print(f"  clean-stretch: {cs['n_alarms']}/{cs['n_steps']} alarms = {cs['alarm_rate']*100:.2f}%"
+              + ("  (" + ", ".join(f"{k[11:]} {v*100:.2f}%" for k, v in cs.items() if k.startswith("alarm_rate_")) + ")"
+                 if peer else ""))
     for w in summary["windows"]:
         if functional:
             print(f"  window {w['class']} t={w['start']}..{w['end']} targets={w['n_targets']} {w['targets_sample']}")
         elif w["detected"]:
             print(f"  window {w['class']} t={w['start']}..{w['end']}: DETECTED delay {w['delay']} steps, "
                   f"first-alarm top={w['first_alarm_top_channel']} matches_attacked={w['top_channel_matches_attacked']}, "
-                  f"alarm steps {w['alarm_steps']}, top-in-targets {w['frac_alarm_steps_top_in_targets']*100:.0f}%")
+                  f"alarm steps {w['alarm_steps']}, top-in-targets {w['frac_alarm_steps_top_in_targets']*100:.0f}%"
+                  + (f", by {', '.join(k for k, v in w['detected_by'].items() if v)}" if "detected_by" in w else ""))
         else:
             print(f"  window {w['class']} t={w['start']}..{w['end']}: not detected")
 

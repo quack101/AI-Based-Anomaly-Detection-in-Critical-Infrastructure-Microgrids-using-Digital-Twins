@@ -15,9 +15,11 @@ or shift any other reader's position.
         replay a recorded run's alarms.csv / labels.csv (no broker needed);
         the figure is titled as a REPLAY, never as live
 
-Top panel: fusion score vs stream index, the frozen fusion threshold
-(detector_fit_cache.npz thr_f = 0.3934), red dots where alarm=True, attacked
-steps shaded by class. Bottom panel: how often each channel was the top
+Top panel: each detector's score divided by its own threshold (fusion: the
+frozen detector_fit_cache.npz thr_f = 0.3934; V-peer / P-peer: their 99%-of-
+clean-val thresholds), so one dashed line at 1.0 is every detector's alarm
+level; red dots where the combined alarm is on; attacked steps shaded by class.
+Runs recorded before the peer detectors show the fusion line only. Bottom panel: how often each channel was the top
 channel over the last 20 scored steps -- top_channel is the channel with the
 largest contribution to the AE-Mahalanobis distance (streaming/detector_core.py
 score_vector), not a state-estimation residual. Text box: current step, alarm,
@@ -40,7 +42,9 @@ TOP_N = 20
 
 INK, MUTED, GRID, SURFACE = "#1f2933", "#6b7785", "#e3e7ec", "#fcfcfb"
 ALARM = "#c0392b"
-HUES = {"A1": "#d9822b", "A2": "#2b7bb9"}      # same as demo_tools.analyze timeline.png
+HUES = {"A1": "#d9822b", "A2": "#2b7bb9", "A3": "#1baf7a", "A4": "#e87ba4", "A5": "#8e6c8a"}  # = demo_tools.analyze
+LINES = {"fusion": INK, "V-peer": "#6a3fb5", "P-peer": "#b07d12"}   # detector score lines
+YMAX = 4.0             # score/threshold axis is clipped here for display
 OTHER_HUE = "#8e6c8a"
 BAR_IDLE = "#c5ccd4"
 
@@ -72,10 +76,19 @@ class LiveState:
             self.labels[t] = dict(rec, targets=_as_list(rec.get("targets")),
                                   attacked_meters=_as_list(rec.get("attacked_meters")))
 
-    def series(self):
+    def has_peer(self):
+        return any("v_ratio" in r for r in self.alarms.values())
+
+    def series(self, thr_f):
+        """(ts, {detector: score / its own threshold}, combined alarm). Records
+        without peer fields (older runs) give the fusion line only."""
         ts = sorted(self.alarms)
-        return (np.array(ts, dtype=float),
-                np.array([float(self.alarms[t]["fusion_score"]) for t in ts]),
+        get = lambda t, k: float(self.alarms[t][k]) if self.alarms[t].get(k) is not None else np.nan
+        lines = {"fusion": np.array([float(self.alarms[t]["fusion_score"]) / thr_f for t in ts])}
+        if self.has_peer():
+            lines["V-peer"] = np.array([get(t, "v_ratio") for t in ts])
+            lines["P-peer"] = np.array([get(t, "p_ratio") for t in ts])
+        return (np.array(ts, dtype=float), lines,
                 np.array([bool(self.alarms[t]["alarm"]) for t in ts], dtype=bool))
 
     def attack_spans(self, upto=None):
@@ -116,7 +129,8 @@ class LiveState:
         rec = self.alarms[t]
         lb = self.labels.get(t)
         return {"t": t, "alarm": bool(rec["alarm"]), "fusion": float(rec["fusion_score"]),
-                "top": rec["top_channel"],
+                "top": rec["top_channel"], "v_ratio": rec.get("v_ratio"), "p_ratio": rec.get("p_ratio"),
+                "fired_by": rec.get("fired_by") or "",
                 "attacked": None if lb is None else bool(int(lb.get("attacked", 0))),
                 "attack_class": None if lb is None else lb.get("attack_class"),
                 "n_alarm": int(sum(bool(r["alarm"]) for r in self.alarms.values())),
@@ -143,21 +157,20 @@ class LiveView:
 
         ax = self.ax
         ax.set_facecolor(SURFACE)
-        self.line, = ax.plot([], [], color=INK, lw=1.4, label="fusion score")
+        self.lines = {}
+        for name, col in LINES.items():
+            self.lines[name], = ax.plot([], [], color=col, lw=1.6 if name == "fusion" else 1.3, label=name)
         self.dots, = ax.plot([], [], "o", ms=5, color=ALARM, mec=SURFACE, mew=1, ls="none", label="alarm")
-        ax.axhline(thr, color=MUTED, lw=1, ls=(0, (4, 3)))
-        ax.text(1.0, thr, f" threshold {thr:.3f}", transform=ax.get_yaxis_transform(), va="bottom", ha="right",
-                fontsize=8, color=MUTED)
-        ax.set_ylim(-0.02, 1.05)
+        ax.axhline(1.0, color=MUTED, lw=1, ls=(0, (4, 3)))
+        ax.text(1.0, 1.0, " threshold (each detector's own ~1% level)", transform=ax.get_yaxis_transform(),
+                va="bottom", ha="right", fontsize=8, color=MUTED)
+        ax.set_ylim(-0.05, YMAX + 0.1)
         ax.set_xlabel("stream index (1 step = 1 simulated minute)", fontsize=9, color=MUTED)
-        ax.set_ylabel("fusion score", fontsize=9, color=MUTED)
+        ax.set_ylabel(f"score / threshold (clipped at {YMAX:g})", fontsize=9, color=MUTED)
         self._style(ax)
-        ax.legend(handles=[Line2D([], [], color=INK, lw=1.4, label="fusion score"),
-                           Line2D([], [], marker="o", ms=5, color=ALARM, ls="none", label="alarm"),
-                           Line2D([], [], color=MUTED, lw=1, ls=(0, (4, 3)), label="threshold"),
-                           Patch(color=HUES["A1"], alpha=0.25, label="A1 attacked (label)"),
-                           Patch(color=HUES["A2"], alpha=0.25, label="A2 attacked (label)")],
-                  loc="lower left", fontsize=8, frameon=False, ncol=5, bbox_to_anchor=(0, 1.07))
+        self._legend_args = dict(loc="lower left", fontsize=8, frameon=False, ncol=6, bbox_to_anchor=(0, 1.07))
+        self._legend_done = None
+        self._Line2D, self._Patch = Line2D, Patch
         self._span_artists = []
         self.axt.axis("off")
         self.txt = self.axt.text(0.04, 0.95, "waiting for alarms ...", va="top", ha="left", family="monospace",
@@ -177,10 +190,25 @@ class LiveView:
 
     def redraw(self):
         st = self.state
-        ts, fus, alarm = st.series()
+        ts, lines, alarm = st.series(self.thr)
         ax = self.ax
-        self.line.set_data(ts, fus)
-        self.dots.set_data(ts[alarm], fus[alarm])
+        for name, ln in self.lines.items():
+            y = lines.get(name)
+            ln.set_data((ts, np.clip(y, 0, YMAX)) if y is not None else ([], []))
+        top = np.clip(np.nanmax(np.vstack(list(lines.values())), axis=0), 0, YMAX) if len(ts) else np.array([])
+        self.dots.set_data(ts[alarm], top[alarm])
+        peer = st.has_peer()
+        classes = sorted({lb.get("attack_class") or "attack" for lb in st.labels.values()
+                          if int(lb.get("attacked", 0))} | {"A1", "A2"})
+        legend_key = (peer, tuple(classes))
+        if self._legend_done != legend_key:     # rebuilt when a new attack class first appears
+            shown = [n for n in LINES if peer or n == "fusion"]
+            labels = {"fusion": "fusion (physics BDD + AE)", "V-peer": "voltage peer check", "P-peer": "power peer check"}
+            ax.legend(handles=[self._Line2D([], [], color=LINES[n], lw=1.5, label=labels[n]) for n in shown]
+                      + [self._Line2D([], [], marker="o", ms=5, color=ALARM, ls="none", label="alarm (any detector)")]
+                      + [self._Patch(color=HUES.get(c, OTHER_HUE), alpha=0.25, label=f"{c} attacked") for c in classes
+                         if "+" not in c], **self._legend_args)
+            self._legend_done = legend_key
 
         for a in self._span_artists:
             a.remove()
@@ -218,7 +246,7 @@ class LiveView:
             n_last = min(TOP_N, len(st.alarms))
             axb.set_xlim(0, max(n_last, 1) * 1.08)
             axb.xaxis.set_major_locator(MaxNLocator(integer=True))
-        axb.set_title(f"top channel (largest AE-Mahalanobis contribution), last {TOP_N} scored steps   "
+        axb.set_title(f"top channel (largest contribution in the leading detector), last {TOP_N} scored steps   "
                       f"(> = current;  coloured = attack target in the label, by class)",
                       fontsize=9, color=INK, loc="left")
         axb.set_xlabel("steps as top channel", fontsize=9, color=MUTED)
@@ -226,9 +254,14 @@ class LiveView:
         if cur:
             att = "n/a" if cur["attacked"] is None else ("YES " + (cur["attack_class"] or "")).strip() \
                 if cur["attacked"] else "no"
+            peer_txt = ""
+            if cur["v_ratio"] is not None:
+                peer_txt = (f"V-peer   {cur['v_ratio']:.2f}x thr\n"
+                            f"P-peer   {cur['p_ratio']:.2f}x thr\n")
             self.txt.set_text(f"step     {cur['t']}\n"
                               f"fusion   {cur['fusion']:.3f}\n"
-                              f"ALARM    {'YES' if cur['alarm'] else 'no'}\n"
+                              + peer_txt +
+                              f"ALARM    {'YES ' + cur['fired_by'] if cur['alarm'] else 'no'}\n"
                               f"attack   {att}\n"
                               f"top ch   {cur['top']}\n"
                               f"alarms   {cur['n_alarm']} / {cur['n_scored']} scored")

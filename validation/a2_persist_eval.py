@@ -6,7 +6,7 @@ import sys, types, json
 import numpy as np, pandas as pd
 sys.modules.setdefault("opendssdirect", types.ModuleType("opendssdirect"))
 from attacks.library import AttackSpec, BiasContext
-from validation.detect_a2_peer import fit_default, load, untouched
+from validation.detect_a2_peer import fit_default, load
 from validation.detect_robustness import ev
 import validation.a2_benchmark as B
 

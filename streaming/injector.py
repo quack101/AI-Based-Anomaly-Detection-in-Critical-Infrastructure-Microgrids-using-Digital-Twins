@@ -26,10 +26,20 @@ def _apply_attack_info(raw_message, attack=None, context=None):
     unattacked. attack = an attacks.library.AttackSpec of type A1/A2 =>
     per-timestep additive bias via attacks.library.apply_bias_timestep
     (Layer 2 only; no circuit access here -- the helper is registry-metadata
-    plus arithmetic). A3/A4/A5 and the legacy dict form stay unimplemented."""
+    plus arithmetic). attack = an attacks.precomputed.PrecomputedAttack (A3/A4/A5,
+    built offline by validation/gen_demo_attacks.py) => its stored vector is added
+    to the readings in transit, again pure arithmetic. The legacy dict form stays
+    unimplemented."""
 
     if attack is None:
         return copy.deepcopy(raw_message), {"attacked": False, "targets": []}
+
+    from attacks.precomputed import PrecomputedAttack   # pure arithmetic; no circuit access
+    if isinstance(attack, PrecomputedAttack):
+        delivered = copy.deepcopy(raw_message)
+        new_meas, info = attack.apply(delivered["measurements"], raw_message["timestamp"])
+        delivered["measurements"] = new_meas
+        return delivered, info
 
     if getattr(attack, "type", None) in ("A1", "A2"):
         from attacks.library import apply_bias_timestep   # lazy: keeps the null path import-light
@@ -39,9 +49,10 @@ def _apply_attack_info(raw_message, attack=None, context=None):
         return delivered, info
 
     raise NotImplementedError(
-        "Only A1/A2 additive-bias attacks (attacks.library.AttackSpec) are "
-        "implemented on the stream; A3/A4/A5 need circuit/estimator access "
-        "the injector layer must not have."
+        "On the stream: A1/A2 additive-bias attacks (attacks.library.AttackSpec) "
+        "and precomputed A3/A4/A5 plans (attacks.precomputed.PrecomputedAttack). "
+        "Building A3/A4/A5 needs circuit/estimator access the injector layer "
+        "must not have, so they are built offline by validation/gen_demo_attacks.py."
     )
 
 
@@ -127,7 +138,7 @@ class Injector:
             "attacked_meters": sorted(attacked_meters),
             "attack_class": "+".join(classes) if classes else None,
             "magnitude": float(max(mags)) if mags else 0.0,
-            "stealth_flag": False,
+            "stealth_flag": any(getattr(s, "stealthy", False) and s.type in classes for s in self.attack_specs),
             "attacked": 1 if targets else 0,
             "targets": sorted(targets),
         }
@@ -175,13 +186,15 @@ def main():
     spec_path = os.environ.get("INJECTOR_ATTACKS")
     if spec_path:
         from attacks.library import AttackSpec, BiasContext
+        from attacks.precomputed import PrecomputedAttack
         with open(spec_path) as f:
-            specs = [AttackSpec(**d) for d in json.load(f)]
+            specs = [PrecomputedAttack(**d) if "plan" in d else AttackSpec(**d) for d in json.load(f)]
         ctx = BiasContext(os.environ.get("REGISTRY_VARIANT", "default"))
         _ = ctx.caps          # preload train-split caps now, not at the first attacked message
     injector = Injector(expected_meters=expected_meters, attack_specs=specs, bias_context=ctx)
 
-    mode = f"{len(specs)} A1/A2 window(s) from {spec_path}" if specs else "pass-through only, no attack class active"
+    mode = (f"{len(specs)} attack window(s) ({', '.join(sp.type for sp in specs)}) from {spec_path}" if specs
+            else "pass-through only, no attack class active")
     print(f"Injector waiting on {TOPIC_RAW} ({mode})...", flush=True)
 
     for record in consumer:

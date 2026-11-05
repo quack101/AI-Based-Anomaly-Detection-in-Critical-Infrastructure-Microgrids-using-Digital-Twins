@@ -27,3 +27,6 @@ dataset/
 # RES.md D10 Phase 6 -- generated normal-operation corpus (~529MB,
 # *.npz isn't covered by the *.csv rule above)
 simulation/phase6_corpus/
+# live demo caches (rebuilt automatically)
+streaming/peer_fit_cache.pkl
+validation/detect_a2_peer_scores.npz

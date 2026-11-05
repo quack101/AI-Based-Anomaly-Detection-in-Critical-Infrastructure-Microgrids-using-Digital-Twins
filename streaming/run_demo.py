@@ -6,6 +6,7 @@ injector -> detector_consumer -> alarms), all four stages at multiphase.
                                [--steps 400] [--warmup W] [--sleep 0.2] [--functional]
                                [--live] [--save-gif]
   python -m streaming.run_demo --run B [--steps 400] [--save-gif]
+  python -m streaming.run_demo --run C [--save-gif]      all five attack classes, 520 steps
 
 --run B is the Run B preset (the settings of runB_realistic: multiphase, S1
 corpus noise, start 81640 inside the test split, 120-step warm-up, sleep 0.2)
@@ -18,6 +19,9 @@ The attack windows are relative to --start (clean 140 steps, A1 60 steps,
 clean 60, A2 60, clean 80 = 400 steps):
   A1: k=20 channels, mixed class, step profile, P/Q bias 10% of |z_t|, V bias 0.01 pu
   A2: one meter's P/Q/V channels, step profile, same levels
+--run C is the full demo (streaming/demo_schedule.py): A1, A2, A3, A4 and A5 in
+one 520-step run, written to streaming/demo_runs/runC_all/. Its A3/A4/A5 plans are
+built offline first (python -m validation.gen_demo_attacks).
 Artifacts go to streaming/demo_runs/<run_name>/.
 """
 
@@ -34,7 +38,9 @@ ENV = dict(os.environ, OMP_NUM_THREADS="1", MKL_NUM_THREADS="1", OPENBLAS_NUM_TH
            REGISTRY_VARIANT="multiphase",
            PYTHONIOENCODING="utf-8")   # stage logs print repo paths; a non-ASCII path crashes cp1252 stdout
 W = 10
-RUN_PRESETS = {"B": {"run_name": "runB_live", "start": 81640, "noise": "1", "warmup": 120, "sleep": "0.2"}}
+RUN_PRESETS = {"B": {"run_name": "runB_live", "start": 81640, "noise": "1", "warmup": 120, "sleep": "0.2"},
+               "C": {"run_name": "runC_all", "start": 80440, "noise": "1", "warmup": 120, "sleep": "0.2",
+                     "steps": 520, "schedule": "C"}}
 COMPOSE = BASE / "streaming" / "docker-compose.yml"
 
 
@@ -92,6 +98,8 @@ def main():
     ap.add_argument("--functional", action="store_true")
     ap.add_argument("--live", action="store_true", help="also start streaming.live_view")
     ap.add_argument("--save-gif", action="store_true", help="viewer records streaming/demo_runs/live_demo.gif")
+    ap.add_argument("--schedule", choices=["AB", "C"], default="AB",
+                    help="AB: A1 + A2 (Run B layout); C: all five classes (streaming/demo_schedule.py)")
     a = ap.parse_args()
     if a.run:
         for k, v in RUN_PRESETS[a.run].items():
@@ -109,12 +117,20 @@ def main():
                   "gate_real_kafka.csv", "truth.csv"):
         (run_dir / stale).unlink(missing_ok=True)   # never analyse a previous run's outputs
     S = a.start
-    specs = [
-        {"type": "A1", "start": S + 140, "duration": 60, "profile": "step", "seed": 20261, "k": 20,
-         "channel_class": "mixed", "pq_rel": 0.10, "v_abs_pu": 0.01},
-        {"type": "A2", "start": S + 260, "duration": 60, "profile": "step", "seed": 20262,
-         "pq_rel": 0.10, "v_abs_pu": 0.01},
-    ]
+    if a.schedule == "C":
+        from streaming.demo_schedule import schedule_C, injector_specs
+        specs = injector_specs(schedule_C(S))
+        missing = [d["plan"] for d in specs if "plan" in d and not (BASE / d["plan"]).exists()]
+        if missing:
+            sys.exit("attack plans missing: " + ", ".join(missing) + "\nbuild them first: "
+                     f"python -m validation.gen_demo_attacks --start {S}")
+    else:
+        specs = [
+            {"type": "A1", "start": S + 140, "duration": 60, "profile": "step", "seed": 20261, "k": 20,
+             "channel_class": "mixed", "pq_rel": 0.10, "v_abs_pu": 0.01},
+            {"type": "A2", "start": S + 260, "duration": 60, "profile": "step", "seed": 20262,
+             "pq_rel": 0.10, "v_abs_pu": 0.01},
+        ]
     json.dump(specs, open(run_dir / "attacks.json", "w"), indent=2)
 
     t0 = time.time()
@@ -138,11 +154,12 @@ def main():
     viewer = None
     if live:
         title = (f"LIVE -- {a.run_name}: OpenDSS producer -> Kafka -> injector -> detector  "
-                 f"(start {S}, noise {'S1' if a.noise == '1' else 'off'}, A1 @ {S + 140}, A2 @ {S + 260})")
+                 f"(start {S}, noise {'S1' if a.noise == '1' else 'off'}, "
+                 + ", ".join(f"{d['type']} @ {d['start']}" for d in specs) + ")")
         viewer = subprocess.Popen([sys.executable, "-m", "streaming.live_view", "--xmin", str(S - 2),
                                    "--xmax", str(S + a.steps + 2), "--stop-at", str(S + a.steps - 1),
                                    "--idle-exit", "240", "--title", title,
-                                   *(["--save-gif"] if a.save_gif else [])], cwd=BASE, env=env)
+                                   *(["--save-gif", str(run_dir / "live_demo.gif")] if a.save_gif else [])], cwd=BASE, env=env)
     expected = a.steps - (W - 1)
     last, last_change = -1, time.time()
     try:
