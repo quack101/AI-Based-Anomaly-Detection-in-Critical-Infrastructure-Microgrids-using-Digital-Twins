@@ -45,22 +45,38 @@ All partitions were back to three in-sync replicas 6-7 s after each restart. The
 
 **Scratch-topic check.** `python -m streaming.failover_check` kills a broker under load on a scratch topic. It passed with 3,000 sent and 3,000 received, with none missing, duplicated or out of order (`reports/kafka_failover_check.json`).
 
+**Two brokers down.** Two of the three brokers were killed under load, on a scratch topic, using the stages' own publishing code. This loses both the write quorum and the controller quorum.
+
+| Outage | Longest write wait | Outcome |
+|---|---|---|
+| 60 s | 76 s | Resumed by itself; 15,000 of 15,000 messages, none missing, duplicated or out of order |
+| 150 s | 155 s | Producer stopped with `KafkaTimeoutError` at the 120 s delivery timeout; every acknowledged message was still there |
+
+**Presentation setup.** A third full run used the containers with `python -m streaming.live_view` on the host, killing `kafka-3`, the coordinator of the viewer's own consumer group, at alarm 152. The window stayed up and reached the last step, and the run scored 511/511 steps with no gaps and 0/126 clean-stretch false alarms. All five attack classes were detected.
+
 ## Detection compared with the committed host run
 
-| Class | `runC_all` (committed, Windows host) | `runC_docker` (containers) | `runC_failover` (containers) |
-|---|---|---|---|
-| A1 delay, alarm steps | 0, 60 | 0, 60 | 0, 60 |
-| A2 delay, alarm steps | 17, 43 | 16, 41 | 16, 44 |
-| A3 delay, alarm steps | 3, 27 | 4, 13 | 5, 10 |
-| A3 caught by | fusion, V-peer, P-peer | P-peer | P-peer |
-| A4 delay, alarm steps | 0, 30 | 0, 30 | 0, 30 |
-| A5 delay, alarm steps | 0, 30 | 0, 30 | 0, 30 |
+| Class | `runC_all` (committed, Windows host) | `runC_docker` (containers) | `runC_failover` (containers) | Rehearsal (containers) |
+|---|---|---|---|---|
+| A1 delay, alarm steps | 0, 60 | 0, 60 | 0, 60 | 0, 59 |
+| A2 delay, alarm steps | 17, 43 | 16, 41 | 16, 44 | 23, 37 |
+| A3 delay, alarm steps | 3, 27 | 4, 13 | 5, 10 | 6, 6 |
+| A3 caught by | fusion, V-peer, P-peer | P-peer | P-peer | P-peer |
+| A4 delay, alarm steps | 0, 30 | 0, 30 | 0, 30 | 0, 30 |
+| A5 delay, alarm steps | 0, 30 | 0, 30 | 0, 30 | 0, 30 |
 
-A3 is weaker in both container runs. `reports/demo_full.md` already records A3 as the weakest case, with an earlier host run at 9/60 steps from P-peer alone, so 10-13 is inside the range seen before. The sensor noise is unseeded, so these runs cannot separate noise from a Linux-versus-Windows difference. The kills are ruled out by the re-score above. Quote the benchmark numbers for A3, as `reports/demo_full.md` already advises.
+A3 is weaker in all three container runs: 13, 10 and 6 alarm steps of 60, always from P-peer alone, compared with 27 steps and all three detectors in the committed host run. `reports/demo_full.md` already records A3 as the weakest case, with an earlier host run at 9/60 from P-peer alone, so the 6 is the lowest seen so far.
+
+- **The broker kills are not the cause.** The re-score above matched the live detector.
+- **The detector does not differ between platforms.** Scoring the `runC_docker` telemetry on Windows matched its Linux scores, with a largest difference of 2e-7 in the fusion score and no alarm flag different, including 13/60 on A3.
+- **A3 sits at the threshold.** In `runC_docker` the P-peer score averaged 0.99 of its threshold across the A3 window, and V-peer peaked at 1.005. Small changes in the telemetry can therefore change the alarm count a lot, which fits the spread of 6-13 across container runs with unseeded noise.
+- **Not ruled out: the telemetry itself.** The sensor noise is unseeded, and the Linux and Windows OpenDSS solves have not been compared directly, so noise and a producer-side platform difference cannot yet be separated. A noise-free run on each platform would settle it. `runC_all` kept no `alarms.csv`, so its per-step scores cannot be compared either.
+
+Quote the benchmark numbers for A3, as `reports/demo_full.md` already advises.
 
 ## Limits
 
-- **One broker down is the design limit.** With two down, writes wait for a second copy rather than risk loss, so the pipeline pauses. This was not tested.
+- **One broker down is the design limit.** With two down, the pipeline pauses for up to 120 s. A longer outage stops the producing stage, and the run has to be started again.
 - **Broker failure only.** A stage that crashes is restarted (the producer excepted), but it loses its in-memory window and the detector's history, so some steps go unscored. This was not tested.
 - **The cluster runs on one machine.** It demonstrates broker failure, not machine failure.
 - **No live window from containers.** The `viewer` container records a GIF because it has no display. Run `python -m streaming.live_view` on the host for the window.

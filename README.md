@@ -137,7 +137,8 @@ in `streaming/demo_attacks/` for the default start only.
 Every topic is replicated on all three brokers with `min.insync.replicas=2`, and producers
 use `acks=all` with idempotence. With one broker down, nothing already acknowledged is lost
 and the stream continues after a pause of a few seconds while partition leaders move. With
-two brokers down, writes wait until a second copy is available again.
+two brokers down, writes wait for a second copy for up to 120 s. Past that the producing stage
+stops with an error rather than skip data, and the run has to be started again.
 
 `telemetry.raw` and `telemetry.delivered` have 6 partitions, keyed by meter; `labels`,
 `alarms` and `state` have 3, keyed by timestamp. Since one timestep is spread over several
