@@ -54,23 +54,25 @@ All partitions were back to three in-sync replicas 6-7 s after each restart. The
 
 **Presentation setup.** A third full run used the containers with `python -m streaming.live_view` on the host, killing `kafka-3`, the coordinator of the viewer's own consumer group, at alarm 152. The window stayed up and reached the last step, and the run scored 511/511 steps with no gaps and 0/126 clean-stretch false alarms. All five attack classes were detected.
 
+**Windows launcher.** `RUN_DEMO_C.bat`, which runs every stage on the Windows host against the three-broker cluster, was run once from a fresh `.venv-1` built from `requirements.txt`. It exited 0, scored 511/511 steps and detected all five attack classes. It had one clean-stretch false alarm (1/126, V-peer), the first in any of these runs. Because the noise is unseeded, the honest range is 0-1 false alarms per 126 clean steps. The launcher writes to `runC_all`, so this run was kept outside git as `runC_bat` and the committed `runC_all` was restored.
+
 ## Detection compared with the committed host run
 
-| Class | `runC_all` (committed, Windows host) | `runC_docker` (containers) | `runC_failover` (containers) | Rehearsal (containers) |
-|---|---|---|---|---|
-| A1 delay, alarm steps | 0, 60 | 0, 60 | 0, 60 | 0, 59 |
-| A2 delay, alarm steps | 17, 43 | 16, 41 | 16, 44 | 23, 37 |
-| A3 delay, alarm steps | 3, 27 | 4, 13 | 5, 10 | 6, 6 |
-| A3 caught by | fusion, V-peer, P-peer | P-peer | P-peer | P-peer |
-| A4 delay, alarm steps | 0, 30 | 0, 30 | 0, 30 | 0, 30 |
-| A5 delay, alarm steps | 0, 30 | 0, 30 | 0, 30 | 0, 30 |
+| Class | `runC_all` (committed, Windows host) | `runC_docker` (containers) | `runC_failover` (containers) | Rehearsal (containers) | `runC_bat` (Windows host) |
+|---|---|---|---|---|---|
+| A1 delay, alarm steps | 0, 60 | 0, 60 | 0, 60 | 0, 59 | 0, 60 |
+| A2 delay, alarm steps | 17, 43 | 16, 41 | 16, 44 | 23, 37 | 15, 45 |
+| A3 delay, alarm steps | 3, 27 | 4, 13 | 5, 10 | 6, 6 | 5, 10 |
+| A3 caught by | fusion, V-peer, P-peer | P-peer | P-peer | P-peer | P-peer |
+| A4 delay, alarm steps | 0, 30 | 0, 30 | 0, 30 | 0, 30 | 0, 30 |
+| A5 delay, alarm steps | 0, 30 | 0, 30 | 0, 30 | 0, 30 | 0, 30 |
 
-A3 is weaker in all three container runs: 13, 10 and 6 alarm steps of 60, always from P-peer alone, compared with 27 steps and all three detectors in the committed host run. `reports/demo_full.md` already records A3 as the weakest case, with an earlier host run at 9/60 from P-peer alone, so the 6 is the lowest seen so far.
+A3 is weaker in all three container runs: 13, 10 and 6 alarm steps of 60, always from P-peer alone, compared with 27 steps and all three detectors in the committed host run. The new Windows-host run (`runC_bat`) gave 10, also from P-peer alone. `reports/demo_full.md` already records A3 as the weakest case, with an earlier host run at 9/60 from P-peer alone, so the 6 is the lowest seen so far.
 
 - **The broker kills are not the cause.** The re-score above matched the live detector.
 - **The detector does not differ between platforms.** Scoring the `runC_docker` telemetry on Windows matched its Linux scores, with a largest difference of 2e-7 in the fusion score and no alarm flag different, including 13/60 on A3.
 - **A3 sits at the threshold.** In `runC_docker` the P-peer score averaged 0.99 of its threshold across the A3 window, and V-peer peaked at 1.005. Small changes in the telemetry can therefore change the alarm count a lot, which fits the spread of 6-13 across container runs with unseeded noise.
-- **Not ruled out: the telemetry itself.** The sensor noise is unseeded, and the Linux and Windows OpenDSS solves have not been compared directly, so noise and a producer-side platform difference cannot yet be separated. A noise-free run on each platform would settle it. `runC_all` kept no `alarms.csv`, so its per-step scores cannot be compared either.
+- **The producer platform is unlikely to be the cause.** `runC_bat` produced its telemetry with OpenDSS on Windows, like the committed run, and still gave 10/60, inside the 6-13 container range. The likely explanation is unseeded noise, with the committed 27/60 at the high end. A noise-free run on each platform would prove this but was not done. `runC_all` kept no `alarms.csv`, so its per-step scores cannot be compared.
 
 Quote the benchmark numbers for A3, as `reports/demo_full.md` already advises.
 
