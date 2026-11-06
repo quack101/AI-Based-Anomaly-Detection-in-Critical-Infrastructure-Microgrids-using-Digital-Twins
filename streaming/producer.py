@@ -259,8 +259,7 @@ def main():
                          live OpenDSS")"""
 
     import os
-    from kafka import KafkaProducer
-    from .kafka_config import BOOTSTRAP_SERVERS, TOPIC_RAW
+    from .kafka_config import TOPIC_RAW, reliable_producer, send_all
 
     variant = os.environ.get("REGISTRY_VARIANT", "default")
     sleep_s = float(os.environ.get("PRODUCER_SLEEP_S", "1"))
@@ -275,10 +274,7 @@ def main():
         sigma_ov = _json.load(open(BASE_DIR / "config" / "sigma_overrides_s1.json"))["sigma"]
     max_steps = int(os.environ.get("PRODUCER_MAX_STEPS", "0"))  # 0 = full corpus
 
-    kafka_producer = KafkaProducer(
-        bootstrap_servers=BOOTSTRAP_SERVERS,
-        value_serializer=lambda v: json.dumps(v).encode("utf-8"),
-    )
+    kafka_producer = reliable_producer(value_serializer=lambda v: json.dumps(v).encode("utf-8"))
 
     producer = Producer(registry_variant=variant, add_noise=add_noise, sigma_overrides=sigma_ov)
     print(f"Loaded {len(producer.representative_meters)} representative meters, "
@@ -286,14 +282,13 @@ def main():
 
     truth_f = None
     if truth_log:
+        Path(truth_log).parent.mkdir(parents=True, exist_ok=True)
         truth_f = open(truth_log, "w", newline="")
         truth_w = csv.writer(truth_f)
         truth_w.writerow(["timestamp"] + [e["id"] for e in producer.entries])
 
     def publish(raw_messages, t, converged=None):
-        for msg in raw_messages:
-            kafka_producer.send(TOPIC_RAW, key=msg["meter_id"].encode(), value=msg)
-        kafka_producer.flush()
+        send_all(kafka_producer, [(TOPIC_RAW, msg["meter_id"].encode(), msg) for msg in raw_messages])
         if truth_f:
             merged = {}
             for m in raw_messages:

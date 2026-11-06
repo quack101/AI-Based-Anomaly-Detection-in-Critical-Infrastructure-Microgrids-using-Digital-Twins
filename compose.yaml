@@ -1,0 +1,5 @@
+# Lets `docker compose up --build` work from the repo root. The system is defined in
+# streaming/docker-compose.yml.
+name: microgrid-twin
+include:
+  - streaming/docker-compose.yml

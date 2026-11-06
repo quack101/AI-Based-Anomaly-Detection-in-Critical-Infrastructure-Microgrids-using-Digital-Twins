@@ -60,7 +60,7 @@ What a fresh clone needs before anything in `streaming/` or `tests/` runs:
 
 1. **Python packages:** `python -m pip install -r requirements.txt`. Keep `kafka-python`
    below 3; 3.0.x crashes on Windows.
-2. **Docker Desktop** (for the Kafka broker in `streaming/docker-compose.yml`). Start it and
+2. **Docker Desktop** (for the containers in `streaming/docker-compose.yml`). Start it and
    wait for "Engine running". Only the live demo needs it; the tests and `--replay` do not.
 3. **Data folders.** They are not in git (`.gitignore`: `dataset/`, `*.csv`,
    `simulation/phase6_corpus/`), so get them from the team and place them exactly here:
@@ -97,19 +97,78 @@ held-out data.
 Phases 2–13 (measurement model, observability, state estimator, attack injector,
 detectors, evaluation) are specified in `RES.md` Deliverable 10.
 
+### Run the whole system (containers)
+
+After the data folders from Setup are in place, one command from the repo root builds the
+images and starts everything. Python is not needed on the host.
+
+```
+docker compose up --build        # add -d to get the terminal back
+docker compose down              # stop and remove the containers; keeps broker data and the fit cache
+docker compose down -v           # also delete the broker data and the fit cache
+```
+
+This runs the full A1-A5 demo (520 steps, about 15 minutes; the first run takes a few
+minutes longer to fit the peer detectors). Compose starts the three brokers, then
+`kafka-init`, which recreates the topics and checks their layout, then the stages. Each
+`up` deletes the previous run's topics. Results go to `streaming/demo_runs/runC_docker/`
+when the `report` container exits. The brokers keep running until `docker compose down`.
+
+| Container | Dockerfile | Job |
+|---|---|---|
+| `kafka-1`, `kafka-2`, `kafka-3` | `apache/kafka:4.3.2`, pinned by digest | The cluster; published on `localhost:9092`, `9094`, `9096` |
+| `kafka-init` | `docker/report.Dockerfile` | One-shot: creates and checks the topics |
+| `producer` | `docker/producer.Dockerfile` | OpenDSS solve + sensor layer, publishes `telemetry.raw` |
+| `injector` | `docker/injector.Dockerfile` | Adds the attacks, publishes `telemetry.delivered` and `labels` |
+| `detector` | `docker/detector.Dockerfile` | Estimator, fusion and peer detectors, publishes `alarms` |
+| `consumer` | `docker/consumer.Dockerfile` | Operator twin, publishes `state` |
+| `viewer` | `docker/viewer.Dockerfile` | Records `live_demo.gif` (a container has no display) |
+| `report` | `docker/report.Dockerfile` | One-shot: writes alarms, labels, summary and timeline at the end |
+
+For the live window during a container run, install the Python packages and run
+`python -m streaming.live_view` on the host.
+
+Override settings in a `.env` file or the shell: `RUN_NAME`, `DEMO_STEPS`, `DEMO_WARMUP`,
+`DEMO_SLEEP`, `DEMO_START`. `DEMO_STEPS=40` is a quick check of the wiring; A3-A5 plans are
+in `streaming/demo_attacks/` for the default start only.
+
+### Fault-tolerant Kafka
+
+Every topic is replicated on all three brokers with `min.insync.replicas=2`, and producers
+use `acks=all` with idempotence. With one broker down, nothing already acknowledged is lost
+and the stream continues after a pause of a few seconds while partition leaders move. With
+two brokers down, writes wait for a second copy for up to 120 s. Past that the producing stage
+stops with an error rather than skip data, and the run has to be started again.
+
+`telemetry.raw` and `telemetry.delivered` have 6 partitions, keyed by meter; `labels`,
+`alarms` and `state` have 3, keyed by timestamp. Since one timestep is spread over several
+partitions, stages close a timestep's window from what they have read rather than on a
+timer (`streaming/windowing.py`), so a failover pause is not mistaken for a dropped meter.
+
+To check it on the real cluster (kills a broker, restarts it, and verifies every message):
+
+```
+docker compose up -d --wait kafka-1 kafka-2 kafka-3
+python -m streaming.failover_check
+```
+
+To try it in a run, use `docker compose kill kafka-2` during the run, then
+`docker compose start kafka-2`. Results: `reports/fault_tolerant_kafka.md`.
+
 ### Live detector demo (Kafka)
 
-The frozen estimator (`estimator-v5-hfix`) and the adopted detector (physics BDD +
+The stages can also run directly on the host, against the brokers in containers. The frozen
+estimator (`estimator-v5-hfix`) and the adopted detector (physics BDD +
 AE-Mahalanobis fusion) run on the stream as `streaming/detector_consumer.py`; the
 injector applies A1/A2 additive-bias attacks (`attacks/library.py`
 `apply_bias_timestep`). Every stage runs its own OpenDSS process with
 `REGISTRY_VARIANT=multiphase`.
 
 ```
-docker compose -f streaming/docker-compose.yml up -d
+docker compose up -d --wait kafka-1 kafka-2 kafka-3
 python -m streaming.run_demo runB_realistic --start 81640 --noise 1 --warmup 120
 python -m streaming.run_demo runA_functional --start 0 --noise 0 --functional
-docker compose -f streaming/docker-compose.yml down
+docker compose down
 ```
 
 Artifacts land in `streaming/demo_runs/<run>/` (alarms, labels, summary, timeline PNG).
@@ -129,9 +188,8 @@ python -m streaming.run_demo --run B --save-gif   # also record streaming/demo_r
 
 `--run B` uses Run B's settings unchanged (multiphase, S1 corpus noise, start 81640 inside
 the test split, 120-step warm-up, sleep 0.2 s, A1 at +140 and A2 at +260 for 60 steps
-each). It checks for a broker at `localhost:9092` first, running
-`docker compose -f streaming/docker-compose.yml up -d` if Docker is on PATH and no broker
-answers. Then it starts the producer, injector, detector_consumer and
+each). It checks for the brokers first, starting the three broker containers if Docker is
+on PATH and none answers. Then it starts the producer, injector, detector_consumer and
 `streaming/live_view.py`. Output goes to `streaming/demo_runs/runB_live/`, so the recorded
 `runB_realistic` is never overwritten. When the stream ends the window stays open until
 you close it.
@@ -172,6 +230,8 @@ FastAPI + Three.js dashboard (planned)
 
 ```
 123Bus/                  IEEE-123 OpenDSS model
+compose.yaml             lets `docker compose up` work from the repo root
+docker/                  one Dockerfile per stage, pinned package versions
 streaming/               producer, injector, detector, live viewer, run_demo launcher, docker-compose
 streaming/demo_runs/     recorded demo runs + live_demo.gif
 simulation/              OpenDSS driver, instrumentation, topology snapshot

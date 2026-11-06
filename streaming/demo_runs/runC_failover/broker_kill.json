@@ -1,0 +1,31 @@
+{
+  "run": "runC_failover",
+  "kills": [
+    {
+      "when": "while producer and injector are publishing",
+      "killed": "kafka-2",
+      "down_seconds": 45,
+      "raw_steps_at_kill": 166,
+      "labels_at_kill": 166,
+      "alarms_at_kill": 9,
+      "raw_steps_at_restart": 341,
+      "labels_at_restart": 342,
+      "alarms_at_restart": 27,
+      "all_partitions_back_in_sync_after_s": 6.1
+    },
+    {
+      "when": "while the detector is catching up",
+      "killed": "kafka-3",
+      "down_seconds": 45,
+      "raw_steps_at_kill": 520,
+      "labels_at_kill": 520,
+      "alarms_at_kill": 317,
+      "raw_steps_at_restart": 520,
+      "labels_at_restart": 520,
+      "alarms_at_restart": 348,
+      "all_partitions_back_in_sync_after_s": 7.3
+    }
+  ],
+  "report_exit": "0",
+  "elapsed_s": 941
+}

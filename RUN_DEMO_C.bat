@@ -30,12 +30,12 @@ if errorlevel 1 (
   goto :eof
 )
 :dockerup
-docker compose -f streaming\docker-compose.yml up -d >> "%LOG%" 2>&1
-for /l %%i in (1,1,20) do (
-  "%PY%" -c "from kafka import KafkaAdminClient; KafkaAdminClient(bootstrap_servers='localhost:9092', request_timeout_ms=4000).close()" >nul 2>&1 && goto brokerup
+docker compose -f streaming\docker-compose.yml up -d kafka-1 kafka-2 kafka-3 >> "%LOG%" 2>&1
+for /l %%i in (1,1,40) do (
+  "%PY%" -c "from kafka import KafkaAdminClient; from streaming.kafka_config import BOOTSTRAP_SERVERS; KafkaAdminClient(bootstrap_servers=BOOTSTRAP_SERVERS, request_timeout_ms=4000).close()" >nul 2>&1 && goto brokerup
   timeout /t 3 /nobreak >nul
 )
-echo   Kafka broker not reachable on localhost:9092
+echo   Kafka brokers not reachable on localhost:9092/9094/9096
 echo BROKER_FAIL >> "%LOG%"
 pause
 goto :eof

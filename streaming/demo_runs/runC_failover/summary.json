@@ -1,0 +1,140 @@
+{
+  "run": "runC_failover: live OpenDSS producer, containers, 3-broker Kafka",
+  "functional_only": false,
+  "n_scored": 511,
+  "n_alarm_total": 212,
+  "fusion_threshold": 0.3934018284216307,
+  "windows": [
+    {
+      "class": "A1",
+      "start": 80520,
+      "end": 80579,
+      "n_targets": 20,
+      "targets_sample": [
+        "HEAD_Q_B",
+        "M007_Q",
+        "M009_Q",
+        "M010_V",
+        "M012_P",
+        "M013_Q"
+      ],
+      "detected": true,
+      "delay": 0,
+      "first_alarm_top_channel": "M039_Q",
+      "top_channel_matches_attacked": true,
+      "alarm_steps": 60,
+      "frac_alarm_steps_top_in_targets": 0.9166666666666666,
+      "detected_by": {
+        "fusion": true,
+        "V-peer": true,
+        "P-peer": false
+      }
+    },
+    {
+      "class": "A2",
+      "start": 80620,
+      "end": 80679,
+      "n_targets": 3,
+      "targets_sample": [
+        "M042_P",
+        "M042_Q",
+        "M042_V"
+      ],
+      "detected": true,
+      "delay": 16,
+      "first_alarm_top_channel": "M042_V",
+      "top_channel_matches_attacked": true,
+      "alarm_steps": 44,
+      "frac_alarm_steps_top_in_targets": 1.0,
+      "detected_by": {
+        "fusion": false,
+        "V-peer": true,
+        "P-peer": false
+      }
+    },
+    {
+      "class": "A3",
+      "start": 80720,
+      "end": 80779,
+      "n_targets": 168,
+      "targets_sample": [
+        "HEAD_P_A",
+        "HEAD_P_B",
+        "HEAD_P_C",
+        "HEAD_Q_A",
+        "HEAD_Q_B",
+        "HEAD_Q_C"
+      ],
+      "detected": true,
+      "delay": 5,
+      "first_alarm_top_channel": "M038_P",
+      "top_channel_matches_attacked": true,
+      "alarm_steps": 10,
+      "frac_alarm_steps_top_in_targets": 1.0,
+      "detected_by": {
+        "fusion": false,
+        "V-peer": false,
+        "P-peer": true
+      }
+    },
+    {
+      "class": "A4",
+      "start": 80820,
+      "end": 80849,
+      "n_targets": 165,
+      "targets_sample": [
+        "HEAD_Q_A",
+        "HEAD_Q_B",
+        "HEAD_Q_C",
+        "HEAD_V_A",
+        "HEAD_V_B",
+        "HEAD_V_C"
+      ],
+      "detected": true,
+      "delay": 0,
+      "first_alarm_top_channel": "M044_P_B",
+      "top_channel_matches_attacked": true,
+      "alarm_steps": 30,
+      "frac_alarm_steps_top_in_targets": 1.0,
+      "detected_by": {
+        "fusion": true,
+        "V-peer": true,
+        "P-peer": true
+      }
+    },
+    {
+      "class": "A5",
+      "start": 80890,
+      "end": 80919,
+      "n_targets": 165,
+      "targets_sample": [
+        "HEAD_Q_A",
+        "HEAD_Q_B",
+        "HEAD_Q_C",
+        "HEAD_V_A",
+        "HEAD_V_B",
+        "HEAD_V_C"
+      ],
+      "detected": true,
+      "delay": 0,
+      "first_alarm_top_channel": "M048_P",
+      "top_channel_matches_attacked": true,
+      "alarm_steps": 30,
+      "frac_alarm_steps_top_in_targets": 1.0,
+      "detected_by": {
+        "fusion": true,
+        "V-peer": true,
+        "P-peer": true
+      }
+    }
+  ],
+  "clean_stretch": {
+    "n_steps": 126,
+    "n_alarms": 0,
+    "alarm_rate": 0.0,
+    "definition": "scored steps outside attack windows and not within the 29 steps after one (detector history spillover)",
+    "alarm_rate_fusion": 0.0,
+    "alarm_rate_V-peer": 0.0,
+    "alarm_rate_P-peer": 0.0
+  }
+}
