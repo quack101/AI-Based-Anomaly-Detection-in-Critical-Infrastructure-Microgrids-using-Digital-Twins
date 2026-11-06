@@ -15,6 +15,7 @@ Data sources
   fig8_8  validation/a2_persist_summary.json, validation/a2_baseline_summary.json
   fig8_9  validation/overall_eval_summary.json (A3 by level and duration)
   fig8_10 streaming/demo_runs/runC_all/{alarms,labels}.csv (live A1-A5 run)
+  fig8_11 streaming/demo_runs/runC_failover/{alarms,labels}.csv, broker_kill.json (containers, two broker kills)
 """
 
 import json
@@ -123,7 +124,7 @@ def fig5_2():
         arrow(ax, x, 1.05, 3.75 + (x - 3.75) * 0.25, 0.82)
     arrow(ax, 4.95, 3.1, 4.4, 2.5, text="telemetry.delivered", tx=0.75, ty=-0.02)
     # kafka + view
-    box(ax, 7.9, 2.35, 1.9, 1.7, "Kafka broker\n(Docker)\n\ntelemetry.raw\ntelemetry.delivered\nlabels · alarms", "kafka", size=8.5)
+    box(ax, 7.9, 2.35, 1.9, 1.7, "Kafka cluster\n(3 brokers, Docker)\n\ntelemetry.raw\ntelemetry.delivered\nlabels · alarms", "kafka", size=8.5)
     box(ax, 7.9, 0.27, 1.9, 1.25, "Live view\n3 score lines,\n5 attack classes", "fill", size=9)
     arrow(ax, 4.8, 0.55, 7.9, 0.85, text="alarms", tx=0.2, ty=0.05)
     arrow(ax, 5.9, 3.57, 7.9, 3.4, dashed=True, color=GREY)
@@ -133,21 +134,34 @@ def fig5_2():
 
 
 def fig5_3():
-    fig, ax = canvas(9.5, 4.3)
-    box(ax, 0.1, 0.25, 6.3, 3.6, "", "dash")
-    ax.text(0.25, 3.62, "Host machine (Windows). Each stage is its own process (run_demo.py starts them).",
+    fig, ax = canvas(10, 5.35)
+    box(ax, 0.1, 0.1, 7.3, 5.15, "", "dash")
+    ax.text(0.25, 5.02, "Docker Compose project (docker compose up --build). One container per stage.",
             fontsize=9, color=GREY)
-    box(ax, 0.35, 2.35, 2.8, 0.95, "producer.py\n(OpenDSS inside)", "fill")
-    box(ax, 3.35, 2.35, 2.8, 0.95, "injector.py\n(adds A1-A5 on the wire)", "fill")
-    box(ax, 0.35, 0.55, 2.8, 1.25, "detector_consumer.py\nestimator + GRU-AE\n+ peer_monitor.py (new)", "new")
-    box(ax, 3.35, 0.55, 2.8, 1.25, "live_view.py\n(fusion, V-peer and\nP-peer lines)", "fill")
-    box(ax, 6.9, 1.4, 2.4, 1.7, "Docker\nKafka broker\n(KRaft, one node)\nlocalhost:9092", "kafka", bold=False)
-    box(ax, 6.9, 0.25, 2.4, 0.9, "gen_demo_attacks.py (new)\nrun once, offline\n-> demo_attacks/*.npz", "new", size=8.5)
-    for (x, y) in [(3.15, 2.82), (6.15, 2.82), (3.15, 1.2), (6.15, 1.2)]:
-        arrow(ax, x if x > 4 else x + 3.0, y, 6.9, 2.25, color=GREY)
-    arrow(ax, 6.9, 0.7, 6.15, 2.45, dashed=True, color=ORANGE)
-    ax.text(3.25, 0.32, "All four processes read and write Kafka topics on localhost:9092.", fontsize=8.5, color=GREY,
-            style="italic", ha="center")
+    # three-broker cluster
+    box(ax, 0.3, 3.15, 6.9, 1.6, "", "band")
+    ax.text(0.45, 4.55, "Kafka cluster, apache/kafka:4.3.2 pinned by digest, KRaft", fontsize=10.5, fontweight="bold", va="center")
+    for i, port in enumerate((9092, 9094, 9096)):
+        box(ax, 0.5 + i * 2.25, 3.3, 2.05, 1.0, f"kafka-{i + 1}\nbroker + controller\nhost port {port}", "kafka", size=8.5)
+    ax.text(3.75, 2.98, "every partition on all three brokers; a write needs 2 copies (min.insync.replicas = 2)",
+            fontsize=9, color=GREY, style="italic", ha="center", va="center")
+    # stage containers
+    stages = [("producer\n(OpenDSS)", "fill"), ("injector\n(A1-A5 on\nthe wire)", "new"), ("detector\n(fusion,\npeer\nchecks)", "new"),
+              ("consumer\n(operator\ntwin)", "fill"), ("viewer\n(records\na GIF)", "fill"), ("report\n(writes the\nresult files)", "fill")]
+    for i, (t, k) in enumerate(stages):
+        box(ax, 0.3 + i * 1.17, 1.15, 1.05, 1.45, t, k, size=9)
+        arrow(ax, 0.82 + i * 1.17, 2.6, 0.82 + i * 1.17, 2.83, color=GREY)
+    box(ax, 0.3, 0.25, 6.9, 0.6, "kafka-init creates the topics; the stages start once all three brokers are healthy",
+        "plain", size=9)
+    # host side
+    ax.text(7.65, 5.02, "Host machine", fontsize=9, color=GREY)
+    box(ax, 7.6, 3.55, 2.3, 1.2, "live_view.py\nlive window, reads the\ncluster on localhost", "fill", size=9.5)
+    box(ax, 7.6, 2.0, 2.3, 1.2, "data folders\nmounted read-only\ninto the stages", "plain", size=9.5)
+    box(ax, 7.6, 0.25, 2.3, 1.4, "gen_demo_attacks.py\nrun once, offline\n-> demo_attacks/*.npz\n(read by the injector)", "new", size=9)
+    arrow(ax, 7.6, 4.15, 7.2, 4.0, color=GREY)
+    arrow(ax, 7.6, 2.6, 7.0, 2.2, dashed=True, color=GREY)
+    ax.plot([7.6, 2.0], [1.0, 1.0], color=ORANGE, lw=1.3, ls="--")
+    arrow(ax, 2.0, 1.0, 2.0, 1.17, color=ORANGE)
     save(fig, "fig5_3_deployment.png")
 
 
@@ -422,8 +436,44 @@ def fig8_10():
     save(fig, "fig8_10_runC.png")
 
 
+def fig8_11():
+    rd = BASE / "streaming/demo_runs/runC_failover"
+    al = pd.read_csv(rd / "alarms.csv").sort_values("timestamp").reset_index(drop=True)
+    lb = pd.read_csv(rd / "labels.csv")
+    kills = jload("streaming/demo_runs/runC_failover/broker_kill.json")["kills"]
+    start = int(lb.timestamp.min())
+    fig, ax = plt.subplots(figsize=(10.5, 3.9))
+    for s, e, c in windows(lb):
+        ax.axvspan(s - 0.5, e + 0.5, color=HUES.get(c, "#eee"), alpha=0.75, lw=0)
+        ax.text((s + e) / 2, 4.08, c, ha="center", fontsize=9.5)
+    ymax = 4.0
+    for col, lab, colr in [("fusion_ratio", "fusion (BDD + AE)", "black"), ("v_ratio", "voltage peer check", PURPLE),
+                           ("p_ratio", "power peer check", GOLD)]:
+        ax.plot(al.timestamp, np.clip(al[col], 0, ymax), color=colr, lw=1.0, label=lab)
+    top = np.clip(al[["fusion_ratio", "v_ratio", "p_ratio"]].max(1), 0, ymax)
+    m = al.alarm.astype(bool)
+    ax.plot(al.timestamp[m], top[m], "o", ms=2.6, color="#c0392b", label="alarm (any detector)")
+    ax.axhline(1.0, color=GREY, ls="--", lw=1, label="threshold (each detector)")
+    # steps the detector scored while a broker was down (alarm rows at kill and at restart)
+    for k in kills:
+        a, b = al.timestamp.iloc[k["alarms_at_kill"]], al.timestamp.iloc[min(k["alarms_at_restart"], len(al) - 1)]
+        ax.axvspan(a - 0.5, b + 0.5, facecolor="none", edgecolor=GREY, hatch="///", lw=0)
+        ax.text((a + b) / 2, 3.55, f"{k['killed']}\ndown", ha="center", fontsize=8.5, color=GREY,
+                bbox=dict(fc="white", ec="none", pad=1.0))
+    # the first kill as the producer saw it
+    k = kills[0]
+    p0, p1 = start + k["raw_steps_at_kill"], start + k["raw_steps_at_restart"]
+    ax.plot([p0, p1], [3.0, 3.0], color=ORANGE, lw=2.2)
+    ax.text((p0 + p1) / 2, 3.08, f"{k['killed']} down while the producer published these steps", ha="center",
+            va="bottom", fontsize=8.5, color=ORANGE, bbox=dict(fc="white", ec="none", pad=1.0))
+    ax.set_ylim(0, 4.3); ax.set_ylabel("score / own threshold (clipped at 4)")
+    ax.set_xlabel("stream index (1 step = 1 simulated minute)")
+    ax.legend(frameon=False, fontsize=8, ncol=5, loc="upper center", bbox_to_anchor=(0.5, -0.2))
+    save(fig, "fig8_11_failover.png")
+
+
 ALL = [fig5_1, fig5_2, fig5_3, fig5_4, fig5_5, fig5_6, fig5_7, fig6_1, fig6_2,
-       fig8_1, fig8_2, fig8_3, fig8_4, fig8_5, fig8_6, fig8_7, fig8_8, fig8_9, fig8_10]
+       fig8_1, fig8_2, fig8_3, fig8_4, fig8_5, fig8_6, fig8_7, fig8_8, fig8_9, fig8_10, fig8_11]
 
 if __name__ == "__main__":
     for f in ALL:
