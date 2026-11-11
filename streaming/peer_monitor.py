@@ -12,7 +12,8 @@ Both are fitted on clean fdia_v1 train rows and thresholded at 99% of clean
 val (the same calibration as the fusion threshold). Each alarms after
 PERSIST = 3 consecutive steps above its threshold. Offline (reports/
 overall_detection.md) the system "fusion OR V-peer OR P-peer" raised attack
-detection on held-out benchmarks from 48% to 76% at ~1% false alarms.
+detection on held-out benchmarks from 59% to 76% (existing detector alarming
+on any minute: 0.95% false alarms; combined system: 1.13%).
 
 push(t, vec) takes every COMPLETE 168-vector in stream order (canonical
 channel order = DetectorCore.cols); a gap in t resets the history, exactly as

@@ -39,20 +39,23 @@ Three layers are kept strictly separate:
 
 ## Measured facts
 
-Established by Phase 0 against the compiled circuit, not assumed:
+Measured against the compiled circuit, not assumed (Phase 0, updated for the final registry):
 
 | | |
 |---|---|
 | Buses | 132 |
 | Phase-nodes | 278 |
-| State dimension `dim(x)` | 555 |
+| State dimension `dim(x)` | 553 (2 x 278 - 3 fixed source angles; `RES.md` D4 Sec 4.2, `tests/test_observability.py`) |
 | Load objects | 91 (49 metered, 42 unmetered) |
-| Current measurements `m` | 98 |
+| Measurement channels `m` | 168 (multiphase registry: 53 metered phase-nodes x P, Q, V, plus 9 head channels); 98 in the original Phase 0 registry |
 
-`m` = 98 against `n` = 555 — the feeder is far from observable, so classical state
-estimation is not yet possible. This is a real property of distribution systems,
-not a design defect, and it is why the primary detector supplies *temporal*
-redundancy rather than spatial.
+With 168 channels against 553 states the feeder is lightly observed: the estimator adds
+84 pseudo-measurements and 246 exact zero-injection constraints, which leaves 54 degrees
+of freedom. This is a real property of distribution systems, not a design defect, and it is
+why the detectors add temporal redundancy (the GRU autoencoder) and peer redundancy (each
+meter checked against all the others) rather than relying on the physics residual alone.
+(An earlier version of this table gave 555, which pins a single angle; `RES.md` records that
+553 is the figure to quote.)
 
 ## Setup
 

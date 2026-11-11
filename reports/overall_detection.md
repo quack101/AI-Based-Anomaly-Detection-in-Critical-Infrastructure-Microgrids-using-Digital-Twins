@@ -14,16 +14,22 @@ thresholds at 99% of clean val.
 
 False alarms on the clean test series: **1.13% of minutes**.
 
-| Attack | Existing detector (AE) | V \| P | **V \| P \| AE** |
-|---|---|---|---|
-| A1 random multi-channel bias (27) | 16 (59%) | 19 (70%) | **22 (81%)** |
-| A2 single-meter bias (27) | 4 (15%) | 20 (74%) | **20 (74%)** |
-| A3 load redistribution (58) | 26 (45%) | 39 (67%) | **40 (69%)** |
-| A4 stealthy, library sizes (6) | 6 (100%) | 6 | **6 (100%)** |
-| A5 stealthy, library sizes (9) | 9 (100%) | 9 | **9 (100%)** |
-| **All 127 windows** | **61 (48%)** | 93 (73%) | **97 (76%)** |
-| A1-A3 only | 41% | 70% | **73%** |
-| A1-A3, windows <= 60 min | 33% | 61% | **67%** |
+| Attack | Existing detector (AE), any minute, 0.95% FAR | Existing detector (AE), 3-minute rule, 0.25% FAR | V \| P | **V \| P \| AE** |
+|---|---|---|---|---|
+| A1 random multi-channel bias (27) | 20 (74%) | 16 (59%) | 19 (70%) | **22 (81%)** |
+| A2 single-meter bias (27) | 9 (33%) | 4 (15%) | 20 (74%) | **20 (74%)** |
+| A3 load redistribution (58) | 31 (53%) | 26 (45%) | 39 (67%) | **40 (69%)** |
+| A4 stealthy, library sizes (6) | 6 (100%) | 6 (100%) | 6 | **6 (100%)** |
+| A5 stealthy, library sizes (9) | 9 (100%) | 9 (100%) | 9 | **9 (100%)** |
+| **All 127 windows** | **75 (59%)** | 61 (48%) | 93 (73%) | **97 (76%)** |
+| A1-A3 only | 54% | 41% | 70% | **73%** |
+| A1-A3, windows <= 60 min | - | 33% | 61% | **67%** |
+
+**Which baseline to quote: 59%.** The existing detector alarms on any minute, which puts it at
+0.95% false alarms, close to the combined system's 1.13%. An earlier version of this table showed
+only the 3-minute-rule column (48%), where the existing detector runs at 0.25% false alarms, so the
+comparison was not like for like. Both columns come from `validation/overall_eval_summary.json`
+(`q0.99 K1 AE only (existing)` and `q0.99 K3 AE only (existing)`).
 
 By strength (V|P|AE): A1 L0/L1/L2 67/78/100%; A2 L0/L1/L2 44/78/100%; A3 2%/5%/10% 65/55/89%.
 By length: A1 15/60/240 min 67/78/100%; A2 56/78/89%; A3 43/77/93%.
