@@ -1,0 +1,49 @@
+{
+  "run": "runB_live: live OpenDSS producer, corpus noise (S1), test-split start",
+  "functional_only": false,
+  "n_scored": 391,
+  "n_alarm_total": 63,
+  "fusion_threshold": 0.3934018284216307,
+  "windows": [
+    {
+      "class": "A1",
+      "start": 81780,
+      "end": 81839,
+      "n_targets": 20,
+      "targets_sample": [
+        "HEAD_Q_B",
+        "M007_Q",
+        "M009_Q",
+        "M010_V",
+        "M012_P",
+        "M013_Q"
+      ],
+      "detected": true,
+      "delay": 0,
+      "first_alarm_top_channel": "M026_P",
+      "top_channel_matches_attacked": true,
+      "alarm_steps": 60,
+      "frac_alarm_steps_top_in_targets": 0.8166666666666667
+    },
+    {
+      "class": "A2",
+      "start": 81900,
+      "end": 81959,
+      "n_targets": 3,
+      "targets_sample": [
+        "M042_P",
+        "M042_Q",
+        "M042_V"
+      ],
+      "detected": false,
+      "delay": null,
+      "top_channel_matches_attacked": null
+    }
+  ],
+  "clean_stretch": {
+    "n_steps": 253,
+    "n_alarms": 3,
+    "alarm_rate": 0.011857707509881422,
+    "definition": "scored steps outside attack windows and not within the 9 steps after one (detector history spillover)"
+  }
+}
