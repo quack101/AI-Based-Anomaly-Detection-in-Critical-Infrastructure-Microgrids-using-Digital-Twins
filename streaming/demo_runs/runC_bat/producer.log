@@ -1,0 +1,8 @@
+IEEE-123 feeder compiled.
+Loaded 49 representative meters, 168 enabled registry entries
+Streaming 520 timestamps from t=80440 (warmup 120) to telemetry.raw...
+  t=80500  converged=True  published 50 raw messages
+  t=80600  converged=True  published 50 raw messages
+  t=80700  converged=True  published 50 raw messages
+  t=80800  converged=True  published 50 raw messages
+  t=80900  converged=True  published 50 raw messages

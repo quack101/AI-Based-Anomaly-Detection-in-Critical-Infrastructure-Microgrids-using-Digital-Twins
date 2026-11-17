@@ -1,0 +1,49 @@
+[
+  {
+    "type": "A1",
+    "start": 80520,
+    "duration": 60,
+    "profile": "step",
+    "seed": 20261,
+    "k": 20,
+    "channel_class": "mixed",
+    "pq_rel": 0.1,
+    "v_abs_pu": 0.01
+  },
+  {
+    "type": "A2",
+    "start": 80620,
+    "duration": 60,
+    "profile": "step",
+    "seed": 20262,
+    "pq_rel": 0.1,
+    "v_abs_pu": 0.01
+  },
+  {
+    "type": "A3",
+    "start": 80720,
+    "duration": 60,
+    "plan": "streaming/demo_attacks/C_80440_A3.npz",
+    "magnitude": 0.1,
+    "stealthy": true,
+    "note": "zone load redistribution, full access"
+  },
+  {
+    "type": "A4",
+    "start": 80820,
+    "duration": 30,
+    "plan": "streaming/demo_attacks/C_80440_A4.npz",
+    "magnitude": 0.0001,
+    "stealthy": true,
+    "note": "kept-subspace stealthy attack"
+  },
+  {
+    "type": "A5",
+    "start": 80890,
+    "duration": 30,
+    "plan": "streaming/demo_attacks/C_80440_A5.npz",
+    "magnitude": 0.0001,
+    "stealthy": true,
+    "note": "Newton-corrected stealthy attack"
+  }
+]
