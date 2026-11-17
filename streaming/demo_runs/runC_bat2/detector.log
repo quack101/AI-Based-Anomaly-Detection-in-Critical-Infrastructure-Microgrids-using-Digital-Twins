@@ -1,0 +1,516 @@
+IEEE-123 feeder compiled.
+Peer detectors on: V-peer thr=3.979, P-peer thr=5.298, persistence 3 steps
+Detector consumer up (variant=multiphase, J99=402.36, LNR99=5.664, fusion thr=0.3934). Waiting on telemetry.delivered...
+C:\Users\tejas\Capstone\AI-Based-Anomaly-Detection-in-Critical-Infrastructure-Microgrids-using-Digital-Twins\validation\detect_a2_peer.py:135: RuntimeWarning: All-NaN slice encountered
+  return np.nanmax(np.stack([np.nanmax(st[L], axis=1) for L in self.windows]), axis=0)
+  t=80449 fusion=0.0649 F=0.17 V=0.63 P=0.45 alarm=False  top=M001_V
+  t=80450 fusion=0.0999 F=0.25 V=0.49 P=0.37 alarm=False  top=M001_V
+  t=80451 fusion=0.0915 F=0.23 V=0.61 P=0.36 alarm=False  top=M001_V
+  t=80452 fusion=0.1231 F=0.31 V=0.53 P=0.42 alarm=False  top=M001_V
+  t=80453 fusion=0.0836 F=0.21 V=0.59 P=0.55 alarm=False  top=M001_V
+  t=80454 fusion=0.1248 F=0.32 V=0.60 P=0.67 alarm=False  top=M041_P
+  t=80455 fusion=0.1051 F=0.27 V=0.65 P=0.51 alarm=False  top=M001_V
+  t=80456 fusion=0.0526 F=0.13 V=0.60 P=0.32 alarm=False  top=M001_V
+  t=80457 fusion=0.0576 F=0.15 V=0.69 P=0.44 alarm=False  top=M001_V
+  t=80458 fusion=0.0498 F=0.13 V=0.79 P=0.41 alarm=False  top=M001_V
+  t=80459 fusion=0.0517 F=0.13 V=0.71 P=0.38 alarm=False  top=M001_V
+  t=80460 fusion=0.0394 F=0.10 V=0.75 P=0.34 alarm=False  top=M001_V
+  t=80461 fusion=0.0773 F=0.20 V=0.77 P=0.47 alarm=False  top=M001_V
+  t=80462 fusion=0.0699 F=0.18 V=0.86 P=0.50 alarm=False  top=M001_V
+  t=80463 fusion=0.0511 F=0.13 V=0.71 P=0.48 alarm=False  top=M001_V
+  t=80464 fusion=0.1049 F=0.27 V=0.73 P=0.53 alarm=False  top=M001_V
+  t=80465 fusion=0.0826 F=0.21 V=0.80 P=0.55 alarm=False  top=M001_V
+  t=80466 fusion=0.0649 F=0.16 V=0.81 P=0.47 alarm=False  top=M001_V
+  t=80467 fusion=0.0603 F=0.15 V=0.56 P=0.56 alarm=False  top=M001_V
+  t=80468 fusion=0.0792 F=0.20 V=0.60 P=0.49 alarm=False  top=M001_V
+  t=80469 fusion=0.0719 F=0.18 V=0.62 P=0.37 alarm=False  top=M002_V
+  t=80470 fusion=0.0515 F=0.13 V=0.63 P=0.39 alarm=False  top=M039_V
+  t=80471 fusion=0.1149 F=0.29 V=0.78 P=0.43 alarm=False  top=M035_V
+  t=80472 fusion=0.0901 F=0.23 V=0.65 P=0.51 alarm=False  top=M042_V
+  t=80473 fusion=0.0871 F=0.22 V=0.70 P=0.47 alarm=False  top=M029_V
+  t=80474 fusion=0.1098 F=0.28 V=0.73 P=0.51 alarm=False  top=M043_V_B
+  t=80475 fusion=0.1189 F=0.30 V=0.67 P=0.56 alarm=False  top=M033_V
+  t=80476 fusion=0.1303 F=0.33 V=0.69 P=0.54 alarm=False  top=M033_V
+  t=80477 fusion=0.1019 F=0.26 V=0.70 P=0.49 alarm=False  top=M044_V_B
+  t=80478 fusion=0.0698 F=0.18 V=0.78 P=0.49 alarm=False  top=M007_V
+  t=80479 fusion=0.0968 F=0.25 V=0.79 P=0.66 alarm=False  top=M017_V
+  t=80480 fusion=0.1064 F=0.27 V=0.65 P=0.54 alarm=False  top=M047_V
+  t=80481 fusion=0.1381 F=0.35 V=0.62 P=0.51 alarm=False  top=M029_V
+  t=80482 fusion=0.0973 F=0.25 V=0.63 P=0.60 alarm=False  top=M029_V
+  t=80483 fusion=0.1114 F=0.28 V=0.66 P=0.53 alarm=False  top=M029_V
+  t=80484 fusion=0.1689 F=0.43 V=0.60 P=0.56 alarm=False  top=M007_V
+  t=80485 fusion=0.1318 F=0.34 V=0.60 P=0.61 alarm=False  top=M024_P
+  t=80486 fusion=0.1376 F=0.35 V=0.67 P=0.77 alarm=False  top=M042_P
+  t=80487 fusion=0.2347 F=0.60 V=0.74 P=0.65 alarm=False  top=M007_V
+  t=80488 fusion=0.1229 F=0.31 V=0.82 P=0.61 alarm=False  top=M007_V
+  t=80489 fusion=0.0867 F=0.22 V=0.82 P=0.76 alarm=False  top=M007_V
+  t=80490 fusion=0.2603 F=0.66 V=0.86 P=0.66 alarm=False  top=M007_V
+  t=80491 fusion=0.0839 F=0.21 V=0.88 P=0.72 alarm=False  top=M007_V
+  t=80492 fusion=0.1530 F=0.39 V=0.90 P=0.76 alarm=False  top=M007_V
+  t=80493 fusion=0.1363 F=0.35 V=0.87 P=0.46 alarm=False  top=M007_V
+  t=80494 fusion=0.0780 F=0.20 V=0.79 P=0.23 alarm=False  top=M007_V
+  t=80495 fusion=0.0682 F=0.17 V=0.62 P=0.48 alarm=False  top=M029_V
+  t=80496 fusion=0.0665 F=0.17 V=0.65 P=0.41 alarm=False  top=M007_V
+  t=80497 fusion=0.1982 F=0.50 V=0.73 P=0.47 alarm=False  top=M007_V
+  t=80498 fusion=0.0731 F=0.19 V=0.67 P=0.49 alarm=False  top=M018_V
+  t=80499 fusion=0.1357 F=0.35 V=0.72 P=0.50 alarm=False  top=M032_V
+  t=80500 fusion=0.1031 F=0.26 V=0.52 P=0.52 alarm=False  top=M029_V
+  t=80501 fusion=0.0808 F=0.21 V=0.65 P=0.48 alarm=False  top=M044_V
+  t=80502 fusion=0.0681 F=0.17 V=0.57 P=0.53 alarm=False  top=M025_V
+  t=80503 fusion=0.0718 F=0.18 V=0.61 P=0.51 alarm=False  top=M045_V
+  t=80504 fusion=0.0692 F=0.18 V=0.53 P=0.50 alarm=False  top=M001_V
+  t=80505 fusion=0.0781 F=0.20 V=0.70 P=0.48 alarm=False  top=M031_V
+  t=80506 fusion=0.0779 F=0.20 V=0.58 P=0.34 alarm=False  top=M016_V
+  t=80507 fusion=0.0624 F=0.16 V=0.80 P=0.37 alarm=False  top=M016_V
+  t=80508 fusion=0.0850 F=0.22 V=0.64 P=0.36 alarm=False  top=M047_V
+  t=80509 fusion=0.0686 F=0.17 V=0.62 P=0.31 alarm=False  top=M024_V
+  t=80510 fusion=0.0908 F=0.23 V=0.64 P=0.26 alarm=False  top=M019_V
+  t=80511 fusion=0.1213 F=0.31 V=0.66 P=0.43 alarm=False  top=M019_V
+  t=80512 fusion=0.1241 F=0.32 V=0.58 P=0.41 alarm=False  top=M039_V
+  t=80513 fusion=0.0990 F=0.25 V=0.58 P=0.36 alarm=False  top=M039_V
+  t=80514 fusion=0.0706 F=0.18 V=0.75 P=0.30 alarm=False  top=M033_V
+  t=80515 fusion=0.0665 F=0.17 V=0.60 P=0.41 alarm=False  top=M039_V
+  t=80516 fusion=0.1292 F=0.33 V=0.66 P=0.42 alarm=False  top=M039_V
+  t=80517 fusion=0.1466 F=0.37 V=0.72 P=0.42 alarm=False  top=M044_V
+  t=80518 fusion=0.0539 F=0.14 V=1.01 P=0.35 alarm=False  top=M037_V
+  t=80519 fusion=0.0993 F=0.25 V=1.01 P=0.40 alarm=False  top=M037_V
+  t=80520 fusion=0.5664 F=1.44 V=1.12 P=0.58 alarm=True by fusion+V-peer top=M012_Q
+  t=80521 fusion=0.6679 F=1.70 V=1.00 P=0.88 alarm=True by fusion+V-peer top=M012_Q
+  t=80522 fusion=0.8165 F=2.08 V=0.87 P=0.99 alarm=True by fusion top=M012_Q
+  t=80523 fusion=0.6666 F=1.69 V=0.91 P=1.08 alarm=True by fusion top=M012_Q
+  t=80524 fusion=0.5235 F=1.33 V=1.18 P=0.97 alarm=True by fusion top=M012_Q
+  t=80525 fusion=0.5288 F=1.34 V=1.29 P=0.69 alarm=True by fusion top=M015_Q
+  t=80526 fusion=0.5186 F=1.32 V=1.25 P=0.61 alarm=True by fusion+V-peer top=M012_Q
+  t=80527 fusion=0.5083 F=1.29 V=1.39 P=0.60 alarm=True by fusion+V-peer top=M043_V_C
+  t=80528 fusion=0.3899 F=0.99 V=1.20 P=0.56 alarm=True by V-peer top=M013_V
+  t=80529 fusion=0.3638 F=0.92 V=1.20 P=0.93 alarm=True by V-peer top=M010_V
+  t=80530 fusion=0.5337 F=1.36 V=1.32 P=0.76 alarm=True by fusion+V-peer top=M026_P
+  t=80531 fusion=0.4193 F=1.07 V=1.49 P=0.68 alarm=True by fusion+V-peer top=M013_V
+  t=80532 fusion=0.3316 F=0.84 V=1.64 P=0.87 alarm=True by V-peer top=M010_V
+  t=80533 fusion=0.4707 F=1.20 V=1.82 P=0.53 alarm=True by fusion+V-peer top=M013_V
+  t=80534 fusion=0.4577 F=1.16 V=2.00 P=0.52 alarm=True by fusion+V-peer top=M013_V
+  t=80535 fusion=0.3191 F=0.81 V=2.17 P=0.50 alarm=True by V-peer top=M013_V
+  t=80536 fusion=0.1682 F=0.43 V=2.12 P=0.38 alarm=True by V-peer top=M013_V
+  t=80537 fusion=0.2074 F=0.53 V=2.15 P=0.46 alarm=True by V-peer top=M013_V
+  t=80538 fusion=0.3586 F=0.91 V=2.02 P=0.36 alarm=True by V-peer top=M013_V
+  t=80539 fusion=0.2415 F=0.61 V=1.97 P=0.74 alarm=True by V-peer top=M013_V
+  t=80540 fusion=0.4836 F=1.23 V=1.91 P=0.68 alarm=True by fusion+V-peer top=M013_V
+  t=80541 fusion=0.5532 F=1.41 V=1.91 P=0.58 alarm=True by fusion+V-peer top=M010_V
+  t=80542 fusion=0.4915 F=1.25 V=1.99 P=0.60 alarm=True by fusion+V-peer top=M013_V
+  t=80543 fusion=0.5644 F=1.43 V=2.02 P=0.36 alarm=True by fusion+V-peer top=M013_V
+  t=80544 fusion=0.1464 F=0.37 V=2.11 P=0.28 alarm=True by V-peer top=M043_V_C
+  t=80545 fusion=0.2125 F=0.54 V=2.24 P=0.56 alarm=True by V-peer top=M043_V_C
+  t=80546 fusion=0.1607 F=0.41 V=2.40 P=0.79 alarm=True by V-peer top=M043_V_C
+  t=80547 fusion=0.3224 F=0.82 V=2.44 P=0.57 alarm=True by V-peer top=M043_V_C
+  t=80548 fusion=0.2391 F=0.61 V=2.59 P=0.59 alarm=True by V-peer top=M043_V_C
+  t=80549 fusion=0.1893 F=0.48 V=2.66 P=0.80 alarm=True by V-peer top=M043_V_C
+  t=80550 fusion=0.2042 F=0.52 V=2.71 P=0.53 alarm=True by V-peer top=M043_V_C
+  t=80551 fusion=0.1325 F=0.34 V=2.73 P=0.58 alarm=True by V-peer top=M043_V_C
+  t=80552 fusion=0.1492 F=0.38 V=2.76 P=0.47 alarm=True by V-peer top=M043_V_C
+  t=80553 fusion=0.1626 F=0.41 V=2.69 P=0.52 alarm=True by V-peer top=M043_V_C
+  t=80554 fusion=0.1794 F=0.46 V=2.70 P=0.40 alarm=True by V-peer top=M043_V_C
+  t=80555 fusion=0.4459 F=1.13 V=2.70 P=0.55 alarm=True by fusion+V-peer top=M043_V_C
+  t=80556 fusion=0.2475 F=0.63 V=2.71 P=0.37 alarm=True by V-peer top=M043_V_C
+  t=80557 fusion=0.3236 F=0.82 V=2.66 P=0.48 alarm=True by V-peer top=M043_V_C
+  t=80558 fusion=0.2850 F=0.72 V=2.77 P=0.62 alarm=True by V-peer top=M043_V_C
+  t=80559 fusion=0.6612 F=1.68 V=2.74 P=0.50 alarm=True by fusion+V-peer top=M043_V_C
+  t=80560 fusion=0.4928 F=1.25 V=2.72 P=0.53 alarm=True by fusion+V-peer top=M043_V_C
+  t=80561 fusion=0.3169 F=0.81 V=2.84 P=0.46 alarm=True by V-peer top=M043_V_C
+  t=80562 fusion=0.2088 F=0.53 V=2.83 P=0.72 alarm=True by V-peer top=M043_V_C
+  t=80563 fusion=0.3658 F=0.93 V=2.79 P=0.60 alarm=True by V-peer top=M043_V_C
+  t=80564 fusion=0.2854 F=0.73 V=2.82 P=0.35 alarm=True by V-peer top=M043_V_C
+  t=80565 fusion=0.6837 F=1.74 V=2.82 P=0.41 alarm=True by fusion+V-peer top=M043_V_C
+  t=80566 fusion=0.3923 F=1.00 V=2.83 P=0.72 alarm=True by V-peer top=M043_V_C
+  t=80567 fusion=0.7146 F=1.82 V=2.82 P=0.75 alarm=True by fusion+V-peer top=M043_V_C
+  t=80568 fusion=0.3954 F=1.01 V=2.88 P=0.53 alarm=True by fusion+V-peer top=M043_V_C
+  t=80569 fusion=0.3509 F=0.89 V=2.88 P=0.52 alarm=True by V-peer top=M043_V_C
+  t=80570 fusion=0.3927 F=1.00 V=2.81 P=0.53 alarm=True by V-peer top=M043_V_C
+  t=80571 fusion=0.6786 F=1.73 V=2.88 P=0.53 alarm=True by fusion+V-peer top=M043_V_C
+  t=80572 fusion=0.3044 F=0.77 V=2.91 P=0.50 alarm=True by V-peer top=M043_V_C
+  t=80573 fusion=0.3242 F=0.82 V=2.92 P=0.35 alarm=True by V-peer top=M043_V_C
+  t=80574 fusion=0.3112 F=0.79 V=2.88 P=0.64 alarm=True by V-peer top=M043_V_C
+  t=80575 fusion=0.3790 F=0.96 V=2.88 P=0.90 alarm=True by V-peer top=M043_V_C
+  t=80576 fusion=0.4427 F=1.13 V=2.82 P=0.45 alarm=True by fusion+V-peer top=M043_V_C
+  t=80577 fusion=0.3823 F=0.97 V=2.87 P=0.72 alarm=True by V-peer top=M043_V_C
+  t=80578 fusion=0.7304 F=1.86 V=2.84 P=0.56 alarm=True by fusion+V-peer top=M043_V_C
+  t=80579 fusion=0.5493 F=1.40 V=2.84 P=0.47 alarm=True by fusion+V-peer top=M043_V_C
+  t=80580 fusion=0.0468 F=0.12 V=2.74 P=0.31 alarm=True by V-peer top=M043_V_C
+  t=80581 fusion=0.0455 F=0.12 V=2.59 P=0.30 alarm=True by V-peer top=M043_V_C
+  t=80582 fusion=0.0456 F=0.12 V=2.61 P=0.19 alarm=True by V-peer top=M043_V_C
+  t=80583 fusion=0.0499 F=0.13 V=2.53 P=0.50 alarm=True by V-peer top=M043_V_C
+  t=80584 fusion=0.0738 F=0.19 V=2.48 P=0.26 alarm=True by V-peer top=M043_V_C
+  t=80585 fusion=0.0727 F=0.18 V=2.27 P=0.52 alarm=True by V-peer top=M043_V_C
+  t=80586 fusion=0.0378 F=0.10 V=2.15 P=0.35 alarm=True by V-peer top=M043_V_C
+  t=80587 fusion=0.0353 F=0.09 V=2.12 P=0.37 alarm=True by V-peer top=M043_V_C
+  t=80588 fusion=0.0462 F=0.12 V=2.07 P=0.26 alarm=True by V-peer top=M043_V_C
+  t=80589 fusion=0.0555 F=0.14 V=1.97 P=0.31 alarm=True by V-peer top=M043_V_C
+  t=80590 fusion=0.0383 F=0.10 V=1.80 P=0.32 alarm=True by V-peer top=M043_V_C
+  t=80591 fusion=0.0389 F=0.10 V=1.65 P=0.25 alarm=True by V-peer top=M043_V_C
+  t=80592 fusion=0.0431 F=0.11 V=1.51 P=0.23 alarm=True by V-peer top=M043_V_C
+  t=80593 fusion=0.0615 F=0.16 V=1.46 P=0.33 alarm=True by V-peer top=M043_V_C
+  t=80594 fusion=0.0670 F=0.17 V=1.33 P=0.29 alarm=True by V-peer top=M043_V_C
+  t=80595 fusion=0.0705 F=0.18 V=1.23 P=0.33 alarm=True by V-peer top=M043_V_C
+  t=80596 fusion=0.0631 F=0.16 V=1.13 P=0.33 alarm=True by V-peer top=M043_V_C
+  t=80597 fusion=0.0782 F=0.20 V=1.09 P=0.31 alarm=True by V-peer top=M043_V_C
+  t=80598 fusion=0.0561 F=0.14 V=0.99 P=0.29 alarm=False  top=M013_V
+  t=80599 fusion=0.0914 F=0.23 V=0.94 P=0.31 alarm=False  top=M010_V
+  t=80600 fusion=0.0505 F=0.13 V=1.00 P=0.28 alarm=False  top=M010_V
+  t=80601 fusion=0.0514 F=0.13 V=0.95 P=0.28 alarm=False  top=M010_V
+  t=80602 fusion=0.0464 F=0.12 V=0.88 P=0.41 alarm=False  top=M010_V
+  t=80603 fusion=0.0698 F=0.18 V=0.78 P=0.26 alarm=False  top=M010_V
+  t=80604 fusion=0.0703 F=0.18 V=0.64 P=0.27 alarm=False  top=M010_V
+  t=80605 fusion=0.0642 F=0.16 V=0.68 P=0.50 alarm=False  top=M031_V
+  t=80606 fusion=0.0737 F=0.19 V=0.65 P=0.31 alarm=False  top=M031_V
+  t=80607 fusion=0.0547 F=0.14 V=0.62 P=0.34 alarm=False  top=M023_V
+  t=80608 fusion=0.0599 F=0.15 V=0.64 P=0.29 alarm=False  top=M023_V
+  t=80609 fusion=0.0501 F=0.13 V=0.61 P=0.25 alarm=False  top=M024_V
+  t=80610 fusion=0.0572 F=0.15 V=0.68 P=0.34 alarm=False  top=M030_V
+  t=80611 fusion=0.0656 F=0.17 V=0.78 P=0.34 alarm=False  top=M019_V
+  t=80612 fusion=0.0413 F=0.10 V=0.76 P=0.31 alarm=False  top=M019_V
+  t=80613 fusion=0.0356 F=0.09 V=0.66 P=0.30 alarm=False  top=M019_V
+  t=80614 fusion=0.0378 F=0.10 V=0.76 P=0.17 alarm=False  top=M027_V
+  t=80615 fusion=0.0650 F=0.17 V=0.76 P=0.25 alarm=False  top=M027_V
+  t=80616 fusion=0.0498 F=0.13 V=0.81 P=0.31 alarm=False  top=M010_V
+  t=80617 fusion=0.0382 F=0.10 V=0.82 P=0.19 alarm=False  top=M010_V
+  t=80618 fusion=0.0491 F=0.12 V=0.86 P=0.22 alarm=False  top=M010_V
+  t=80619 fusion=0.0527 F=0.13 V=0.83 P=0.27 alarm=False  top=M010_V
+  t=80620 fusion=0.0529 F=0.13 V=0.80 P=0.27 alarm=False  top=M010_V
+  t=80621 fusion=0.0489 F=0.12 V=0.73 P=0.12 alarm=False  top=M010_V
+  t=80622 fusion=0.0368 F=0.09 V=0.74 P=0.20 alarm=False  top=M025_V
+  t=80623 fusion=0.0477 F=0.12 V=0.74 P=0.13 alarm=False  top=M025_V
+  t=80624 fusion=0.0556 F=0.14 V=0.83 P=0.34 alarm=False  top=M025_V
+  t=80625 fusion=0.0457 F=0.12 V=0.82 P=0.33 alarm=False  top=M025_V
+  t=80626 fusion=0.0605 F=0.15 V=0.73 P=0.17 alarm=False  top=M024_V
+  t=80627 fusion=0.0439 F=0.11 V=0.89 P=0.40 alarm=False  top=M042_V
+  t=80628 fusion=0.0468 F=0.12 V=1.16 P=0.30 alarm=False  top=M042_V
+  t=80629 fusion=0.0408 F=0.10 V=1.08 P=0.28 alarm=False  top=M042_V
+  t=80630 fusion=0.1206 F=0.31 V=1.17 P=0.30 alarm=True by V-peer top=M042_V
+  t=80631 fusion=0.1117 F=0.28 V=1.21 P=0.53 alarm=True by V-peer top=M042_V
+  t=80632 fusion=0.0813 F=0.21 V=1.20 P=0.49 alarm=True by V-peer top=M042_V
+  t=80633 fusion=0.0762 F=0.19 V=1.34 P=0.44 alarm=True by V-peer top=M042_V
+  t=80634 fusion=0.0795 F=0.20 V=1.53 P=0.46 alarm=True by V-peer top=M042_V
+  t=80635 fusion=0.0440 F=0.11 V=1.65 P=0.14 alarm=True by V-peer top=M042_V
+  t=80636 fusion=0.0440 F=0.11 V=1.63 P=0.33 alarm=True by V-peer top=M042_V
+  t=80637 fusion=0.0458 F=0.12 V=1.60 P=0.22 alarm=True by V-peer top=M042_V
+  t=80638 fusion=0.0373 F=0.09 V=1.65 P=0.22 alarm=True by V-peer top=M042_V
+  t=80639 fusion=0.0581 F=0.15 V=1.65 P=0.39 alarm=True by V-peer top=M042_V
+  t=80640 fusion=0.1025 F=0.26 V=1.64 P=0.22 alarm=True by V-peer top=M042_V
+  t=80641 fusion=0.1349 F=0.34 V=1.59 P=0.16 alarm=True by V-peer top=M042_V
+  t=80642 fusion=0.0551 F=0.14 V=1.53 P=0.42 alarm=True by V-peer top=M042_V
+  t=80643 fusion=0.0806 F=0.20 V=1.53 P=0.24 alarm=True by V-peer top=M042_V
+  t=80644 fusion=0.0843 F=0.21 V=1.54 P=0.32 alarm=True by V-peer top=M042_V
+  t=80645 fusion=0.0432 F=0.11 V=1.64 P=0.19 alarm=True by V-peer top=M042_V
+  t=80646 fusion=0.0587 F=0.15 V=1.70 P=0.25 alarm=True by V-peer top=M042_V
+  t=80647 fusion=0.0681 F=0.17 V=1.76 P=0.35 alarm=True by V-peer top=M042_V
+  t=80648 fusion=0.0505 F=0.13 V=1.80 P=0.40 alarm=True by V-peer top=M042_V
+  t=80649 fusion=0.0569 F=0.14 V=1.84 P=0.23 alarm=True by V-peer top=M042_V
+  t=80650 fusion=0.0475 F=0.12 V=1.93 P=0.31 alarm=True by V-peer top=M042_V
+  t=80651 fusion=0.0446 F=0.11 V=1.90 P=0.24 alarm=True by V-peer top=M042_V
+  t=80652 fusion=0.0681 F=0.17 V=1.90 P=0.29 alarm=True by V-peer top=M042_V
+  t=80653 fusion=0.0353 F=0.09 V=1.97 P=0.18 alarm=True by V-peer top=M042_V
+  t=80654 fusion=0.0469 F=0.12 V=1.92 P=0.40 alarm=True by V-peer top=M042_V
+  t=80655 fusion=0.0534 F=0.14 V=1.96 P=0.22 alarm=True by V-peer top=M042_V
+  t=80656 fusion=0.0520 F=0.13 V=1.93 P=0.19 alarm=True by V-peer top=M042_V
+  t=80657 fusion=0.0716 F=0.18 V=1.91 P=0.30 alarm=True by V-peer top=M042_V
+  t=80658 fusion=0.0627 F=0.16 V=1.85 P=0.28 alarm=True by V-peer top=M042_V
+  t=80659 fusion=0.0591 F=0.15 V=1.77 P=0.25 alarm=True by V-peer top=M042_V
+  t=80660 fusion=0.0665 F=0.17 V=1.72 P=0.23 alarm=True by V-peer top=M042_V
+  t=80661 fusion=0.0477 F=0.12 V=1.71 P=0.34 alarm=True by V-peer top=M042_V
+  t=80662 fusion=0.0569 F=0.14 V=1.67 P=0.28 alarm=True by V-peer top=M042_V
+  t=80663 fusion=0.1132 F=0.29 V=1.64 P=0.32 alarm=True by V-peer top=M042_V
+  t=80664 fusion=0.0614 F=0.16 V=1.57 P=0.22 alarm=True by V-peer top=M042_V
+  t=80665 fusion=0.0530 F=0.13 V=1.59 P=0.30 alarm=True by V-peer top=M042_V
+  t=80666 fusion=0.0474 F=0.12 V=1.55 P=0.31 alarm=True by V-peer top=M042_V
+  t=80667 fusion=0.0666 F=0.17 V=1.58 P=0.14 alarm=True by V-peer top=M042_V
+  t=80668 fusion=0.0566 F=0.14 V=1.64 P=0.25 alarm=True by V-peer top=M042_V
+  t=80669 fusion=0.1288 F=0.33 V=1.63 P=0.25 alarm=True by V-peer top=M042_V
+  t=80670 fusion=0.0743 F=0.19 V=1.64 P=0.39 alarm=True by V-peer top=M042_V
+  t=80671 fusion=0.0760 F=0.19 V=1.66 P=0.26 alarm=True by V-peer top=M042_V
+  t=80672 fusion=0.0573 F=0.15 V=1.66 P=0.18 alarm=True by V-peer top=M042_V
+  t=80673 fusion=0.0588 F=0.15 V=1.70 P=0.29 alarm=True by V-peer top=M042_V
+  t=80674 fusion=0.0612 F=0.16 V=1.70 P=0.13 alarm=True by V-peer top=M042_V
+  t=80675 fusion=0.0397 F=0.10 V=1.68 P=0.22 alarm=True by V-peer top=M042_V
+  t=80676 fusion=0.0498 F=0.13 V=1.63 P=0.30 alarm=True by V-peer top=M042_V
+  t=80677 fusion=0.0408 F=0.10 V=1.62 P=0.16 alarm=True by V-peer top=M042_V
+  t=80678 fusion=0.0662 F=0.17 V=1.69 P=0.18 alarm=True by V-peer top=M042_V
+  t=80679 fusion=0.0649 F=0.16 V=1.79 P=0.19 alarm=True by V-peer top=M042_V
+  t=80680 fusion=0.0364 F=0.09 V=1.74 P=0.30 alarm=True by V-peer top=M042_V
+  t=80681 fusion=0.0561 F=0.14 V=1.61 P=0.22 alarm=True by V-peer top=M042_V
+  t=80682 fusion=0.0474 F=0.12 V=1.54 P=0.25 alarm=True by V-peer top=M042_V
+  t=80683 fusion=0.0350 F=0.09 V=1.55 P=0.32 alarm=True by V-peer top=M042_V
+  t=80684 fusion=0.0590 F=0.15 V=1.56 P=0.24 alarm=True by V-peer top=M042_V
+  t=80685 fusion=0.0396 F=0.10 V=1.49 P=0.21 alarm=True by V-peer top=M042_V
+  t=80686 fusion=0.0440 F=0.11 V=1.41 P=0.17 alarm=True by V-peer top=M042_V
+  t=80687 fusion=0.0655 F=0.17 V=1.35 P=0.40 alarm=True by V-peer top=M042_V
+  t=80688 fusion=0.0818 F=0.21 V=1.40 P=0.23 alarm=True by V-peer top=M042_V
+  t=80689 fusion=0.0678 F=0.17 V=1.45 P=0.34 alarm=True by V-peer top=M042_V
+  t=80690 fusion=0.0547 F=0.14 V=1.46 P=0.25 alarm=True by V-peer top=M042_V
+  t=80691 fusion=0.0833 F=0.21 V=1.39 P=0.19 alarm=True by V-peer top=M042_V
+  t=80692 fusion=0.0734 F=0.19 V=1.36 P=0.31 alarm=True by V-peer top=M042_V
+  t=80693 fusion=0.0765 F=0.19 V=1.32 P=0.24 alarm=True by V-peer top=M042_V
+  t=80694 fusion=0.0871 F=0.22 V=1.37 P=0.44 alarm=True by V-peer top=M042_V
+  t=80695 fusion=0.0912 F=0.23 V=1.30 P=0.15 alarm=True by V-peer top=M042_V
+  t=80696 fusion=0.0786 F=0.20 V=1.25 P=0.25 alarm=True by V-peer top=M042_V
+  t=80697 fusion=0.0955 F=0.24 V=1.21 P=0.18 alarm=True by V-peer top=M042_V
+  t=80698 fusion=0.0604 F=0.15 V=1.14 P=0.20 alarm=True by V-peer top=M042_V
+  t=80699 fusion=0.0804 F=0.20 V=1.09 P=0.16 alarm=True by V-peer top=M042_V
+  t=80700 fusion=0.0798 F=0.20 V=1.01 P=0.18 alarm=True by V-peer top=M042_V
+  t=80701 fusion=0.0678 F=0.17 V=0.92 P=0.13 alarm=False  top=M042_V
+  t=80702 fusion=0.0476 F=0.12 V=0.89 P=0.16 alarm=False  top=M044_V
+  t=80703 fusion=0.0613 F=0.16 V=0.80 P=0.27 alarm=False  top=M023_V
+  t=80704 fusion=0.0543 F=0.14 V=0.74 P=0.19 alarm=False  top=M023_V
+  t=80705 fusion=0.0869 F=0.22 V=0.69 P=0.18 alarm=False  top=M023_V
+  t=80706 fusion=0.0557 F=0.14 V=0.69 P=0.20 alarm=False  top=M023_V
+  t=80707 fusion=0.0627 F=0.16 V=0.69 P=0.29 alarm=False  top=M023_V
+  t=80708 fusion=0.0666 F=0.17 V=0.65 P=0.28 alarm=False  top=M023_V
+  t=80709 fusion=0.1613 F=0.41 V=0.69 P=0.23 alarm=False  top=M023_V
+  t=80710 fusion=0.0432 F=0.11 V=0.68 P=0.22 alarm=False  top=M023_V
+  t=80711 fusion=0.0616 F=0.16 V=0.68 P=0.16 alarm=False  top=M028_V
+  t=80712 fusion=0.0581 F=0.15 V=0.70 P=0.16 alarm=False  top=M028_V
+  t=80713 fusion=0.0687 F=0.17 V=0.63 P=0.24 alarm=False  top=M013_V
+  t=80714 fusion=0.0668 F=0.17 V=0.64 P=0.23 alarm=False  top=M028_V
+  t=80715 fusion=0.0871 F=0.22 V=0.66 P=0.19 alarm=False  top=M019_V
+  t=80716 fusion=0.0921 F=0.23 V=0.75 P=0.37 alarm=False  top=M013_V
+  t=80717 fusion=0.0641 F=0.16 V=0.65 P=0.21 alarm=False  top=M013_V
+  t=80718 fusion=0.0427 F=0.11 V=0.65 P=0.31 alarm=False  top=M013_V
+  t=80719 fusion=0.0591 F=0.15 V=0.67 P=0.30 alarm=False  top=M013_V
+  t=80720 fusion=0.0864 F=0.22 V=0.69 P=1.01 alarm=False  top=M038_P
+  t=80721 fusion=0.1320 F=0.34 V=0.88 P=0.91 alarm=False  top=M038_P
+  t=80722 fusion=0.0814 F=0.21 V=0.71 P=0.93 alarm=False  top=M038_P
+  t=80723 fusion=0.1182 F=0.30 V=0.69 P=1.00 alarm=False  top=M038_P
+  t=80724 fusion=0.1618 F=0.41 V=0.71 P=1.20 alarm=False  top=M038_P
+  t=80725 fusion=0.1640 F=0.42 V=0.64 P=1.22 alarm=False  top=M038_P
+  t=80726 fusion=0.1326 F=0.34 V=0.67 P=1.01 alarm=True by P-peer top=M038_P
+  t=80727 fusion=0.1344 F=0.34 V=0.74 P=1.01 alarm=True by P-peer top=M038_P
+  t=80728 fusion=0.1397 F=0.36 V=0.64 P=1.06 alarm=True by P-peer top=M038_P
+  t=80729 fusion=0.1517 F=0.39 V=0.69 P=0.91 alarm=False  top=M015_P
+  t=80730 fusion=0.1285 F=0.33 V=0.71 P=1.10 alarm=False  top=M026_P
+  t=80731 fusion=0.1379 F=0.35 V=0.71 P=1.03 alarm=False  top=M026_P
+  t=80732 fusion=0.1239 F=0.31 V=0.82 P=0.96 alarm=False  top=M038_P
+  t=80733 fusion=0.1068 F=0.27 V=0.78 P=0.94 alarm=False  top=M038_P
+  t=80734 fusion=0.2630 F=0.67 V=0.80 P=0.94 alarm=False  top=M038_P
+  t=80735 fusion=0.1165 F=0.30 V=0.85 P=1.21 alarm=False  top=M038_P
+  t=80736 fusion=0.1354 F=0.34 V=0.85 P=1.32 alarm=False  top=M038_P
+  t=80737 fusion=0.1523 F=0.39 V=0.75 P=1.04 alarm=True by P-peer top=M038_P
+  t=80738 fusion=0.1042 F=0.26 V=0.82 P=0.94 alarm=False  top=M038_P
+  t=80739 fusion=0.1268 F=0.32 V=0.88 P=0.98 alarm=False  top=M038_P
+  t=80740 fusion=0.1501 F=0.38 V=0.79 P=1.05 alarm=False  top=M038_P
+  t=80741 fusion=0.2045 F=0.52 V=0.74 P=1.00 alarm=False  top=M038_P
+  t=80742 fusion=0.1585 F=0.40 V=0.77 P=1.14 alarm=True by P-peer top=M038_P
+  t=80743 fusion=0.1085 F=0.28 V=0.73 P=1.03 alarm=True by P-peer top=M038_P
+  t=80744 fusion=0.1720 F=0.44 V=0.82 P=0.99 alarm=False  top=M038_P
+  t=80745 fusion=0.1237 F=0.31 V=0.78 P=1.00 alarm=False  top=M038_P
+  t=80746 fusion=0.1794 F=0.46 V=0.75 P=1.03 alarm=False  top=M038_P
+  t=80747 fusion=0.1594 F=0.41 V=0.73 P=1.15 alarm=False  top=M038_P
+  t=80748 fusion=0.1466 F=0.37 V=0.75 P=1.02 alarm=True by P-peer top=M038_P
+  t=80749 fusion=0.0998 F=0.25 V=0.78 P=1.04 alarm=True by P-peer top=M038_P
+  t=80750 fusion=0.1318 F=0.34 V=0.83 P=0.96 alarm=False  top=M015_P
+  t=80751 fusion=0.2293 F=0.58 V=0.76 P=0.93 alarm=False  top=M038_P
+  t=80752 fusion=0.1152 F=0.29 V=0.82 P=0.78 alarm=False  top=M043_V
+  t=80753 fusion=0.2269 F=0.58 V=0.82 P=1.23 alarm=False  top=M039_P
+  t=80754 fusion=0.1076 F=0.27 V=0.79 P=0.82 alarm=False  top=M038_P
+  t=80755 fusion=0.1133 F=0.29 V=0.81 P=1.00 alarm=False  top=M038_P
+  t=80756 fusion=0.1768 F=0.45 V=0.72 P=0.90 alarm=False  top=M038_P
+  t=80757 fusion=0.1448 F=0.37 V=0.75 P=0.89 alarm=False  top=M038_P
+  t=80758 fusion=0.1387 F=0.35 V=0.76 P=0.83 alarm=False  top=M038_P
+  t=80759 fusion=0.1375 F=0.35 V=0.78 P=0.75 alarm=False  top=M015_V
+  t=80760 fusion=0.1773 F=0.45 V=0.87 P=0.79 alarm=False  top=M015_V
+  t=80761 fusion=0.1366 F=0.35 V=0.72 P=0.72 alarm=False  top=M015_V
+  t=80762 fusion=0.1007 F=0.26 V=0.66 P=0.75 alarm=False  top=M038_P
+  t=80763 fusion=0.1449 F=0.37 V=0.69 P=0.81 alarm=False  top=M038_P
+  t=80764 fusion=0.1018 F=0.26 V=0.75 P=0.81 alarm=False  top=M038_P
+  t=80765 fusion=0.1431 F=0.36 V=0.69 P=0.87 alarm=False  top=M038_P
+  t=80766 fusion=0.1292 F=0.33 V=0.66 P=0.93 alarm=False  top=M038_P
+  t=80767 fusion=0.1426 F=0.36 V=0.69 P=1.04 alarm=False  top=M038_P
+  t=80768 fusion=0.1638 F=0.42 V=0.80 P=1.06 alarm=False  top=M038_P
+  t=80769 fusion=0.1562 F=0.40 V=0.75 P=1.04 alarm=True by P-peer top=M038_P
+  t=80770 fusion=0.0865 F=0.22 V=0.73 P=0.98 alarm=False  top=M038_P
+  t=80771 fusion=0.0951 F=0.24 V=0.73 P=0.87 alarm=False  top=M038_P
+  t=80772 fusion=0.1449 F=0.37 V=0.71 P=0.98 alarm=False  top=M038_P
+  t=80773 fusion=0.1581 F=0.40 V=0.83 P=1.05 alarm=False  top=M038_P
+  t=80774 fusion=0.1118 F=0.28 V=0.75 P=0.90 alarm=False  top=M038_P
+  t=80775 fusion=0.1489 F=0.38 V=0.70 P=1.03 alarm=False  top=M038_P
+  t=80776 fusion=0.0954 F=0.24 V=0.68 P=1.04 alarm=False  top=M038_P
+  t=80777 fusion=0.1816 F=0.46 V=0.74 P=1.01 alarm=True by P-peer top=M038_P
+  t=80778 fusion=0.1313 F=0.33 V=0.73 P=1.09 alarm=True by P-peer top=M038_P
+  t=80779 fusion=0.1456 F=0.37 V=0.85 P=1.03 alarm=True by P-peer top=M038_P
+  t=80780 fusion=0.0558 F=0.14 V=0.90 P=0.17 alarm=False  top=M031_V
+  t=80781 fusion=0.0625 F=0.16 V=0.82 P=0.24 alarm=False  top=M024_V
+  t=80782 fusion=0.0760 F=0.19 V=0.84 P=0.28 alarm=False  top=M024_V
+  t=80783 fusion=0.0964 F=0.25 V=0.90 P=0.20 alarm=False  top=M024_V
+  t=80784 fusion=0.0811 F=0.21 V=0.82 P=0.29 alarm=False  top=M024_V
+  t=80785 fusion=0.0800 F=0.20 V=0.78 P=0.26 alarm=False  top=M024_V
+  t=80786 fusion=0.0550 F=0.14 V=0.75 P=0.17 alarm=False  top=M024_V
+  t=80787 fusion=0.0497 F=0.13 V=0.73 P=0.26 alarm=False  top=M024_V
+  t=80788 fusion=0.0620 F=0.16 V=0.72 P=0.34 alarm=False  top=M037_V
+  t=80789 fusion=0.0808 F=0.21 V=0.75 P=0.36 alarm=False  top=M037_V
+  t=80790 fusion=0.0752 F=0.19 V=0.77 P=0.33 alarm=False  top=M009_V
+  t=80791 fusion=0.0642 F=0.16 V=0.81 P=0.16 alarm=False  top=M009_V
+  t=80792 fusion=0.0517 F=0.13 V=0.79 P=0.29 alarm=False  top=M043_V
+  t=80793 fusion=0.0469 F=0.12 V=0.90 P=0.21 alarm=False  top=M035_V
+  t=80794 fusion=0.1008 F=0.26 V=0.66 P=0.33 alarm=False  top=M035_V
+  t=80795 fusion=0.0550 F=0.14 V=0.73 P=0.22 alarm=False  top=M035_V
+  t=80796 fusion=0.0759 F=0.19 V=0.74 P=0.30 alarm=False  top=M037_V
+  t=80797 fusion=0.0631 F=0.16 V=0.72 P=0.34 alarm=False  top=M035_V
+  t=80798 fusion=0.0503 F=0.13 V=0.78 P=0.25 alarm=False  top=M035_V
+  t=80799 fusion=0.0537 F=0.14 V=0.73 P=0.28 alarm=False  top=M035_V
+  t=80800 fusion=0.0711 F=0.18 V=0.82 P=0.23 alarm=False  top=M035_V
+  t=80801 fusion=0.0508 F=0.13 V=0.74 P=0.20 alarm=False  top=M035_V
+  t=80802 fusion=0.0545 F=0.14 V=0.71 P=0.23 alarm=False  top=M035_V
+  t=80803 fusion=0.0414 F=0.11 V=0.68 P=0.21 alarm=False  top=M035_V
+  t=80804 fusion=0.0662 F=0.17 V=0.64 P=0.20 alarm=False  top=M009_V
+  t=80805 fusion=0.0512 F=0.13 V=0.70 P=0.23 alarm=False  top=M009_V
+  t=80806 fusion=0.0603 F=0.15 V=0.84 P=0.24 alarm=False  top=M010_V
+  t=80807 fusion=0.0948 F=0.24 V=0.66 P=0.28 alarm=False  top=M010_V
+  t=80808 fusion=0.0620 F=0.16 V=0.66 P=0.22 alarm=False  top=M006_V
+  t=80809 fusion=0.0509 F=0.13 V=0.64 P=0.30 alarm=False  top=M043_V_B
+  t=80810 fusion=0.0524 F=0.13 V=0.80 P=0.22 alarm=False  top=M043_V_B
+  t=80811 fusion=0.0467 F=0.12 V=0.71 P=0.48 alarm=False  top=M043_V_B
+  t=80812 fusion=0.0766 F=0.19 V=0.62 P=0.46 alarm=False  top=M010_V
+  t=80813 fusion=0.0552 F=0.14 V=0.87 P=0.26 alarm=False  top=M034_V
+  t=80814 fusion=0.0554 F=0.14 V=0.77 P=0.23 alarm=False  top=M034_V
+  t=80815 fusion=0.0645 F=0.16 V=0.61 P=0.40 alarm=False  top=M021_V
+  t=80816 fusion=0.0591 F=0.15 V=0.69 P=0.25 alarm=False  top=M010_V
+  t=80817 fusion=0.0538 F=0.14 V=0.69 P=0.34 alarm=False  top=M046_V
+  t=80818 fusion=0.0821 F=0.21 V=0.62 P=0.22 alarm=False  top=M011_V
+  t=80819 fusion=0.0895 F=0.23 V=0.58 P=0.28 alarm=False  top=M001_V
+  t=80820 fusion=1.0000 F=2.54 V=0.73 P=30.23 alarm=True by fusion top=M044_P_B
+  t=80821 fusion=1.0000 F=2.54 V=0.93 P=15.00 alarm=True by fusion top=M048_P
+  t=80822 fusion=1.0000 F=2.54 V=0.90 P=6.41 alarm=True by fusion+P-peer top=M007_P
+  t=80823 fusion=1.0000 F=2.54 V=1.23 P=34.01 alarm=True by fusion+P-peer top=M044_P_C
+  t=80824 fusion=1.0000 F=2.54 V=1.02 P=12.50 alarm=True by fusion+P-peer top=M044_P_C
+  t=80825 fusion=1.0000 F=2.54 V=0.99 P=6.95 alarm=True by fusion+P-peer top=M049_P
+  t=80826 fusion=1.0000 F=2.54 V=1.22 P=14.14 alarm=True by fusion+P-peer top=M049_P
+  t=80827 fusion=1.0000 F=2.54 V=0.93 P=19.83 alarm=True by fusion+P-peer top=M044_P_B
+  t=80828 fusion=1.0000 F=2.54 V=1.37 P=25.76 alarm=True by fusion+P-peer top=M044_P_C
+  t=80829 fusion=1.0000 F=2.54 V=0.97 P=39.37 alarm=True by fusion+P-peer top=M048_P
+  t=80830 fusion=1.0000 F=2.54 V=1.13 P=9.11 alarm=True by fusion+P-peer top=M044_P_C
+  t=80831 fusion=1.0000 F=2.54 V=1.00 P=41.12 alarm=True by fusion+P-peer top=M047_P
+  t=80832 fusion=1.0000 F=2.54 V=1.00 P=25.05 alarm=True by fusion+V-peer+P-peer top=M048_P
+  t=80833 fusion=1.0000 F=2.54 V=1.00 P=27.59 alarm=True by fusion+V-peer+P-peer top=M048_P
+  t=80834 fusion=1.0000 F=2.54 V=1.63 P=8.73 alarm=True by fusion+V-peer+P-peer top=M047_P
+  t=80835 fusion=1.0000 F=2.54 V=1.04 P=21.89 alarm=True by fusion+V-peer+P-peer top=M048_P
+  t=80836 fusion=1.0000 F=2.54 V=1.33 P=33.92 alarm=True by fusion+V-peer+P-peer top=M047_P
+  t=80837 fusion=1.0000 F=2.54 V=1.10 P=9.04 alarm=True by fusion+V-peer+P-peer top=M049_P
+  t=80838 fusion=1.0000 F=2.54 V=1.35 P=18.87 alarm=True by fusion+V-peer+P-peer top=M047_P
+  t=80839 fusion=1.0000 F=2.54 V=1.33 P=31.74 alarm=True by fusion+V-peer+P-peer top=M048_P
+  t=80840 fusion=1.0000 F=2.54 V=1.21 P=16.44 alarm=True by fusion+V-peer+P-peer top=M047_P
+  t=80841 fusion=1.0000 F=2.54 V=0.96 P=9.74 alarm=True by fusion+P-peer top=M045_P
+  t=80842 fusion=1.0000 F=2.54 V=1.00 P=30.09 alarm=True by fusion+P-peer top=M047_P
+  t=80843 fusion=1.0000 F=2.54 V=0.99 P=30.01 alarm=True by fusion+P-peer top=M048_P
+  t=80844 fusion=1.0000 F=2.54 V=1.36 P=26.02 alarm=True by fusion+P-peer top=M044_P_C
+  t=80845 fusion=1.0000 F=2.54 V=1.26 P=9.63 alarm=True by fusion+P-peer top=M047_P
+  t=80846 fusion=1.0000 F=2.54 V=1.26 P=40.40 alarm=True by fusion+V-peer+P-peer top=M044_P_C
+  t=80847 fusion=1.0000 F=2.54 V=1.26 P=41.06 alarm=True by fusion+V-peer+P-peer top=M048_P
+  t=80848 fusion=1.0000 F=2.54 V=1.02 P=28.62 alarm=True by fusion+V-peer+P-peer top=M047_P
+  t=80849 fusion=1.0000 F=2.54 V=1.00 P=11.75 alarm=True by fusion+V-peer+P-peer top=M048_P
+  t=80850 fusion=0.2983 F=0.76 V=0.97 P=0.29 alarm=False  top=M017_V
+  t=80851 fusion=0.0937 F=0.24 V=0.98 P=0.12 alarm=False  top=M017_V
+  t=80852 fusion=0.0809 F=0.21 V=0.91 P=0.40 alarm=False  top=M006_V
+  t=80853 fusion=0.0895 F=0.23 V=0.87 P=0.23 alarm=False  top=M017_V
+  t=80854 fusion=0.0710 F=0.18 V=0.80 P=0.26 alarm=False  top=M002_V
+  t=80855 fusion=0.0676 F=0.17 V=0.79 P=0.17 alarm=False  top=M043_V_C
+  t=80856 fusion=0.0868 F=0.22 V=0.68 P=0.21 alarm=False  top=M046_V
+  t=80857 fusion=0.0518 F=0.13 V=0.73 P=0.16 alarm=False  top=M042_V
+  t=80858 fusion=0.0779 F=0.20 V=0.93 P=0.13 alarm=False  top=M043_V_C
+  t=80859 fusion=0.0989 F=0.25 V=0.82 P=0.21 alarm=False  top=M006_V
+  t=80860 fusion=0.0788 F=0.20 V=0.87 P=0.19 alarm=False  top=M015_V
+  t=80861 fusion=0.0610 F=0.15 V=0.80 P=0.23 alarm=False  top=M043_V_C
+  t=80862 fusion=0.1457 F=0.37 V=0.74 P=0.29 alarm=False  top=M021_V
+  t=80863 fusion=0.0789 F=0.20 V=0.88 P=0.30 alarm=False  top=M043_V_C
+  t=80864 fusion=0.0624 F=0.16 V=0.92 P=0.21 alarm=False  top=M043_V_C
+  t=80865 fusion=0.0412 F=0.10 V=0.94 P=0.20 alarm=False  top=M043_V_C
+  t=80866 fusion=0.1025 F=0.26 V=0.84 P=0.33 alarm=False  top=M043_V_C
+  t=80867 fusion=0.0644 F=0.16 V=0.81 P=0.21 alarm=False  top=M043_V_C
+  t=80868 fusion=0.0548 F=0.14 V=0.69 P=0.31 alarm=False  top=M043_V_C
+  t=80869 fusion=0.0648 F=0.16 V=0.69 P=0.55 alarm=False  top=M048_V
+  t=80870 fusion=0.0950 F=0.24 V=0.73 P=0.22 alarm=False  top=M048_V
+  t=80871 fusion=0.0640 F=0.16 V=0.88 P=0.41 alarm=False  top=M048_V
+  t=80872 fusion=0.0686 F=0.17 V=0.86 P=0.29 alarm=False  top=M048_V
+  t=80873 fusion=0.0619 F=0.16 V=0.70 P=0.28 alarm=False  top=M043_V_C
+  t=80874 fusion=0.0713 F=0.18 V=0.64 P=0.31 alarm=False  top=M031_V
+  t=80875 fusion=0.0940 F=0.24 V=0.68 P=0.22 alarm=False  top=M031_V
+  t=80876 fusion=0.0771 F=0.20 V=0.61 P=0.46 alarm=False  top=M044_V
+  t=80877 fusion=0.0716 F=0.18 V=0.70 P=0.35 alarm=False  top=M031_V
+  t=80878 fusion=0.0518 F=0.13 V=0.65 P=0.18 alarm=False  top=M038_V
+  t=80879 fusion=0.0516 F=0.13 V=0.73 P=0.28 alarm=False  top=M048_V
+  t=80880 fusion=0.0575 F=0.15 V=0.71 P=0.35 alarm=False  top=M048_V
+  t=80881 fusion=0.0496 F=0.13 V=0.81 P=0.21 alarm=False  top=M031_V
+  t=80882 fusion=0.1226 F=0.31 V=0.68 P=0.38 alarm=False  top=M008_V
+  t=80883 fusion=0.0552 F=0.14 V=0.63 P=0.21 alarm=False  top=M046_V
+  t=80884 fusion=0.0733 F=0.19 V=0.66 P=0.29 alarm=False  top=M046_V
+  t=80885 fusion=0.0553 F=0.14 V=0.59 P=0.17 alarm=False  top=M046_V
+  t=80886 fusion=0.0697 F=0.18 V=0.73 P=0.29 alarm=False  top=M035_V
+  t=80887 fusion=0.1011 F=0.26 V=0.62 P=0.28 alarm=False  top=M008_V
+  t=80888 fusion=0.0586 F=0.15 V=0.60 P=0.13 alarm=False  top=M008_V
+  t=80889 fusion=0.0773 F=0.20 V=0.70 P=0.18 alarm=False  top=M003_V
+  t=80890 fusion=1.0000 F=2.54 V=1.06 P=10.27 alarm=True by fusion top=M048_P
+  t=80891 fusion=1.0000 F=2.54 V=1.25 P=30.56 alarm=True by fusion top=M048_P
+  t=80892 fusion=1.0000 F=2.54 V=1.47 P=11.12 alarm=True by fusion+V-peer+P-peer top=M047_P
+  t=80893 fusion=1.0000 F=2.54 V=0.99 P=16.91 alarm=True by fusion+P-peer top=M048_P
+  t=80894 fusion=1.0000 F=2.54 V=1.20 P=43.14 alarm=True by fusion+P-peer top=M048_P
+  t=80895 fusion=1.0000 F=2.54 V=1.00 P=60.35 alarm=True by fusion+P-peer top=M048_P
+  t=80896 fusion=1.0000 F=2.54 V=1.16 P=20.72 alarm=True by fusion+P-peer top=M049_P
+  t=80897 fusion=1.0000 F=2.54 V=1.22 P=25.01 alarm=True by fusion+P-peer top=M047_P
+  t=80898 fusion=1.0000 F=2.54 V=1.42 P=33.23 alarm=True by fusion+V-peer+P-peer top=M047_P
+  t=80899 fusion=1.0000 F=2.54 V=1.59 P=13.18 alarm=True by fusion+V-peer+P-peer top=M048_P
+  t=80900 fusion=1.0000 F=2.54 V=1.41 P=7.54 alarm=True by fusion+V-peer+P-peer top=M025_P
+  t=80901 fusion=1.0000 F=2.54 V=1.05 P=31.74 alarm=True by fusion+V-peer+P-peer top=M048_P
+  t=80902 fusion=1.0000 F=2.54 V=1.09 P=16.77 alarm=True by fusion+V-peer+P-peer top=M047_P
+  t=80903 fusion=1.0000 F=2.54 V=0.88 P=26.08 alarm=True by fusion+P-peer top=M047_P
+  t=80904 fusion=1.0000 F=2.54 V=1.16 P=11.23 alarm=True by fusion+P-peer top=M045_P
+  t=80905 fusion=1.0000 F=2.54 V=1.66 P=20.38 alarm=True by fusion+P-peer top=M044_P_B
+  t=80906 fusion=1.0000 F=2.54 V=1.23 P=23.03 alarm=True by fusion+V-peer+P-peer top=M047_P
+  t=80907 fusion=1.0000 F=2.54 V=1.30 P=28.22 alarm=True by fusion+V-peer+P-peer top=M047_P
+  t=80908 fusion=1.0000 F=2.54 V=1.40 P=23.85 alarm=True by fusion+V-peer+P-peer top=M048_P
+  t=80909 fusion=1.0000 F=2.54 V=1.45 P=31.16 alarm=True by fusion+V-peer+P-peer top=M044_P_C
+  t=80910 fusion=1.0000 F=2.54 V=1.12 P=13.34 alarm=True by fusion+V-peer+P-peer top=M047_P
+  t=80911 fusion=1.0000 F=2.54 V=1.06 P=20.33 alarm=True by fusion+V-peer+P-peer top=M048_P
+  t=80912 fusion=1.0000 F=2.54 V=1.08 P=33.91 alarm=True by fusion+V-peer+P-peer top=M044_P_B
+  t=80913 fusion=1.0000 F=2.54 V=1.00 P=29.93 alarm=True by fusion+V-peer+P-peer top=M049_P
+  t=80914 fusion=1.0000 F=2.54 V=1.23 P=37.22 alarm=True by fusion+V-peer+P-peer top=M044_P_C
+  t=80915 fusion=1.0000 F=2.54 V=1.23 P=29.94 alarm=True by fusion+V-peer+P-peer top=M044_P_B
+  t=80916 fusion=1.0000 F=2.54 V=1.25 P=16.50 alarm=True by fusion+V-peer+P-peer top=M044_P_B
+  t=80917 fusion=1.0000 F=2.54 V=1.29 P=7.87 alarm=True by fusion+V-peer+P-peer top=M022_P
+  t=80918 fusion=1.0000 F=2.54 V=1.22 P=16.92 alarm=True by fusion+V-peer+P-peer top=M048_P
+  t=80919 fusion=1.0000 F=2.54 V=1.14 P=15.26 alarm=True by fusion+V-peer+P-peer top=M047_P
+  t=80920 fusion=0.2402 F=0.61 V=1.23 P=0.38 alarm=True by V-peer top=M027_V
+  t=80921 fusion=0.0937 F=0.24 V=1.30 P=0.23 alarm=True by V-peer top=M027_V
+  t=80922 fusion=0.0494 F=0.13 V=1.20 P=0.28 alarm=True by V-peer top=M027_V
+  t=80923 fusion=0.0673 F=0.17 V=1.19 P=0.18 alarm=True by V-peer top=M027_V
+  t=80924 fusion=0.0785 F=0.20 V=1.30 P=0.48 alarm=True by V-peer top=M027_V
+  t=80925 fusion=0.0870 F=0.22 V=1.19 P=0.50 alarm=True by V-peer top=M027_V
+  t=80926 fusion=0.0566 F=0.14 V=1.03 P=0.34 alarm=True by V-peer top=M027_V
+  t=80927 fusion=0.0743 F=0.19 V=0.96 P=0.28 alarm=False  top=M027_V
+  t=80928 fusion=0.0778 F=0.20 V=0.90 P=0.46 alarm=False  top=M027_V
+  t=80929 fusion=0.0963 F=0.24 V=0.97 P=0.54 alarm=False  top=M013_V
+  t=80930 fusion=0.0725 F=0.18 V=0.97 P=0.57 alarm=False  top=M013_V
+  t=80931 fusion=0.0625 F=0.16 V=0.94 P=0.45 alarm=False  top=M013_V
+  t=80932 fusion=0.0404 F=0.10 V=0.86 P=0.27 alarm=False  top=M024_V
+  t=80933 fusion=0.0521 F=0.13 V=0.83 P=0.19 alarm=False  top=M027_V
+  t=80934 fusion=0.1152 F=0.29 V=0.75 P=0.34 alarm=False  top=M028_V
+  t=80935 fusion=0.0500 F=0.13 V=0.70 P=0.19 alarm=False  top=M035_V
+  t=80936 fusion=0.0845 F=0.21 V=0.74 P=0.24 alarm=False  top=M028_V
+  t=80937 fusion=0.0438 F=0.11 V=0.85 P=0.26 alarm=False  top=M028_V
+  t=80938 fusion=0.0630 F=0.16 V=0.97 P=0.28 alarm=False  top=M028_V
+  t=80939 fusion=0.0809 F=0.21 V=0.88 P=0.60 alarm=False  top=M028_V
+  t=80940 fusion=0.2801 F=0.71 V=0.76 P=0.67 alarm=False  top=M008_V
+  t=80941 fusion=0.0831 F=0.21 V=0.86 P=0.56 alarm=False  top=M006_V
+  t=80942 fusion=0.0653 F=0.17 V=0.87 P=0.48 alarm=False  top=M045_V
+  t=80943 fusion=0.0707 F=0.18 V=0.86 P=0.54 alarm=False  top=M035_V
+  t=80944 fusion=0.1221 F=0.31 V=0.69 P=0.57 alarm=False  top=M013_V
+  t=80945 fusion=0.0762 F=0.19 V=0.72 P=0.52 alarm=False  top=M013_V
+  t=80946 fusion=0.0552 F=0.14 V=0.69 P=0.43 alarm=False  top=M013_V
+  t=80947 fusion=0.0727 F=0.18 V=0.72 P=0.54 alarm=False  top=M018_V
+  t=80948 fusion=0.0396 F=0.10 V=0.70 P=0.40 alarm=False  top=M018_V
+  t=80949 fusion=0.0667 F=0.17 V=0.69 P=0.44 alarm=False  top=M018_V
+  t=80950 fusion=0.0357 F=0.09 V=0.87 P=0.36 alarm=False  top=M018_V
+  t=80951 fusion=0.0359 F=0.09 V=0.69 P=0.51 alarm=False  top=M018_V
+  t=80952 fusion=0.0445 F=0.11 V=0.74 P=0.71 alarm=False  top=M018_V
+  t=80953 fusion=0.0354 F=0.09 V=0.72 P=0.37 alarm=False  top=M018_V
+  t=80954 fusion=0.0317 F=0.08 V=0.67 P=0.41 alarm=False  top=M018_V
+  t=80955 fusion=0.1144 F=0.29 V=0.70 P=0.55 alarm=False  top=M018_V
+  t=80956 fusion=0.0538 F=0.14 V=0.60 P=0.57 alarm=False  top=M018_V
+  t=80957 fusion=0.0676 F=0.17 V=0.74 P=0.51 alarm=False  top=M007_V
+  t=80958 fusion=0.0961 F=0.24 V=0.72 P=0.65 alarm=False  top=M019_V
+  t=80959 fusion=0.0875 F=0.22 V=0.61 P=0.51 alarm=False  top=M020_V
